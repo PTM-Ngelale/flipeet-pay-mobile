@@ -43,6 +43,19 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ffbf714e-1d6c-4ffe-be48-6c60fe911003"
+      }
+    },
+    "owner": "flipeet-pay",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/ffbf714e-1d6c-4ffe-be48-6c60fe911003"
     }
   }
 }
