@@ -38,18 +38,21 @@ export default function ActionLayout() {
           name="swap"
           options={{
             title: "Swap",
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="send"
           options={{
             title: "Send",
+            headerShown: false,
           }}
         />
         <Stack.Screen
           name="services"
           options={{
             title: "Services",
+            headerShown: false,
           }}
         />
         <Stack.Screen
