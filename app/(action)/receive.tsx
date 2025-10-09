@@ -288,6 +288,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 20,
+    paddingBottom: 0,
   },
   headerTitle: {
     color: "#757B85",
@@ -299,6 +300,7 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    marginTop: 40,
   },
   scrollViewContent: {
     flexGrow: 1,

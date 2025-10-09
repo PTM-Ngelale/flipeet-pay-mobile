@@ -34,9 +34,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 20,
+    paddingBottom: 0,
   },
   scrollView: {
     flex: 1,
+    marginTop: 40,
   },
   scrollContent: {
     paddingBottom: 24,
@@ -246,7 +248,10 @@ export default function RecentActivity() {
       <Text style={{ color: "#757B85", fontSize: 16, fontWeight: "bold" }}>
         Recent Activity
       </Text>
-      <View style={styles.spacer} />
+      {/* <View style={styles.spacer} /> */}
+      <View style={{ opacity: 0 }}>
+        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+      </View>
     </View>
   );
 

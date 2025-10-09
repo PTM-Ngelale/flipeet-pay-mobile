@@ -142,6 +142,7 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     flexGrow: 1,
+    marginTop: 40,
   },
   toggleMenu: {
     marginTop: 20,

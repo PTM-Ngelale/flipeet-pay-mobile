@@ -45,6 +45,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     padding: 20,
+    paddingBottom: 0,
   },
   headerTitle: {
     color: "#757B85",

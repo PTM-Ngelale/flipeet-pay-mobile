@@ -1,15 +1,14 @@
-import Entypo from "@expo/vector-icons/Entypo";
-import Feather from "@expo/vector-icons/Feather";
-import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import { useRouter } from "expo-router";
-import USDCIcon from "@/assets/images/usdc-icon.svg";
-import USDTIcon from "@/assets/images/usdt-icon.svg";
-import SwapIcon from "@/assets/images/swap-icon.svg";
 import ReceiveIcon from "@/assets/images/receive-icon.svg";
 import SendIcon from "@/assets/images/send-icon.svg";
 import ServicesIcon from "@/assets/images/services-icon.svg";
+import SwapIcon from "@/assets/images/swap-icon.svg";
+import USDCIcon from "@/assets/images/usdc-icon.svg";
+import USDTIcon from "@/assets/images/usdt-icon.svg";
 import UserProfile from "@/assets/images/user.svg";
+import Entypo from "@expo/vector-icons/Entypo";
+import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   Image,
@@ -248,7 +247,7 @@ export default function WalletHomeScreen() {
 
   const renderTokenItem = (asset: Asset) => {
     const IconComponent = iconComponents[asset.icon];
-    
+
     return (
       <View
         key={asset.id}
@@ -258,16 +257,18 @@ export default function WalletHomeScreen() {
           {IconComponent ? (
             <IconComponent size={40} />
           ) : (
-            <Image 
-              source={assetIcons[asset.icon as keyof typeof assetIcons]} 
-              style={styles.tokenIcon} 
+            <Image
+              source={assetIcons[asset.icon as keyof typeof assetIcons]}
+              style={styles.tokenIcon}
             />
           )}
           <View>
             <Text style={[styles.tokenName, { color: colors.textPrimary }]}>
               {asset.name}
             </Text>
-            <Text style={[styles.tokenBalance, { color: colors.textSecondary }]}>
+            <Text
+              style={[styles.tokenBalance, { color: colors.textSecondary }]}
+            >
               {formatBalance(asset.balance, asset.id)}
             </Text>
           </View>
@@ -277,7 +278,8 @@ export default function WalletHomeScreen() {
             ${asset.usdValue}
           </Text>
           <Text style={asset.gain >= 0 ? styles.gainText : styles.lossText}>
-            {asset.gain >= 0 ? "+" : "-"}${Math.abs(asset.gain).toLocaleString()}
+            {asset.gain >= 0 ? "+" : "-"}$
+            {Math.abs(asset.gain).toLocaleString()}
           </Text>
         </View>
       </View>
@@ -353,7 +355,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 0,
   },
   userInfo: {
     flexDirection: "row",
@@ -376,6 +378,7 @@ const styles = StyleSheet.create({
   balanceSection: {
     alignItems: "center",
     gap: 8,
+    marginTop: 40,
     marginBottom: 36,
   },
   balanceRow: {

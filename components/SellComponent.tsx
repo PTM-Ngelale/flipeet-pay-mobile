@@ -271,6 +271,7 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     gap: 16,
     position: "relative",
+    flex: 1, // Add this to make content take available space
   },
   section: {
     padding: 16,
@@ -332,7 +333,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 10,
     position: "absolute",
-    top: "25%",
+    top: "22%",
   },
   addBankButton: {
     backgroundColor: "#2A2A2A",
@@ -400,6 +401,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: "center",
+    marginTop: "auto", // This pushes the button to the bottom
+    marginBottom: 20, // Add some bottom margin
   },
   swapButtonActive: {
     backgroundColor: "#3B82F6",
