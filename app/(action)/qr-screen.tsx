@@ -1,10 +1,10 @@
+import QrCode from "@/assets/images/qr-code.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import QrCode from "@/assets/images/qr-code.svg"
 
 export default function QRScreen() {
   const router = useRouter();
@@ -32,7 +32,9 @@ export default function QRScreen() {
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Your Solana Address</Text>
-          <View style={styles.headerPlaceholder} />
+          <View style={{ opacity: 0 }}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </View>
         </View>
 
         {/* Content */}
@@ -51,7 +53,7 @@ export default function QRScreen() {
                 style={styles.qrImage}
                 resizeMode="contain"
               /> */}
-              <QrCode/>
+              <QrCode />
             </View>
 
             <View style={styles.addressContainer}>

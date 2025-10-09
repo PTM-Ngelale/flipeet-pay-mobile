@@ -195,7 +195,11 @@ export default function RecentActivity() {
       onPress={() => router.push(`/activities-details?id=${activity.id}`)}
     >
       <View style={styles.activityLeft}>
-        <Image source={activity.icon} style={styles.activityIcon} resizeMode="contain" />
+        <Image
+          source={activity.icon}
+          style={styles.activityIcon}
+          resizeMode="contain"
+        />
         <View style={styles.activityContent}>
           <Text style={styles.activityTitle}>{activity.title}</Text>
           <Text style={styles.activityDescription}>{activity.description}</Text>
@@ -239,7 +243,9 @@ export default function RecentActivity() {
       <TouchableOpacity onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
       </TouchableOpacity>
-      <Text style={styles.dateText}>Recent Activity</Text>
+      <Text style={{ color: "#757B85", fontSize: 16, fontWeight: "bold" }}>
+        Recent Activity
+      </Text>
       <View style={styles.spacer} />
     </View>
   );

@@ -1,9 +1,12 @@
+import QrCodeIcon from "@/assets/images/qr-code-icon.svg";
+import ReceiveUserIcon from "@/assets/images/receive-user-icon.svg";
+import SolanaIcon from "@/assets/images/solana-icon.svg";
+import WalletIcon from "@/assets/images/wallet-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,11 +14,6 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import WalletIcon from "@/assets/images/wallet-icon.svg"
-import ReceiveUserIcon from "@/assets/images/receive-user-icon.svg"
-import SolanaIcon from "@/assets/images/solana-icon.svg"
-import QrCodeIcon from "@/assets/images/qr-code-icon.svg"
-
 
 // Constants
 const WALLET_ADDRESS = "0x742d35Cc6634C0532925a3b8D";
@@ -113,7 +111,7 @@ const CustomDropdownItem = ({
               source={require("@/assets/images/qr-icon.png")}
               style={{ width: 20, height: 20 }}
             /> */}
-            <QrCodeIcon/>
+            <QrCodeIcon />
           </TouchableOpacity>
         )}
       </View>
@@ -182,7 +180,9 @@ export default function ReceiveScreen() {
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Receive</Text>
-          <View style={styles.headerPlaceholder} />
+          <View style={{ opacity: 0 }}>
+            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          </View>
         </View>
         <ScrollView
           style={styles.scrollView}
@@ -198,7 +198,7 @@ export default function ReceiveScreen() {
                 //   source={require("@/assets/images/wallet-icon.png")}
                 //   style={{ width: 28, height: 28 }}
                 // />
-              <WalletIcon/>
+                <WalletIcon />
               }
               isExpanded={expandedDropdowns.has("wallet")}
               onToggle={() => toggleDropdown("wallet")}
@@ -209,7 +209,7 @@ export default function ReceiveScreen() {
                   //   source={require("@/assets/images/solana.png")}
                   //   style={{ width: 32, height: 32 }}
                   // />
-                  <SolanaIcon/>
+                  <SolanaIcon />
                 }
                 title="Solana"
                 subtitle={truncateAddress(WALLET_ADDRESS)}
@@ -226,7 +226,7 @@ export default function ReceiveScreen() {
                   //   source={require("@/assets/images/solana.png")}
                   //   style={{ width: 32, height: 32 }}
                   // />
-                                    <SolanaIcon/>
+                  <SolanaIcon />
                 }
                 title="Base"
                 subtitle={truncateAddress(WALLET_ADDRESS)}
@@ -247,7 +247,7 @@ export default function ReceiveScreen() {
                 //   source={require("@/assets/images/receive-user-icon.png")}
                 //   style={{ width: 28, height: 28 }}
                 // />
-                <ReceiveUserIcon/>
+                <ReceiveUserIcon />
               }
               isExpanded={expandedDropdowns.has("flipeet")}
               onToggle={() => toggleDropdown("flipeet")}

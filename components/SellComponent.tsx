@@ -2,6 +2,7 @@ import ExchangeIcon from "@/assets/images/exchange-icon.svg";
 import NGNFlag from "@/assets/images/ngn-flag.svg";
 import USDCIcon from "@/assets/images/usdc-iconn.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Image,
@@ -15,6 +16,7 @@ import {
 } from "react-native";
 
 const SellComponent = () => {
+  const router = useRouter();
   const [payAmount, setPayAmount] = useState("");
   const [receiveAmount, setReceiveAmount] = useState("");
   const [showPayDropdown, setShowPayDropdown] = useState(false);
@@ -66,7 +68,18 @@ const SellComponent = () => {
 
   const handleSwap = () => {
     if (payAmount && receiveAmount) {
-      console.log(`Swapping ${payAmount} USDC for ${receiveAmount} NGN`);
+      // Navigate to review transaction page with parameters
+      router.push({
+        pathname: "/(action)/review-transaction",
+        params: {
+          payAmount,
+          receiveAmount,
+          payCurrency: "USDC",
+          receiveCurrency: "NGN",
+          network: "Solana",
+          exchangeRate: exchangeRate.toString(),
+        },
+      });
     }
   };
 
@@ -228,6 +241,8 @@ const SellComponent = () => {
     </KeyboardAvoidingView>
   );
 };
+
+// ... styles remain the same ...
 
 const styles = StyleSheet.create({
   keyboardAvoidingView: {

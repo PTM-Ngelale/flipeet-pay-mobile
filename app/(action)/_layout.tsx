@@ -62,6 +62,20 @@ export default function ActionLayout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen
+          name="review-transaction"
+          options={{
+            title: "Review Transaction",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="success-screen"
+          options={{
+            title: "Success",
+            headerShown: false,
+          }}
+        />
       </Stack>
     </>
   );
