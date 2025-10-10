@@ -1,3 +1,4 @@
+import HistoryIcon from "@/assets/images/history-icon.svg";
 import ReceiveIcon from "@/assets/images/receive-icon.svg";
 import SendIcon from "@/assets/images/send-icon.svg";
 import ServicesIcon from "@/assets/images/services-icon.svg";
@@ -6,7 +7,6 @@ import USDCIcon from "@/assets/images/usdc-icon.svg";
 import USDTIcon from "@/assets/images/usdt-icon.svg";
 import UserProfile from "@/assets/images/user.svg";
 import Entypo from "@expo/vector-icons/Entypo";
-import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
@@ -17,60 +17,36 @@ import {
   Text,
   TouchableOpacity,
   View,
-  useColorScheme,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
-// Types for SVG components
 type IconComponentType = React.ComponentType<{ size?: number; color?: string }>;
 
-// Statically import asset images
 const assetIcons = {
   "usdc.png": require("@/assets/images/usdc.png"),
   "usdt.png": require("@/assets/images/usdt.png"),
   "user.png": require("@/assets/images/user.png"),
 };
 
-// SVG icon components mapping
 const iconComponents: Record<string, IconComponentType> = {
   USDCIcon: USDCIcon,
   USDTIcon: USDTIcon,
-  // USDTIcon: USDTIcon, // Uncomment when you create this
 };
 
 const COLORS = {
-  light: {
-    background: "#FFFFFF",
-    textPrimary: "#111827",
-    textSecondary: "#4B5563",
-    textTertiary: "#6B7280",
-    card: "#F9FAFB",
-    border: "#E5E7EB",
-    lossBackground: "#FEF2F2",
-    lossBorder: "#FECACA",
-    lossText: "#DC2626",
-    gainText: "#059669",
-    tabActive: "#111827",
-    tabInactive: "#6B7280",
-    icon: "#6B7280",
-    actionIcon: "#2563EB",
-  },
-  dark: {
-    background: "#000000",
-    textPrimary: "#E2E6F0",
-    textSecondary: "#D1D5DB",
-    textTertiary: "#9CA3AF",
-    // card: "#111827",
-    border: "#374151",
-    lossBackground: "#453434",
-    lossBorder: "#FF5F5F",
-    lossText: "#FF5F5F",
-    gainText: "#10B981",
-    tabActive: "#FFFFFF",
-    tabInactive: "#9CA3AF",
-    icon: "#9CA3AF",
-    actionIcon: "#4A9DFF",
-  },
+  background: "#000000",
+  textPrimary: "#FFFFFF",
+  textSecondary: "#D1D5DB",
+  textTertiary: "#9CA3AF",
+  border: "#374151",
+  lossBackground: "#453434",
+  lossBorder: "#FF5F5F",
+  lossText: "#FF5F5F",
+  gainText: "#10B981",
+  tabActive: "#FFFFFF",
+  tabInactive: "#9CA3AF",
+  icon: "#9CA3AF",
+  actionIcon: "#4A9DFF",
 };
 
 // Constants
@@ -85,7 +61,7 @@ interface Asset {
   balance: number;
   usdValue: number;
   gain: number;
-  icon: string; // Changed from keyof typeof assetIcons to string
+  icon: string;
 }
 
 interface ActionButton {
@@ -97,10 +73,6 @@ interface ActionButton {
 export default function WalletHomeScreen() {
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const router = useRouter();
-  const colorScheme = useColorScheme();
-
-  // Get current color scheme colors
-  const colors = COLORS[colorScheme || "dark"];
 
   // Memoized data with dynamic icons based on color scheme
   const assets = useMemo<Asset[]>(
@@ -128,27 +100,27 @@ export default function WalletHomeScreen() {
   const actionButtons = useMemo<ActionButton[]>(
     () => [
       {
-        icon: <ReceiveIcon width={24} height={24} fill={colors.actionIcon} />,
+        icon: <ReceiveIcon width={24} height={24} fill={COLORS.actionIcon} />,
         label: "Receive",
         route: "/receive",
       },
       {
-        icon: <SwapIcon width={24} height={24} fill={colors.actionIcon} />,
+        icon: <SwapIcon width={24} height={24} fill={COLORS.actionIcon} />,
         label: "Swap",
         route: "/swap",
       },
       {
-        icon: <SendIcon width={24} height={24} fill={colors.actionIcon} />,
+        icon: <SendIcon width={24} height={24} fill={COLORS.actionIcon} />,
         label: "Send",
         route: "/send",
       },
       {
-        icon: <ServicesIcon width={24} height={24} fill={colors.actionIcon} />,
+        icon: <ServicesIcon width={24} height={24} fill={COLORS.actionIcon} />,
         label: "Services",
         route: "/services",
       },
     ],
-    [colors.actionIcon]
+    []
   );
 
   // Helper functions
@@ -171,16 +143,14 @@ export default function WalletHomeScreen() {
       <View style={styles.userInfo}>
         <UserProfile width={48} height={48} />
         <View>
-          <Text style={[styles.welcomeText, { color: "#B0BACB" }]}>
-            Welcome
-          </Text>
-          <Text style={[styles.userName, { color: colors.textPrimary }]}>
+          <Text style={[styles.userName, { color: "#B0BACB" }]}>Welcome</Text>
+          {/* <Text style={[styles.userName, { color: COLORS.textPrimary }]}>
             Heritage
-          </Text>
+          </Text> */}
         </View>
       </View>
       <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
-        <FontAwesome5 name="history" size={24} color={colors.icon} />
+        <HistoryIcon />
       </TouchableOpacity>
     </View>
   );
@@ -188,41 +158,62 @@ export default function WalletHomeScreen() {
   const renderBalanceSection = () => (
     <View style={styles.balanceSection}>
       <View style={styles.balanceRow}>
-        <Text style={[styles.balanceAmount, { color: colors.textPrimary }]}>
+        <Text
+          style={[
+            styles.balanceAmount,
+            { color: COLORS.textPrimary },
+            // GlobalStyles.textBold,
+          ]}
+        >
           {isBalanceVisible
             ? `$${formatCurrency(TOTAL_BALANCE_USD)}`
-            : "••••••"}
+            : "******"}
         </Text>
         <TouchableOpacity onPress={toggleBalanceVisibility}>
           <Entypo
             name={isBalanceVisible ? "eye" : "eye-with-line"}
             size={20}
-            color={colors.icon}
+            color={COLORS.icon}
           />
         </TouchableOpacity>
       </View>
-      {isBalanceVisible && (
-        <View style={styles.lossSection}>
-          <Text style={[styles.lossAmount, { color: colors.lossText }]}>
-            -${LOSS_AMOUNT}
-          </Text>
+
+      <View style={styles.lossSection}>
+        <Text
+          style={[
+            styles.lossAmount,
+            { color: isBalanceVisible ? COLORS.lossText : COLORS.textPrimary },
+          ]}
+        >
+          {isBalanceVisible ? `-$${LOSS_AMOUNT}` : "******"}
+        </Text>
+        {isBalanceVisible ? (
           <View
             style={[
               styles.lossPercentage,
               {
-                backgroundColor: colors.lossBackground,
-                borderColor: colors.lossBorder,
+                backgroundColor: COLORS.lossBackground,
+                borderColor: COLORS.lossBorder,
               },
             ]}
           >
             <Text
-              style={[styles.lossPercentageText, { color: colors.lossText }]}
+              style={[
+                styles.lossPercentageText,
+                {
+                  color: isBalanceVisible
+                    ? COLORS.lossText
+                    : COLORS.textTertiary,
+                },
+              ]}
             >
-              {LOSS_PERCENTAGE}%
+              {`${LOSS_PERCENTAGE}%`}
             </Text>
           </View>
-        </View>
-      )}
+        ) : (
+          ""
+        )}
+      </View>
     </View>
   );
 
@@ -236,7 +227,7 @@ export default function WalletHomeScreen() {
         >
           {button.icon}
           <Text
-            style={[styles.actionButtonText, { color: colors.textPrimary }]}
+            style={[styles.actionButtonText, { color: COLORS.textPrimary }]}
           >
             {button.label}
           </Text>
@@ -249,10 +240,7 @@ export default function WalletHomeScreen() {
     const IconComponent = iconComponents[asset.icon];
 
     return (
-      <View
-        key={asset.id}
-        style={[styles.tokenItem, { backgroundColor: colors.card }]}
-      >
+      <View key={asset.id} style={[styles.tokenItem]}>
         <View style={styles.tokenLeft}>
           {IconComponent ? (
             <IconComponent size={40} />
@@ -263,23 +251,52 @@ export default function WalletHomeScreen() {
             />
           )}
           <View>
-            <Text style={[styles.tokenName, { color: colors.textPrimary }]}>
+            <Text style={[styles.tokenName, { color: COLORS.textPrimary }]}>
               {asset.name}
             </Text>
             <Text
-              style={[styles.tokenBalance, { color: colors.textSecondary }]}
+              style={[
+                styles.tokenBalance,
+                {
+                  color: isBalanceVisible
+                    ? COLORS.textSecondary
+                    : COLORS.textPrimary,
+                },
+              ]}
             >
-              {formatBalance(asset.balance, asset.id)}
+              {isBalanceVisible
+                ? formatBalance(asset.balance, asset.id)
+                : "******"}
             </Text>
           </View>
         </View>
         <View style={styles.tokenRight}>
-          <Text style={[styles.tokenValue, { color: colors.textTertiary }]}>
-            ${asset.usdValue}
+          <Text
+            style={[
+              styles.tokenValue,
+              {
+                color: isBalanceVisible
+                  ? COLORS.textTertiary
+                  : COLORS.textPrimary,
+              },
+            ]}
+          >
+            {isBalanceVisible ? `$${asset.usdValue}` : "******"}
           </Text>
-          <Text style={asset.gain >= 0 ? styles.gainText : styles.lossText}>
-            {asset.gain >= 0 ? "+" : "-"}$
-            {Math.abs(asset.gain).toLocaleString()}
+          <Text
+            style={[
+              isBalanceVisible
+                ? asset.gain >= 0
+                  ? styles.gainText
+                  : styles.lossText
+                : { color: COLORS.textPrimary },
+            ]}
+          >
+            {isBalanceVisible
+              ? `${asset.gain >= 0 ? "+" : "-"}$${Math.abs(
+                  asset.gain
+                ).toLocaleString()}`
+              : "******"}
           </Text>
         </View>
       </View>
@@ -299,7 +316,7 @@ export default function WalletHomeScreen() {
   return (
     <SafeAreaProvider>
       <SafeAreaView
-        style={[styles.container, { backgroundColor: colors.background }]}
+        style={[styles.container, { backgroundColor: COLORS.background }]}
       >
         <ScrollView
           style={styles.scrollView}
@@ -315,7 +332,7 @@ export default function WalletHomeScreen() {
             <View style={styles.tokensHeader}>
               <View style={styles.tokensTitleRow}>
                 <Text
-                  style={[styles.tokensTitle, { color: colors.textPrimary }]}
+                  style={[styles.tokensTitle, { color: COLORS.textPrimary }]}
                 >
                   Tokens
                 </Text>

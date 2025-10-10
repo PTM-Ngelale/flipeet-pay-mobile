@@ -1,10 +1,10 @@
 import BridgeHighlighted from "@/assets/images/bridge-highlight.svg";
 import BridgeIcon from "@/assets/images/bridge-icon.svg";
 import BuyIcon from "@/assets/images/buy-icon.svg";
+import HistoryIcon from "@/assets/images/history-icon.svg";
 import SellHighlighted from "@/assets/images/sell-highlight.svg";
 import SellIcon from "@/assets/images/sell-icon.svg";
 import SellComponent from "@/components/SellComponent";
-import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -78,7 +78,8 @@ export default function SwapScreen() {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Swap</Text>
           <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
-            <FontAwesome5 name="history" size={24} color="#B0BACB" />
+            {/* <FontAwesome5 name="history" size={24} color="#B0BACB" /> */}
+            <HistoryIcon />
           </TouchableOpacity>
         </View>
 

@@ -1,31 +1,43 @@
-import { useColorScheme } from "@/hooks/use-color-scheme";
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
+import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
 import "react-native-reanimated";
+
+SplashScreen.preventAutoHideAsync();
 
 export const unstable_settings = {
   anchor: "index",
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const [loaded, error] = useFonts({
+    "Lato-Regular": require("@/assets/fonts/Lato-Regular.ttf"),
+  });
+
+  useEffect(() => {
+    if (loaded || error) {
+      SplashScreen.hideAsync();
+    }
+  }, [loaded, error]);
+
+  if (!loaded && !error) {
+    return null;
+  }
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+    <>
+      <StatusBar style="light" />
       <Stack
         screenOptions={{
           headerStyle: {
-            backgroundColor: colorScheme === "dark" ? "#000000" : "#FFFFFF",
+            backgroundColor: "#000000",
           },
-          headerTintColor: colorScheme === "dark" ? "#FFFFFF" : "#000000",
+          headerTintColor: "#FFFFFF",
           headerTitleStyle: {
             fontWeight: "bold",
+            fontFamily: "Lato-Regular",
           },
         }}
       >
@@ -36,6 +48,6 @@ export default function RootLayout() {
           options={{ headerShown: false }}
         />
       </Stack>
-    </ThemeProvider>
+    </>
   );
 }

@@ -1,9 +1,12 @@
-import { Image, Text, TouchableOpacity, View } from "react-native";
+import { Text } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
-export default function SendScreen(){
-    return(
-        <View>
+export default function SendScreen() {
+  return (
+    <SafeAreaProvider>
+      <SafeAreaView>
         <Text>Send</Text>
-        </View>
-    )
+      </SafeAreaView>
+    </SafeAreaProvider>
+  );
 }

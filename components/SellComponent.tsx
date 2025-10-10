@@ -203,40 +203,42 @@ const SellComponent = () => {
         </View>
 
         {/* Daily Swap Limit */}
-        <View style={styles.limitContainer}>
-          <View style={styles.limitBar}>
-            <View
-              style={[
-                styles.limitProgress,
-                { width: `${(usedLimit / dailyLimit) * 100}%` },
-              ]}
-            />
+        <View style={{ marginTop: "auto", marginBottom: 20, width: "100%" }}>
+          <View style={styles.limitContainer}>
+            <View style={styles.limitBar}>
+              <View
+                style={[
+                  styles.limitProgress,
+                  { width: `${(usedLimit / dailyLimit) * 100}%` },
+                ]}
+              />
+            </View>
+            <View style={styles.limitTextContainer}>
+              <Text style={styles.limitUsed}>Daily Swap Limit: 1000 USD</Text>
+              <Text style={styles.limitRemaining}>Remaining: 1000 USD</Text>
+            </View>
           </View>
-          <View style={styles.limitTextContainer}>
-            <Text style={styles.limitUsed}>Daily Swap Limit: 1000 USD</Text>
-            <Text style={styles.limitRemaining}>Remaining: 1000 USD</Text>
-          </View>
-        </View>
 
-        <TouchableOpacity
-          style={[
-            styles.swapButton,
-            isSwapDisabled
-              ? styles.swapButtonDisabled
-              : styles.swapButtonActive,
-          ]}
-          onPress={handleSwap}
-          disabled={isSwapDisabled}
-        >
-          <Text
+          <TouchableOpacity
             style={[
-              styles.swapButtonText,
-              isSwapDisabled && styles.swapButtonTextDisabled,
+              styles.swapButton,
+              isSwapDisabled
+                ? styles.swapButtonDisabled
+                : styles.swapButtonActive,
             ]}
+            onPress={handleSwap}
+            disabled={isSwapDisabled}
           >
-            Swap
-          </Text>
-        </TouchableOpacity>
+            <Text
+              style={[
+                styles.swapButtonText,
+                isSwapDisabled && styles.swapButtonTextDisabled,
+              ]}
+            >
+              Swap
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -372,6 +374,7 @@ const styles = StyleSheet.create({
   },
   limitContainer: {
     padding: 16,
+    paddingHorizontal: 0,
   },
   limitBar: {
     height: 8,
@@ -401,8 +404,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: "center",
-    marginTop: "auto", // This pushes the button to the bottom
-    marginBottom: 20, // Add some bottom margin
+    // marginTop: "auto",
+    // marginBottom: 20,
   },
   swapButtonActive: {
     backgroundColor: "#3B82F6",

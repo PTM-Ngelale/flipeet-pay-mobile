@@ -139,15 +139,24 @@ export default function ReceiveScreen() {
     });
   }, []);
 
-  const truncateAddress = useCallback((address: string) => {
+  const truncateAddress = useCallback((address: string, type?: string) => {
     if (address.length <= 16) return address;
-    return `${address.slice(0, 8)}...${address.slice(-8)}`;
+
+    if (type === "base") {
+      return `${address.slice(0, 6)}...${address.slice(-5)}`;
+    } else {
+      // Default to Solana truncation
+      return `${address.slice(0, 5)}...${address.slice(-5)}`;
+    }
   }, []);
 
   const truncateEmail = useCallback((email: string) => {
     const [username, domain] = email.split("@");
-    if (username.length <= 8) return email;
-    return `${username.slice(0, 8)}...@${domain}`;
+    const [domainName, tld] = domain.split(".");
+
+    if (username.length <= 3) return email;
+
+    return `${username.slice(0, 3)}...@${domainName.slice(0, 0)}...${tld}`;
   }, []);
 
   // Copy to clipboard function with visual feedback
@@ -204,13 +213,7 @@ export default function ReceiveScreen() {
               onToggle={() => toggleDropdown("wallet")}
             >
               <CustomDropdownItem
-                icon={
-                  // <Image
-                  //   source={require("@/assets/images/solana.png")}
-                  //   style={{ width: 32, height: 32 }}
-                  // />
-                  <SolanaIcon />
-                }
+                icon={<SolanaIcon />}
                 title="Solana"
                 subtitle={truncateAddress(WALLET_ADDRESS)}
                 itemId="solana1"
@@ -221,15 +224,9 @@ export default function ReceiveScreen() {
                 onShowQR={showQRCode}
               />
               <CustomDropdownItem
-                icon={
-                  // <Image
-                  //   source={require("@/assets/images/solana.png")}
-                  //   style={{ width: 32, height: 32 }}
-                  // />
-                  <SolanaIcon />
-                }
+                icon={<SolanaIcon />}
                 title="Base"
-                subtitle={truncateAddress(WALLET_ADDRESS)}
+                subtitle={truncateAddress(WALLET_ADDRESS, "base")}
                 itemId="solana2"
                 data={WALLET_ADDRESS}
                 showQR={true}
