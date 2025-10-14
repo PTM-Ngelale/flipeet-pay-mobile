@@ -66,6 +66,11 @@ const SellComponent = () => {
     setReceiveAmount((0.00678 * exchangeRate).toFixed(2));
   };
 
+  const handleSync = () => {
+    setPayAmount("");
+    setReceiveAmount("");
+  };
+
   const handleSwap = () => {
     if (payAmount && receiveAmount) {
       // Navigate to review transaction page with parameters
@@ -107,14 +112,14 @@ const SellComponent = () => {
           </TouchableOpacity>
         </View>
         <View>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={handleSync}>
             <Ionicons name="sync" size={20} color="#B0BACB" />
           </TouchableOpacity>
         </View>
       </View>
       <View style={styles.content}>
         {/* Pay Section */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <View style={styles.sectionRow}>
             <View style={styles.sectionLeft}>
               <Text style={styles.sectionLabel}>Pay</Text>
@@ -152,6 +157,49 @@ const SellComponent = () => {
               </View>
             </View>
           </View>
+        </View> */}
+
+        <View style={styles.section}>
+          <View style={styles.sectionRow}>
+            <View style={styles.sectionLeft}>
+              <Text style={styles.sectionLabel}>Pay</Text>
+              <View style={styles.amountInputContainer}>
+                <Text style={styles.currencySymbol}>$</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  placeholder="0.00"
+                  placeholderTextColor="#FFFFFF"
+                  value={payAmount}
+                  onChangeText={handlePayAmountChange}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+            <View style={styles.sectionRight}>
+              <TouchableOpacity
+                style={styles.tokenSelector}
+                onPress={() => setShowPayDropdown(!showPayDropdown)}
+              >
+                <View>
+                  <USDCIcon />
+                </View>
+                <View>
+                  <Text style={styles.tokenName}>USDC</Text>
+                  <Text style={styles.tokenNetwork}>Solana</Text>
+                </View>
+                <View>
+                  <Ionicons name="chevron-down" color={"#4A9DFF"} />
+                </View>
+              </TouchableOpacity>
+              <View style={styles.balanceContainer}>
+                <Image
+                  source={require("@/assets/images/wallet-icon.png")}
+                  style={{ width: 13, height: 13 }}
+                />
+                <Text style={styles.balanceText}>0.00678 USDC</Text>
+              </View>
+            </View>
+          </View>
         </View>
 
         <View style={styles.exchangeIconContainer}>
@@ -159,7 +207,7 @@ const SellComponent = () => {
         </View>
 
         {/* Receive Section */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <View style={styles.sectionRow}>
             <View style={styles.sectionLeft}>
               <Text style={styles.sectionLabel}>Receive</Text>
@@ -171,6 +219,45 @@ const SellComponent = () => {
                 onChangeText={handleReceiveAmountChange}
                 keyboardType="numeric"
               />
+            </View>
+            <View style={styles.sectionRight}>
+              <TouchableOpacity
+                style={styles.addBankButton}
+                onPress={() => setShowReceiveDropdown(!showReceiveDropdown)}
+              >
+                <Text style={styles.addBankText}>+ Add Bank Account</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.currencySelector}>
+                <View>
+                  <NGNFlag />
+                </View>
+                <View>
+                  <Text style={styles.currencyName}>NGN</Text>
+                </View>
+                <View>
+                  <Ionicons name="chevron-down" color={"#4A9DFF"} />
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View> */}
+
+        <View style={styles.section}>
+          <View style={styles.sectionRow}>
+            <View style={styles.sectionLeft}>
+              <Text style={styles.sectionLabel}>Receive</Text>
+              <View style={styles.amountInputContainer}>
+                <Text style={styles.currencySymbol}>₦</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  placeholder="0.00"
+                  placeholderTextColor="#E2E6F0"
+                  value={receiveAmount}
+                  onChangeText={handleReceiveAmountChange}
+                  keyboardType="numeric"
+                />
+              </View>
             </View>
             <View style={styles.sectionRight}>
               <TouchableOpacity
@@ -296,6 +383,17 @@ const styles = StyleSheet.create({
     color: "#E2E6F0",
     fontSize: 16,
   },
+
+  amountInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  currencySymbol: {
+    color: "white",
+    fontSize: 32,
+    marginRight: 4,
+  },
+
   amountInput: {
     color: "white",
     fontSize: 32,

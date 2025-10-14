@@ -5,8 +5,7 @@ export const GlobalStyles = StyleSheet.create({
     fontFamily: "Lato-Regular",
   },
   textBold: {
-    fontFamily: "Lato-Regular",
-    fontWeight: "bold",
+    fontFamily: "Lato-Bold", // Change this to your bold font
   },
   textLarge: {
     fontFamily: "Lato-Regular",

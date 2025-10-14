@@ -1,7 +1,6 @@
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
 
@@ -14,6 +13,7 @@ export const unstable_settings = {
 export default function RootLayout() {
   const [loaded, error] = useFonts({
     "Lato-Regular": require("@/assets/fonts/Lato-Regular.ttf"),
+    "Lato-Bold": require("@/assets/fonts/Lato-Bold.ttf"),
   });
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export default function RootLayout() {
 
   return (
     <>
-      <StatusBar style="light" />
+      {/* <StatusBar style="light" /> */}
       <Stack
         screenOptions={{
           headerStyle: {

@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   },
   addressText: {
     color: "#B0BACB",
-    fontSize: 20,
+    fontSize: 16,
     textAlign: "center",
   },
   copiedText: {

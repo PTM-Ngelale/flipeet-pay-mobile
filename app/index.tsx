@@ -6,12 +6,14 @@ import SwapIcon from "@/assets/images/swap-icon.svg";
 import USDCIcon from "@/assets/images/usdc-icon.svg";
 import USDTIcon from "@/assets/images/usdt-icon.svg";
 import UserProfile from "@/assets/images/user.svg";
+import { GlobalStyles } from "@/styles/global";
 import Entypo from "@expo/vector-icons/Entypo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   Image,
+  ImageBackground,
   ScrollView,
   StyleSheet,
   Text,
@@ -162,7 +164,7 @@ export default function WalletHomeScreen() {
           style={[
             styles.balanceAmount,
             { color: COLORS.textPrimary },
-            // GlobalStyles.textBold,
+            GlobalStyles.textBold,
           ]}
         >
           {isBalanceVisible
@@ -323,31 +325,36 @@ export default function WalletHomeScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollViewContent}
         >
-          <View style={styles.content}>
-            {renderHeader()}
-            {renderBalanceSection()}
-            {renderActionButtons()}
+          <ImageBackground
+            source={require("@/assets/images/circle.png")}
+            resizeMode="cover"
+          >
+            <View style={styles.content}>
+              {renderHeader()}
+              {renderBalanceSection()}
+              {renderActionButtons()}
 
-            {/* Tokens section header */}
-            <View style={styles.tokensHeader}>
-              <View style={styles.tokensTitleRow}>
-                <Text
-                  style={[styles.tokensTitle, { color: COLORS.textPrimary }]}
-                >
-                  Tokens
-                </Text>
-                <TouchableOpacity>
-                  <Ionicons
-                    name="ellipsis-horizontal"
-                    size={24}
-                    color="#757B85"
-                  />
-                </TouchableOpacity>
+              {/* Tokens section header */}
+              <View style={styles.tokensHeader}>
+                <View style={styles.tokensTitleRow}>
+                  <Text
+                    style={[styles.tokensTitle, { color: COLORS.textPrimary }]}
+                  >
+                    Tokens
+                  </Text>
+                  <TouchableOpacity>
+                    <Ionicons
+                      name="ellipsis-horizontal"
+                      size={24}
+                      color="#757B85"
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
 
-            <View style={styles.tokensContainer}>{renderTokensList()}</View>
-          </View>
+              <View style={styles.tokensContainer}>{renderTokensList()}</View>
+            </View>
+          </ImageBackground>
         </ScrollView>
       </SafeAreaView>
     </SafeAreaProvider>

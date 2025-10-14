@@ -4,6 +4,7 @@ import BuyIcon from "@/assets/images/buy-icon.svg";
 import HistoryIcon from "@/assets/images/history-icon.svg";
 import SellHighlighted from "@/assets/images/sell-highlight.svg";
 import SellIcon from "@/assets/images/sell-icon.svg";
+import BridgeComponent from "@/components/BridgeComponent";
 import SellComponent from "@/components/SellComponent";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
@@ -56,14 +57,7 @@ export default function SwapScreen() {
       case "Sell":
         return <SellComponent />;
       case "Bridge":
-        return (
-          <View style={styles.contentContainer}>
-            <Text style={styles.contentTitle}>Bridge Assets</Text>
-            <Text style={styles.contentDescription}>
-              Bridge assets between different blockchain networks
-            </Text>
-          </View>
-        );
+        return <BridgeComponent />;
       default:
         return null;
     }
