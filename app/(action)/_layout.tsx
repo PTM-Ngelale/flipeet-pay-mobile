@@ -79,9 +79,41 @@ export default function ActionLayout() {
         />
 
         <Stack.Screen
+          name="add-bank-account"
+          options={{
+            title: "Add Bank Account",
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
           name="success-screen"
           options={{
             title: "Success",
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="currency-selector"
+          options={{
+            title: "Currency Selector",
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="token-selector"
+          options={{
+            title: "Token Selector",
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="token-bridge-selector"
+          options={{
+            title: "Token Bridge Selector",
             headerShown: false,
           }}
         />

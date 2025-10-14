@@ -3,6 +3,10 @@ import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import "react-native-reanimated";
+import { BankAccountProvider } from "../app/contexts/BankAccountContext";
+import { CurrencyProvider } from "../app/contexts/CurrencySelectorContext";
+import { BridgeTokenProvider } from "./contexts/BridgeTokenContext";
+import { TokenProvider } from "./contexts/TokenContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -28,26 +32,37 @@ export default function RootLayout() {
 
   return (
     <>
-      {/* <StatusBar style="light" /> */}
-      <Stack
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: "#000000",
-          },
-          headerTintColor: "#FFFFFF",
-          headerTitleStyle: {
-            fontWeight: "bold",
-            fontFamily: "Lato-Regular",
-          },
-        }}
-      >
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="(action)" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="(recent-activity)"
-          options={{ headerShown: false }}
-        />
-      </Stack>
+      <BankAccountProvider>
+        <CurrencyProvider>
+          <TokenProvider>
+            <BridgeTokenProvider>
+              {/* <StatusBar style="light" /> */}
+              <Stack
+                screenOptions={{
+                  headerStyle: {
+                    backgroundColor: "#000000",
+                  },
+                  headerTintColor: "#FFFFFF",
+                  headerTitleStyle: {
+                    fontWeight: "bold",
+                    fontFamily: "Lato-Regular",
+                  },
+                }}
+              >
+                <Stack.Screen name="index" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="(action)"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="(recent-activity)"
+                  options={{ headerShown: false }}
+                />
+              </Stack>
+            </BridgeTokenProvider>
+          </TokenProvider>
+        </CurrencyProvider>
+      </BankAccountProvider>
     </>
   );
 }

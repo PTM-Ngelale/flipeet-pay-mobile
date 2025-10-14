@@ -1,6 +1,8 @@
+import { useBankAccount } from "@/app/contexts/BankAccountContext";
+import { useCurrency } from "@/app/contexts/CurrencySelectorContext";
+import { useToken } from "@/app/contexts/TokenContext";
 import ExchangeIcon from "@/assets/images/exchange-icon.svg";
 import NGNFlag from "@/assets/images/ngn-flag.svg";
-import USDCIcon from "@/assets/images/usdc-iconn.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -21,7 +23,9 @@ const SellComponent = () => {
   const [receiveAmount, setReceiveAmount] = useState("");
   const [showPayDropdown, setShowPayDropdown] = useState(false);
   const [showReceiveDropdown, setShowReceiveDropdown] = useState(false);
-  const [selectedReceiveCurrency, setSelectedReceiveCurrency] = useState("NGN");
+  const { savedAccount } = useBankAccount();
+  const { savedCurrency } = useCurrency();
+  const { selectedToken } = useToken();
 
   const exchangeRate = 1.5802;
   const dailyLimit = 1000;
@@ -80,7 +84,7 @@ const SellComponent = () => {
           payAmount,
           receiveAmount,
           payCurrency: "USDC",
-          receiveCurrency: "NGN",
+          receiveCurrency: savedCurrency || "NGN",
           network: "Solana",
           exchangeRate: exchangeRate.toString(),
         },
@@ -91,11 +95,46 @@ const SellComponent = () => {
   const isSwapDisabled =
     !payAmount || !receiveAmount || parseFloat(payAmount) === 0;
 
-  const receiveCurrencies = [
-    { id: "NGN", name: "NGN", country: "Nigeria" },
-    { id: "USD", name: "USD", country: "United States" },
-    { id: "EUR", name: "EUR", country: "Europe" },
-  ];
+  // Get currency symbol based on selected currency
+  const getCurrencySymbol = () => {
+    switch (savedCurrency) {
+      case "NGN":
+        return "₦";
+      case "USD":
+        return "$";
+      case "EUR":
+        return "€";
+      case "KES":
+        return "KSh";
+      case "GHS":
+        return "GH₵";
+      case "BRL":
+        return "R$";
+      case "ARS":
+        return "$";
+      default:
+        return "₦"; // Default to NGN symbol
+    }
+  };
+
+  // Get currency flag/icon based on selected currency
+  const renderCurrencyIcon = () => {
+    switch (savedCurrency) {
+      case "NGN":
+        return <NGNFlag />;
+      // Add cases for other currencies if you have their icons
+      // case "USD":
+      //   return <USDFlag />;
+      // case "EUR":
+      //   return <EURFlag />;
+      default:
+        return <NGNFlag />; // Default to NGN flag
+    }
+  };
+
+  const renderTokenIcon = (IconComponent: React.ComponentType<any>) => {
+    return <IconComponent width={30} height={30} />;
+  };
 
   return (
     <KeyboardAvoidingView
@@ -119,46 +158,6 @@ const SellComponent = () => {
       </View>
       <View style={styles.content}>
         {/* Pay Section */}
-        {/* <View style={styles.section}>
-          <View style={styles.sectionRow}>
-            <View style={styles.sectionLeft}>
-              <Text style={styles.sectionLabel}>Pay</Text>
-              <TextInput
-                style={styles.amountInput}
-                placeholder="$0.00"
-                placeholderTextColor="#FFFFFF"
-                value={payAmount}
-                onChangeText={handlePayAmountChange}
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={styles.sectionRight}>
-              <TouchableOpacity
-                style={styles.tokenSelector}
-                onPress={() => setShowPayDropdown(!showPayDropdown)}
-              >
-                <View>
-                  <USDCIcon />
-                </View>
-                <View>
-                  <Text style={styles.tokenName}>USDC</Text>
-                  <Text style={styles.tokenNetwork}>Solana</Text>
-                </View>
-                <View>
-                  <Ionicons name="chevron-down" color={"#4A9DFF"} />
-                </View>
-              </TouchableOpacity>
-              <View style={styles.balanceContainer}>
-                <Image
-                  source={require("@/assets/images/wallet-icon.png")}
-                  style={{ width: 13, height: 13 }}
-                />
-                <Text style={styles.balanceText}>0.00678 USDC</Text>
-              </View>
-            </View>
-          </View>
-        </View> */}
-
         <View style={styles.section}>
           <View style={styles.sectionRow}>
             <View style={styles.sectionLeft}>
@@ -178,14 +177,14 @@ const SellComponent = () => {
             <View style={styles.sectionRight}>
               <TouchableOpacity
                 style={styles.tokenSelector}
-                onPress={() => setShowPayDropdown(!showPayDropdown)}
+                onPress={() => router.push("/(action)/token-selector")}
               >
+                <View>{renderTokenIcon(selectedToken.icon)}</View>
                 <View>
-                  <USDCIcon />
-                </View>
-                <View>
-                  <Text style={styles.tokenName}>USDC</Text>
-                  <Text style={styles.tokenNetwork}>Solana</Text>
+                  <Text style={styles.tokenName}>{selectedToken.symbol}</Text>
+                  <Text style={styles.tokenNetwork}>
+                    {selectedToken.network}
+                  </Text>
                 </View>
                 <View>
                   <Ionicons name="chevron-down" color={"#4A9DFF"} />
@@ -207,48 +206,12 @@ const SellComponent = () => {
         </View>
 
         {/* Receive Section */}
-        {/* <View style={styles.section}>
-          <View style={styles.sectionRow}>
-            <View style={styles.sectionLeft}>
-              <Text style={styles.sectionLabel}>Receive</Text>
-              <TextInput
-                style={styles.amountInput}
-                placeholder="₦0.00"
-                placeholderTextColor="#E2E6F0"
-                value={receiveAmount}
-                onChangeText={handleReceiveAmountChange}
-                keyboardType="numeric"
-              />
-            </View>
-            <View style={styles.sectionRight}>
-              <TouchableOpacity
-                style={styles.addBankButton}
-                onPress={() => setShowReceiveDropdown(!showReceiveDropdown)}
-              >
-                <Text style={styles.addBankText}>+ Add Bank Account</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.currencySelector}>
-                <View>
-                  <NGNFlag />
-                </View>
-                <View>
-                  <Text style={styles.currencyName}>NGN</Text>
-                </View>
-                <View>
-                  <Ionicons name="chevron-down" color={"#4A9DFF"} />
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View> */}
-
         <View style={styles.section}>
           <View style={styles.sectionRow}>
             <View style={styles.sectionLeft}>
               <Text style={styles.sectionLabel}>Receive</Text>
               <View style={styles.amountInputContainer}>
-                <Text style={styles.currencySymbol}>₦</Text>
+                <Text style={styles.currencySymbol}>{getCurrencySymbol()}</Text>
                 <TextInput
                   style={styles.amountInput}
                   placeholder="0.00"
@@ -260,19 +223,35 @@ const SellComponent = () => {
               </View>
             </View>
             <View style={styles.sectionRight}>
+              {savedAccount ? (
+                <TouchableOpacity
+                  style={styles.savedAccountButton}
+                  onPress={() => router.push("/(action)/add-bank-account")}
+                >
+                  <View style={styles.accountInfo}>
+                    <Text style={styles.accountNumber}>
+                      {savedAccount.accountNumber.slice(0, 7)}...
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-down" size={20} color="#4A9DFF" />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.addBankButton}
+                  onPress={() => router.push("/(action)/add-bank-account")}
+                >
+                  <Text style={styles.addBankText}>+ Add Bank Account</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
-                style={styles.addBankButton}
-                onPress={() => setShowReceiveDropdown(!showReceiveDropdown)}
+                style={styles.currencySelector}
+                onPress={() => router.push("/(action)/currency-selector")}
               >
-                <Text style={styles.addBankText}>+ Add Bank Account</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.currencySelector}>
+                <View>{renderCurrencyIcon()}</View>
                 <View>
-                  <NGNFlag />
-                </View>
-                <View>
-                  <Text style={styles.currencyName}>NGN</Text>
+                  <Text style={styles.currencyName}>
+                    {savedCurrency || "NGN"}
+                  </Text>
                 </View>
                 <View>
                   <Ionicons name="chevron-down" color={"#4A9DFF"} />
@@ -285,7 +264,7 @@ const SellComponent = () => {
         {/* Exchange Rate */}
         <View style={styles.exchangeRateContainer}>
           <Text style={styles.exchangeRateText}>
-            1 USDC = {exchangeRate} NGN
+            1 USDC = {exchangeRate} {savedCurrency || "NGN"}
           </Text>
         </View>
 
@@ -360,7 +339,7 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     gap: 16,
     position: "relative",
-    flex: 1, // Add this to make content take available space
+    flex: 1,
   },
   section: {
     padding: 16,
@@ -383,7 +362,6 @@ const styles = StyleSheet.create({
     color: "#E2E6F0",
     fontSize: 16,
   },
-
   amountInputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -393,7 +371,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     marginRight: 4,
   },
-
   amountInput: {
     color: "white",
     fontSize: 32,
@@ -433,7 +410,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 10,
     position: "absolute",
-    top: "22%",
+    top: "19%",
   },
   addBankButton: {
     backgroundColor: "#2A2A2A",
@@ -502,8 +479,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: "center",
-    // marginTop: "auto",
-    // marginBottom: 20,
   },
   swapButtonActive: {
     backgroundColor: "#3B82F6",
@@ -518,6 +493,43 @@ const styles = StyleSheet.create({
   },
   swapButtonTextDisabled: {
     color: "#757B85",
+  },
+  savedAccountButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-evenly",
+    backgroundColor: "#1A1A1A",
+    borderWidth: 1,
+    borderColor: "#333333",
+    borderRadius: 8,
+    padding: 16,
+  },
+  accountInfo: {
+    // flex: 1,
+  },
+  bankName: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  accountNumber: {
+    color: "#757B85",
+    fontSize: 14,
+  },
+  tokenIconPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#4A9DFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  tokenIconText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
   },
 });
 

@@ -1,6 +1,7 @@
+import { useCurrency } from "@/app/contexts/CurrencySelectorContext";
+import { useToken } from "@/app/contexts/TokenContext";
 import NGNFlag from "@/assets/images/ngn-flag.svg";
 import StarIcon from "@/assets/images/star-icon.svg";
-import USDCIcon from "@/assets/images/usdc-iconn.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -26,6 +27,8 @@ const BankComponent = () => {
   const [selectedReceiveCurrency, setSelectedReceiveCurrency] = useState("NGN");
   const [accountNumber, setAccountNumber] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
+  const { selectedToken } = useToken();
+  const { savedCurrency } = useCurrency();
 
   const handleAccountNumberChange = (number) => {
     setAccountNumber(number);
@@ -105,6 +108,46 @@ const BankComponent = () => {
     { id: "EUR", name: "EUR", country: "Europe" },
   ];
 
+  const getCurrencySymbol = () => {
+    switch (savedCurrency) {
+      case "NGN":
+        return "₦";
+      case "USD":
+        return "$";
+      case "EUR":
+        return "€";
+      case "KES":
+        return "KSh";
+      case "GHS":
+        return "GH₵";
+      case "BRL":
+        return "R$";
+      case "ARS":
+        return "$";
+      default:
+        return "₦"; // Default to NGN symbol
+    }
+  };
+
+  // Get currency flag/icon based on selected currency
+  const renderCurrencyIcon = () => {
+    switch (savedCurrency) {
+      case "NGN":
+        return <NGNFlag />;
+      // Add cases for other currencies if you have their icons
+      // case "USD":
+      //   return <USDFlag />;
+      // case "EUR":
+      //   return <EURFlag />;
+      default:
+        return <NGNFlag />; // Default to NGN flag
+    }
+  };
+
+  const renderTokenIcon = (IconComponent: React.ComponentType<any>) => {
+    return <IconComponent width={30} height={30} />;
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.keyboardAvoidingView}
@@ -125,11 +168,15 @@ const BankComponent = () => {
               </Text>
               <View style={styles.bankSelect}>
                 <Text style={{ color: "#757B85" }}>Pick an option</Text>
-                <TouchableOpacity style={styles.currencySelector}>
-                  <NGNFlag />
-
+                <TouchableOpacity
+                  style={styles.currencySelector}
+                  onPress={() => router.push("/(action)/currency-selector")}
+                >
+                  <View>{renderCurrencyIcon()}</View>
                   <View>
-                    <Text style={styles.currencyName}>NGN</Text>
+                    <Text style={styles.currencyName}>
+                      {savedCurrency || "NGN"}
+                    </Text>
                   </View>
                   <View>
                     <Ionicons name="chevron-down" color={"#4A9DFF"} />
@@ -231,14 +278,16 @@ const BankComponent = () => {
                   <View>
                     <TouchableOpacity
                       style={styles.tokenSelector}
-                      onPress={() => setShowPayDropdown(!showPayDropdown)}
+                      onPress={() => router.push("/(action)/token-selector")}
                     >
+                      <View>{renderTokenIcon(selectedToken.icon)}</View>
                       <View>
-                        <USDCIcon />
-                      </View>
-                      <View>
-                        <Text style={styles.tokenName}>USDC</Text>
-                        <Text style={styles.tokenNetwork}>Solana</Text>
+                        <Text style={styles.tokenName}>
+                          {selectedToken.symbol}
+                        </Text>
+                        <Text style={styles.tokenNetwork}>
+                          {selectedToken.network}
+                        </Text>
                       </View>
                       <View>
                         <Ionicons name="chevron-down" color={"#4A9DFF"} />

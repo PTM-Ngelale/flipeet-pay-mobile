@@ -1,6 +1,6 @@
+import { useToken } from "@/app/contexts/TokenContext";
 import ScanIcon from "@/assets/images/scan-icon.svg";
 import StarIcon from "@/assets/images/star-icon.svg";
-import USDCIcon from "@/assets/images/usdc-iconn.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -26,6 +26,7 @@ const WalletComponent = () => {
   const [selectedReceiveCurrency, setSelectedReceiveCurrency] = useState("NGN");
   const [email, setEmail] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
+  const { selectedToken } = useToken();
 
   const handleEmailChange = (text) => {
     setEmail(text);
@@ -104,6 +105,10 @@ const WalletComponent = () => {
     { id: "USD", name: "USD", country: "United States" },
     { id: "EUR", name: "EUR", country: "Europe" },
   ];
+
+  const renderTokenIcon = (IconComponent: React.ComponentType<any>) => {
+    return <IconComponent width={30} height={30} />;
+  };
 
   return (
     <KeyboardAvoidingView
@@ -220,14 +225,16 @@ const WalletComponent = () => {
                   <View>
                     <TouchableOpacity
                       style={styles.tokenSelector}
-                      onPress={() => setShowPayDropdown(!showPayDropdown)}
+                      onPress={() => router.push("/(action)/token-selector")}
                     >
+                      <View>{renderTokenIcon(selectedToken.icon)}</View>
                       <View>
-                        <USDCIcon />
-                      </View>
-                      <View>
-                        <Text style={styles.tokenName}>USDC</Text>
-                        <Text style={styles.tokenNetwork}>Solana</Text>
+                        <Text style={styles.tokenName}>
+                          {selectedToken.symbol}
+                        </Text>
+                        <Text style={styles.tokenNetwork}>
+                          {selectedToken.network}
+                        </Text>
                       </View>
                       <View>
                         <Ionicons name="chevron-down" color={"#4A9DFF"} />

@@ -1,5 +1,5 @@
+import { useToken } from "@/app/contexts/TokenContext";
 import ExchangeIcon from "@/assets/images/exchange-icon.svg";
-import USDCIcon from "@/assets/images/usdc-iconn.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -14,6 +14,8 @@ import {
   View,
 } from "react-native";
 
+import { useBridgeToken } from "@/app/contexts/BridgeTokenContext";
+
 const BridgeComponent = () => {
   const router = useRouter();
   const [payAmount, setPayAmount] = useState("");
@@ -21,6 +23,8 @@ const BridgeComponent = () => {
   const [showPayDropdown, setShowPayDropdown] = useState(false);
   const [showReceiveDropdown, setShowReceiveDropdown] = useState(false);
   const [selectedReceiveCurrency, setSelectedReceiveCurrency] = useState("ETH");
+  const { selectedToken } = useToken();
+  const { fromToken, toToken, setFromToken, setToToken } = useBridgeToken();
 
   const exchangeRate = 1.0062;
   const dailyLimit = 5000;
@@ -78,10 +82,10 @@ const BridgeComponent = () => {
         params: {
           payAmount,
           receiveAmount,
-          payCurrency: "USDC",
-          receiveCurrency: "ETH",
-          fromNetwork: "Solana",
-          toNetwork: "Ethereum",
+          payCurrency: fromToken.symbol,
+          receiveCurrency: toToken.symbol,
+          fromNetwork: fromToken.network,
+          toNetwork: toToken.network,
           exchangeRate: exchangeRate.toString(),
         },
       });
@@ -96,6 +100,28 @@ const BridgeComponent = () => {
     { id: "BNB", name: "BNB", network: "BSC" },
     { id: "MATIC", name: "MATIC", network: "Polygon" },
   ];
+
+  const handleFromTokenSelect = () => {
+    router.push({
+      pathname: "/(action)/token-bridge-selector",
+      params: { selectionType: "from" },
+    });
+  };
+
+  const handleToTokenSelect = () => {
+    router.push({
+      pathname: "/(action)/token-bridge-selector",
+      params: { selectionType: "to" },
+    });
+  };
+
+  const renderTokenIcon = (IconComponent: React.ComponentType<any>) => {
+    return <IconComponent width={30} height={30} />;
+  };
+
+  const renderBridgeTokenIcon = (IconComponent: React.ComponentType<any>) => {
+    return <IconComponent width={30} height={30} />;
+  };
 
   return (
     <KeyboardAvoidingView
@@ -139,14 +165,22 @@ const BridgeComponent = () => {
               <View>
                 <TouchableOpacity
                   style={styles.tokenSelector}
-                  onPress={() => setShowPayDropdown(!showPayDropdown)}
+                  onPress={handleFromTokenSelect}
                 >
                   <View>
-                    <USDCIcon />
+                    {fromToken.icon ? (
+                      renderTokenIcon(fromToken.icon)
+                    ) : (
+                      <View style={styles.tokenIconPlaceholder}>
+                        <Text style={styles.tokenIconText}>
+                          {fromToken.symbol.charAt(0)}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                   <View>
-                    <Text style={styles.tokenName}>USDC</Text>
-                    <Text style={styles.tokenNetwork}>Solana</Text>
+                    <Text style={styles.tokenName}>{fromToken.symbol}</Text>
+                    <Text style={styles.tokenNetwork}>{fromToken.network}</Text>
                   </View>
                   <View>
                     <Ionicons name="chevron-down" color={"#4A9DFF"} />
@@ -157,7 +191,9 @@ const BridgeComponent = () => {
                     source={require("@/assets/images/wallet-icon.png")}
                     style={{ width: 13, height: 13 }}
                   />
-                  <Text style={styles.balanceText}>0.00678 USDC</Text>
+                  <Text style={styles.balanceText}>
+                    0.00678 {fromToken.symbol}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -189,14 +225,22 @@ const BridgeComponent = () => {
               <View>
                 <TouchableOpacity
                   style={styles.tokenSelector}
-                  onPress={() => setShowReceiveDropdown(!showReceiveDropdown)}
+                  onPress={handleToTokenSelect}
                 >
                   <View>
-                    <USDCIcon />
+                    {toToken.icon ? (
+                      renderTokenIcon(toToken.icon)
+                    ) : (
+                      <View style={styles.tokenIconPlaceholder}>
+                        <Text style={styles.tokenIconText}>
+                          {toToken.symbol.charAt(0)}
+                        </Text>
+                      </View>
+                    )}
                   </View>
                   <View>
-                    <Text style={styles.tokenName}>ETH</Text>
-                    <Text style={styles.tokenNetwork}>Ethereum</Text>
+                    <Text style={styles.tokenName}>{toToken.symbol}</Text>
+                    <Text style={styles.tokenNetwork}>{toToken.network}</Text>
                   </View>
                   <View>
                     <Ionicons name="chevron-down" color={"#4A9DFF"} />
@@ -382,6 +426,19 @@ const styles = StyleSheet.create({
   },
   bridgeButtonTextDisabled: {
     color: "#757B85",
+  },
+  tokenIconPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#4A9DFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tokenIconText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "bold",
   },
 });
 

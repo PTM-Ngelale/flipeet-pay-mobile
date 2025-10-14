@@ -1,3 +1,5 @@
+import BaseIcon from "@/assets/images/base-icon.svg";
+import BinanceIcon from "@/assets/images/binance-icon.svg";
 import QrCodeIcon from "@/assets/images/qr-code-icon.svg";
 import ReceiveUserIcon from "@/assets/images/receive-user-icon.svg";
 import SolanaIcon from "@/assets/images/solana-icon.svg";
@@ -15,12 +17,13 @@ import {
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
-// Constants
-const WALLET_ADDRESS = "0x742d35Cc6634C0532925a3b8D";
+const SOLANA_WALLET_ADDRESS = "EvzzbaWaL1etAdDr3ss742d35Cc6634C053292517ev2";
+const BASE_WALLET_ADDRESS = "0x2878WaL1etAdDr3ss742d35Cc6634C0532925A2698";
+const BINANCE_WALLET_ADDRESS =
+  "0x28781nanceWaL1etAdDr3ss742d35Cc6634C0532925A2698";
 const USER_EMAIL = "preciousngelale@gmail.com";
 const USERNAME = "@ptm.ng";
 
-// Custom Dropdown Components
 const CustomDropdown = ({
   title,
   icon,
@@ -107,10 +110,6 @@ const CustomDropdownItem = ({
             style={styles.actionButton}
             onPress={() => onShowQR(data)}
           >
-            {/* <Image
-              source={require("@/assets/images/qr-icon.png")}
-              style={{ width: 20, height: 20 }}
-            /> */}
             <QrCodeIcon />
           </TouchableOpacity>
         )}
@@ -143,6 +142,8 @@ export default function ReceiveScreen() {
     if (address.length <= 16) return address;
 
     if (type === "base") {
+      return `${address.slice(0, 6)}...${address.slice(-5)}`;
+    } else if (type === "binance") {
       return `${address.slice(0, 6)}...${address.slice(-5)}`;
     } else {
       // Default to Solana truncation
@@ -202,33 +203,38 @@ export default function ReceiveScreen() {
             {/* Wallet Address Dropdown */}
             <CustomDropdown
               title="Receive to Wallet Address"
-              icon={
-                // <Image
-                //   source={require("@/assets/images/wallet-icon.png")}
-                //   style={{ width: 28, height: 28 }}
-                // />
-                <WalletIcon />
-              }
+              icon={<WalletIcon />}
               isExpanded={expandedDropdowns.has("wallet")}
               onToggle={() => toggleDropdown("wallet")}
             >
               <CustomDropdownItem
                 icon={<SolanaIcon />}
                 title="Solana"
-                subtitle={truncateAddress(WALLET_ADDRESS)}
-                itemId="solana1"
-                data={WALLET_ADDRESS}
+                subtitle={truncateAddress(SOLANA_WALLET_ADDRESS)}
+                itemId="solana"
+                data={SOLANA_WALLET_ADDRESS}
                 showQR={true}
                 copiedItem={copiedItem}
                 onCopy={copyToClipboard}
                 onShowQR={showQRCode}
               />
               <CustomDropdownItem
-                icon={<SolanaIcon />}
+                icon={<BaseIcon />}
                 title="Base"
-                subtitle={truncateAddress(WALLET_ADDRESS, "base")}
-                itemId="solana2"
-                data={WALLET_ADDRESS}
+                subtitle={truncateAddress(BASE_WALLET_ADDRESS, "base")}
+                itemId="base"
+                data={BASE_WALLET_ADDRESS}
+                showQR={true}
+                copiedItem={copiedItem}
+                onCopy={copyToClipboard}
+                onShowQR={showQRCode}
+              />
+              <CustomDropdownItem
+                icon={<BinanceIcon />}
+                title="Binance"
+                subtitle={truncateAddress(BINANCE_WALLET_ADDRESS, "binance")}
+                itemId="binance"
+                data={BINANCE_WALLET_ADDRESS}
                 showQR={true}
                 copiedItem={copiedItem}
                 onCopy={copyToClipboard}
@@ -239,13 +245,7 @@ export default function ReceiveScreen() {
             {/* Flipeet User Dropdown */}
             <CustomDropdown
               title="Receive from Flipeet user"
-              icon={
-                // <Image
-                //   source={require("@/assets/images/receive-user-icon.png")}
-                //   style={{ width: 28, height: 28 }}
-                // />
-                <ReceiveUserIcon />
-              }
+              icon={<ReceiveUserIcon />}
               isExpanded={expandedDropdowns.has("flipeet")}
               onToggle={() => toggleDropdown("flipeet")}
             >

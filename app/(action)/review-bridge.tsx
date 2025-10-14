@@ -4,10 +4,12 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { useBridgeToken } from "../contexts/BridgeTokenContext";
 
 export default function ReviewBridgeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { fromToken, toToken } = useBridgeToken();
 
   const {
     payAmount,
