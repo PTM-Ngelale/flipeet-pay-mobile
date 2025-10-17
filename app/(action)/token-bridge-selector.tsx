@@ -57,23 +57,34 @@ const networks = [
   },
 ];
 
-// Tokens data with icons
-const tokens = [
-  {
-    symbol: "USDC",
-    name: "USD Coin",
-    balance: "0.00678",
-    network: "solana",
-    icon: USDC,
-  },
-  {
-    symbol: "USDT",
-    name: "Tether",
-    balance: "0.00000",
-    network: "solana",
-    icon: USDT,
-  },
-];
+// Generate tokens for all networks
+const generateTokensForAllNetworks = () => {
+  const tokens = [];
+
+  for (const network of networks) {
+    tokens.push(
+      {
+        symbol: "USDC",
+        name: "USD Coin",
+        balance: "0.00678",
+        network: network.id,
+        icon: USDC,
+      },
+      {
+        symbol: "USDT",
+        name: "Tether",
+        balance: "0.00000",
+        network: network.id,
+        icon: USDT,
+      }
+    );
+  }
+
+  return tokens;
+};
+
+// Tokens data with icons - now includes all networks
+const tokens = generateTokensForAllNetworks();
 
 export default function TokenSelector() {
   const router = useRouter();
@@ -139,31 +150,34 @@ export default function TokenSelector() {
     </TouchableOpacity>
   );
 
-  const renderTokenItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={[
-        styles.tokenItem,
-        currentToken.symbol === item.symbol &&
-          currentToken.network === item.network &&
-          styles.selectedTokenItem,
-      ]}
-      onPress={() => handleTokenSelect(item)}
-    >
-      <View style={styles.tokenLeft}>
-        {renderTokenIcon(item.icon)}
-        <View style={styles.tokenInfo}>
-          <Text style={styles.tokenSymbol}>{item.symbol}</Text>
-          <Text style={styles.tokenName}>{item.name}</Text>
+  const renderTokenItem = ({ item }: { item: any }) => {
+    // Check if this token is currently selected
+    const isSelected =
+      currentToken &&
+      currentToken.symbol === item.symbol &&
+      currentToken.network ===
+        networks.find((net) => net.id === item.network)?.name;
+
+    return (
+      <TouchableOpacity
+        style={[styles.tokenItem, isSelected && styles.selectedTokenItem]}
+        onPress={() => handleTokenSelect(item)}
+      >
+        <View style={styles.tokenLeft}>
+          {renderTokenIcon(item.icon)}
+          <View style={styles.tokenInfo}>
+            <Text style={styles.tokenSymbol}>{item.symbol}</Text>
+            <Text style={styles.tokenName}>{item.name}</Text>
+          </View>
         </View>
-      </View>
-      <View style={styles.tokenRight}>
-        {currentToken.symbol === item.symbol &&
-          currentToken.network === item.network && (
+        <View style={styles.tokenRight}>
+          {isSelected && (
             <Ionicons name="checkmark" size={20} color="#4A9DFF" />
           )}
-      </View>
-    </TouchableOpacity>
-  );
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -250,9 +264,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "transparent",
+    // backgroundColor: "#1A1A1A",
   },
   selectedNetworkItem: {
     borderColor: "#4A9DFF",
+    // backgroundColor: "#1A2A3A",
   },
   networkLeft: {
     flexDirection: "row",
@@ -281,9 +297,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "transparent",
+    // backgroundColor: "#1A1A1A",
   },
   selectedTokenItem: {
     borderColor: "#4A9DFF",
+    // backgroundColor: "#1A2A3A",
   },
   tokenLeft: {
     flexDirection: "row",

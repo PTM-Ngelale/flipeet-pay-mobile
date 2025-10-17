@@ -26,6 +26,10 @@ export default function SuccessScreen() {
 
         {/* Close Button at Bottom */}
         <View style={styles.buttonContainer}>
+          <TouchableOpacity style={styles.view}>
+            <Text style={styles.viewText}>View Transaction</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
@@ -65,6 +69,20 @@ const styles = StyleSheet.create({
   buttonContainer: {
     padding: 20,
   },
+
+  view: {
+    backgroundColor: "#4A9DFF",
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  viewText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
   closeButton: {
     backgroundColor: "#1A212A",
     paddingVertical: 16,

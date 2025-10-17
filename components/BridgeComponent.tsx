@@ -168,15 +168,14 @@ const BridgeComponent = () => {
                   onPress={handleFromTokenSelect}
                 >
                   <View>
-                    {fromToken.icon ? (
-                      renderTokenIcon(fromToken.icon)
-                    ) : (
-                      <View style={styles.tokenIconPlaceholder}>
-                        <Text style={styles.tokenIconText}>
-                          {fromToken.symbol.charAt(0)}
-                        </Text>
-                      </View>
-                    )}
+                    {fromToken.icon
+                      ? renderTokenIcon(fromToken.icon)
+                      : // <View style={styles.tokenIconPlaceholder}>
+                        //   <Text style={styles.tokenIconText}>
+                        //     {fromToken.symbol.charAt(0)}
+                        //   </Text>
+                        // </View>
+                        ""}
                   </View>
                   <View>
                     <Text style={styles.tokenName}>{fromToken.symbol}</Text>
@@ -228,15 +227,14 @@ const BridgeComponent = () => {
                   onPress={handleToTokenSelect}
                 >
                   <View>
-                    {toToken.icon ? (
-                      renderTokenIcon(toToken.icon)
-                    ) : (
-                      <View style={styles.tokenIconPlaceholder}>
-                        <Text style={styles.tokenIconText}>
-                          {toToken.symbol.charAt(0)}
-                        </Text>
-                      </View>
-                    )}
+                    {toToken.icon
+                      ? renderTokenIcon(toToken.icon)
+                      : // <View style={styles.tokenIconPlaceholder}>
+                        //   <Text style={styles.tokenIconText}>
+                        //     {toToken.symbol.charAt(0)}
+                        //   </Text>
+                        // </View>
+                        ""}
                   </View>
                   <View>
                     <Text style={styles.tokenName}>{toToken.symbol}</Text>

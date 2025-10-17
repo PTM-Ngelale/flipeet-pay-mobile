@@ -319,6 +319,7 @@ export default function WalletHomeScreen() {
     <SafeAreaProvider>
       <SafeAreaView
         style={[styles.container, { backgroundColor: COLORS.background }]}
+        edges={["right", "left", "bottom"]}
       >
         <ScrollView
           style={styles.scrollView}
@@ -374,6 +375,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     flex: 1,
+    paddingTop: 65,
   },
   header: {
     flexDirection: "row",

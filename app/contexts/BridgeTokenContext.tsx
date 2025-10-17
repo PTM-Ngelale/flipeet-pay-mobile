@@ -19,15 +19,15 @@ const TokenContext = createContext<TokenContextType | undefined>(undefined);
 
 const defaultFromToken: Token = {
   symbol: "USDC",
-  name: "USD Coin",
+  name: "USDC",
   network: "Solana",
   icon: null,
 };
 
 const defaultToToken: Token = {
-  symbol: "ETH",
-  name: "Ethereum",
-  network: "Ethereum",
+  symbol: "USDT",
+  name: "USDT",
+  network: "Base",
   icon: null,
 };
 

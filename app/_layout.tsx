@@ -1,6 +1,7 @@
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
 import { BankAccountProvider } from "../app/contexts/BankAccountContext";
@@ -36,7 +37,11 @@ export default function RootLayout() {
         <CurrencyProvider>
           <TokenProvider>
             <BridgeTokenProvider>
-              {/* <StatusBar style="light" /> */}
+              <StatusBar
+                style="light"
+                translucent
+                backgroundColor="transparent"
+              />
               <Stack
                 screenOptions={{
                   headerStyle: {
@@ -47,9 +52,16 @@ export default function RootLayout() {
                     fontWeight: "bold",
                     fontFamily: "Lato-Regular",
                   },
+
+                  contentStyle: {
+                    backgroundColor: "transparent",
+                  },
                 }}
               >
-                <Stack.Screen name="index" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="index"
+                  options={{ headerShown: false, statusBarTranslucent: true }}
+                />
                 <Stack.Screen
                   name="(action)"
                   options={{ headerShown: false }}

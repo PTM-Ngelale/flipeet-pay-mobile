@@ -67,8 +67,8 @@ const DUMMY_BANK_ACCOUNTS = [
   {
     bankId: 8,
     bankName: "Guaranty Trust Bank",
-    accountNumber: "5678901234",
-    accountName: "Fatima Yusuf",
+    accountNumber: "631004789",
+    accountName: "Heritage Chibugwu Egwim",
   },
 
   {
@@ -87,8 +87,8 @@ const DUMMY_BANK_ACCOUNTS = [
   {
     bankId: 21,
     bankName: "Zenith Bank",
-    accountNumber: "8901234567",
-    accountName: "David Chukwu",
+    accountNumber: "2268654742",
+    accountName: "Heritage Chibugwu Egwim",
   },
   {
     bankId: 21,
