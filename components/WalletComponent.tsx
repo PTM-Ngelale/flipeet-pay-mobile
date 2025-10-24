@@ -269,7 +269,7 @@ const WalletComponent = () => {
             <Text
               style={[
                 styles.swapButtonText,
-                isSwapDisabled && styles.swapButtonTextDisabled,
+                isSwapDisabled ,
               ]}
             >
               Send
@@ -316,16 +316,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#3B82F6",
   },
   swapButtonDisabled: {
-    backgroundColor: "#2A2A2A",
+    backgroundColor: "#3B82F6", 
+    opacity: 0.4, 
   },
   swapButtonText: {
     fontSize: 18,
     fontWeight: "600",
     color: "#fff",
   },
-  swapButtonTextDisabled: {
-    color: "#757B85",
-  },
+
   amountControls: {
     marginTop: 40,
     flexDirection: "row",

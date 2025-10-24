@@ -127,8 +127,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   headerTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
+    color: "#757B85",
+    fontSize: 20,
     fontWeight: "bold",
   },
   searchContainer: {

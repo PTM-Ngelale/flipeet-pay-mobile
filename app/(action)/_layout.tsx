@@ -117,6 +117,15 @@ export default function ActionLayout() {
             headerShown: false,
           }}
         />
+
+<Stack.Screen
+          name="saved-bank-accounts"
+          options={{
+            title: "Saved Bank Accounts",
+            headerShown: false,
+          }}
+        />
+
       </Stack>
     </>
   );

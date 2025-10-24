@@ -278,7 +278,7 @@ const BridgeComponent = () => {
             <Text
               style={[
                 styles.bridgeButtonText,
-                isBridgeDisabled && styles.bridgeButtonTextDisabled,
+                isBridgeDisabled ,
               ]}
             >
               Swap
@@ -415,16 +415,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#3B82F6",
   },
   bridgeButtonDisabled: {
-    backgroundColor: "#2A2A2A",
+    backgroundColor: "#3B82F6", 
+    opacity: 0.4, 
   },
   bridgeButtonText: {
     fontSize: 18,
     fontWeight: "600",
     color: "#fff",
   },
-  bridgeButtonTextDisabled: {
-    color: "#757B85",
-  },
+
   tokenIconPlaceholder: {
     width: 32,
     height: 32,

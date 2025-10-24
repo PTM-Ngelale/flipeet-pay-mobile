@@ -88,7 +88,7 @@ const DUMMY_BANK_ACCOUNTS = [
     bankId: 21,
     bankName: "Zenith Bank",
     accountNumber: "2268654742",
-    accountName: "Heritage Chibugwu Egwim",
+    accountName: "Heritage Egwim",
   },
   {
     bankId: 21,
@@ -212,16 +212,30 @@ export default function AddBankAccount() {
   };
 
   // Function to handle adding bank account
+  // const handleAddAccount = () => {
+  //   if (validateForm()) {
+  //     const newAccount = {
+  //       bank: selectedBank,
+  //       accountNumber: accountNumber,
+  //       accountName: accountName,
+  //     };
+  //     console.log("Adding bank account:", newAccount);
+
+
+  //     addBankAccount(newAccount);
+  //     router.back();
+  //   }
+  // };
+
   const handleAddAccount = () => {
     if (validateForm()) {
       const newAccount = {
-        bank: selectedBank,
+        bankName: selectedBank.name,
         accountNumber: accountNumber,
         accountName: accountName,
+        bankCode: selectedBank.code,
       };
-      console.log("Adding bank account:", newAccount);
-
-      // Save the account using context
+      
       addBankAccount(newAccount);
       router.back();
     }

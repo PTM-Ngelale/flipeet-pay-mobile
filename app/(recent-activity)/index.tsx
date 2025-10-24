@@ -245,10 +245,10 @@ export default function RecentActivity() {
       <TouchableOpacity onPress={() => router.back()}>
         <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
       </TouchableOpacity>
-      <Text style={{ color: "#757B85", fontSize: 16, fontWeight: "bold" }}>
+      <Text style={{ color: "#757B85", fontSize: 20, fontWeight: "bold" }}>
         Recent Activity
       </Text>
-      {/* <View style={styles.spacer} /> */}
+
       <View style={{ opacity: 0 }}>
         <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
       </View>

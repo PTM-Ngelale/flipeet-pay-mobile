@@ -24,8 +24,10 @@ const SellComponent = () => {
   const [showPayDropdown, setShowPayDropdown] = useState(false);
   const [showReceiveDropdown, setShowReceiveDropdown] = useState(false);
   const { savedAccount } = useBankAccount();
+  const { selectedAccount } = useBankAccount();
   const { savedCurrency } = useCurrency();
   const { selectedToken } = useToken();
+  
 
   const exchangeRate = 1.5802;
   const dailyLimit = 1000;
@@ -206,60 +208,63 @@ const SellComponent = () => {
         </View>
 
         {/* Receive Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionRow}>
-            <View style={styles.sectionLeft}>
-              <Text style={styles.sectionLabel}>Receive</Text>
-              <View style={styles.amountInputContainer}>
-                <Text style={styles.currencySymbol}>{getCurrencySymbol()}</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  placeholder="0.00"
-                  placeholderTextColor="#E2E6F0"
-                  value={receiveAmount}
-                  onChangeText={handleReceiveAmountChange}
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
-            <View style={styles.sectionRight}>
-              {savedAccount ? (
-                <TouchableOpacity
-                  style={styles.savedAccountButton}
-                  onPress={() => router.push("/(action)/add-bank-account")}
-                >
-                  <View style={styles.accountInfo}>
-                    <Text style={styles.accountNumber}>
-                      {savedAccount.accountNumber.slice(0, 7)}...
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-down" size={20} color="#4A9DFF" />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.addBankButton}
-                  onPress={() => router.push("/(action)/add-bank-account")}
-                >
-                  <Text style={styles.addBankText}>+ Add Bank Account</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={styles.currencySelector}
-                onPress={() => router.push("/(action)/currency-selector")}
-              >
-                <View>{renderCurrencyIcon()}</View>
-                <View>
-                  <Text style={styles.currencyName}>
-                    {savedCurrency || "NGN"}
-                  </Text>
-                </View>
-                <View>
-                  <Ionicons name="chevron-down" color={"#4A9DFF"} />
-                </View>
-              </TouchableOpacity>
+       
+<View style={styles.section}>
+        <View style={styles.sectionRow}>
+          <View style={styles.sectionLeft}>
+            <Text style={styles.sectionLabel}>Receive</Text>
+            <View style={styles.amountInputContainer}>
+              <Text style={styles.currencySymbol}>{getCurrencySymbol()}</Text>
+              <TextInput
+                style={styles.amountInput}
+                placeholder="0.00"
+                placeholderTextColor="#E2E6F0"
+                value={receiveAmount}
+                onChangeText={handleReceiveAmountChange}
+                keyboardType="numeric"
+              />
             </View>
           </View>
+          <View style={styles.sectionRight}>
+            {selectedAccount ? ( // Changed from savedAccount to selectedAccount
+              <TouchableOpacity
+                style={styles.savedAccountButton}
+                onPress={() => router.push("/(action)/saved-bank-accounts")}
+              >
+                <View style={styles.accountInfo}>
+
+                  <Text style={styles.accountNumber}>
+                    {selectedAccount.accountNumber.slice(0, 7)}...
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down" size={20} color="#4A9DFF" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={styles.addBankButton}
+                onPress={() => router.push("/(action)/add-bank-account")}
+              >
+                <Text style={styles.addBankText}>+ Add Bank Account</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={styles.currencySelector}
+              onPress={() => router.push("/(action)/currency-selector")}
+            >
+              <View>{renderCurrencyIcon()}</View>
+              <View>
+                <Text style={styles.currencyName}>
+                  {savedCurrency || "NGN"}
+                </Text>
+              </View>
+              <View>
+                <Ionicons name="chevron-down" color={"#4A9DFF"} />
+              </View>
+            </TouchableOpacity>
+          </View>
         </View>
+      </View>
+
 
         {/* Exchange Rate */}
         <View style={styles.exchangeRateContainer}>
@@ -298,7 +303,7 @@ const SellComponent = () => {
             <Text
               style={[
                 styles.swapButtonText,
-                isSwapDisabled && styles.swapButtonTextDisabled,
+                isSwapDisabled,
               ]}
             >
               Swap
@@ -484,15 +489,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#3B82F6",
   },
   swapButtonDisabled: {
-    backgroundColor: "#2A2A2A",
+    backgroundColor: "#3B82F6", 
+    opacity: 0.4, 
   },
   swapButtonText: {
     fontSize: 18,
     fontWeight: "600",
     color: "#fff",
-  },
-  swapButtonTextDisabled: {
-    color: "#757B85",
   },
   savedAccountButton: {
     flexDirection: "row",
