@@ -6,24 +6,36 @@ export default function ActionLayout() {
   const router = useRouter();
   const colorScheme = useColorScheme();
 
-  const CustomHeaderBackground = () => (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: colorScheme === "dark" ? "#000000" : "#FFFFFF",
-      }}
-    />
-  );
+
 
   return (
     <>
-      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+      <StatusBar 
+      // style={colorScheme === "dark" ? "light" : "dark"} 
+      style="light"
+      translucent
+      backgroundColor="transparent"
+     />
       <Stack
+        // screenOptions={{
+        //   headerBackground: () => <CustomHeaderBackground />,
+        //   headerTintColor: colorScheme === "dark" ? "#757B85" : "#000000",
+        //   headerTitleStyle: {
+        //     fontWeight: "bold",
+        //   },
+        // }}
         screenOptions={{
-          headerBackground: () => <CustomHeaderBackground />,
-          headerTintColor: colorScheme === "dark" ? "#757B85" : "#000000",
+          headerStyle: {
+            backgroundColor: "#000000",
+          },
+          headerTintColor: "#FFFFFF",
           headerTitleStyle: {
             fontWeight: "bold",
+            fontFamily: "Lato-Regular",
+          },
+
+          contentStyle: {
+            backgroundColor: "transparent",
           },
         }}
       >

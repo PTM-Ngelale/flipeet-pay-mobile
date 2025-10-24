@@ -72,7 +72,7 @@ export default function SwapScreen() {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Swap</Text>
           <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
-            {/* <FontAwesome5 name="history" size={24} color="#B0BACB" /> */}
+
             <HistoryIcon />
           </TouchableOpacity>
         </View>

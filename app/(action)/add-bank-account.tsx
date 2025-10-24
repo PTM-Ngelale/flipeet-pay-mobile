@@ -194,7 +194,7 @@ export default function AddBankAccount() {
     }
   };
 
-  // Function to validate form before submission
+
   const validateForm = () => {
     if (!selectedBank) {
       setError("Please select a bank");
@@ -211,21 +211,6 @@ export default function AddBankAccount() {
     return true;
   };
 
-  // Function to handle adding bank account
-  // const handleAddAccount = () => {
-  //   if (validateForm()) {
-  //     const newAccount = {
-  //       bank: selectedBank,
-  //       accountNumber: accountNumber,
-  //       accountName: accountName,
-  //     };
-  //     console.log("Adding bank account:", newAccount);
-
-
-  //     addBankAccount(newAccount);
-  //     router.back();
-  //   }
-  // };
 
   const handleAddAccount = () => {
     if (validateForm()) {
@@ -244,8 +229,7 @@ export default function AddBankAccount() {
   const handleDropdownToggle = () => {
     setShowBankList(!showBankList);
     if (!showBankList) {
-      setSearchQuery(""); // Clear search only when opening
-    }
+      setSearchQuery("");  }
   };
 
   return (
@@ -265,7 +249,7 @@ export default function AddBankAccount() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
-            {/* Bank Selection Field */}
+
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Bank Name</Text>
               <TouchableOpacity
