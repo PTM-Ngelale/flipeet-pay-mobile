@@ -1,21 +1,19 @@
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useColorScheme, View } from "react-native";
+import { useColorScheme } from "react-native";
 
 export default function ActionLayout() {
   const router = useRouter();
   const colorScheme = useColorScheme();
 
-
-
   return (
     <>
-      <StatusBar 
-      // style={colorScheme === "dark" ? "light" : "dark"} 
-      style="light"
-      translucent
-      backgroundColor="transparent"
-     />
+      <StatusBar
+        // style={colorScheme === "dark" ? "light" : "dark"}
+        style="light"
+        translucent
+        backgroundColor="transparent"
+      />
       <Stack
         // screenOptions={{
         //   headerBackground: () => <CustomHeaderBackground />,
@@ -130,7 +128,7 @@ export default function ActionLayout() {
           }}
         />
 
-<Stack.Screen
+        <Stack.Screen
           name="saved-bank-accounts"
           options={{
             title: "Saved Bank Accounts",
@@ -138,6 +136,29 @@ export default function ActionLayout() {
           }}
         />
 
+        <Stack.Screen
+          name="favorites-page"
+          options={{
+            title: "Favorites",
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="favorites-bank-page"
+          options={{
+            title: "Favorite Banks",
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="favorites-wallet-page"
+          options={{
+            title: "Favorite Wallets",
+            headerShown: false,
+          }}
+        />
       </Stack>
     </>
   );

@@ -1,9 +1,10 @@
+import { useFavoriteWallets } from "@/app/contexts/FavoriteWalletsContext";
 import { useToken } from "@/app/contexts/TokenContext";
 import ScanIcon from "@/assets/images/scan-icon.svg";
 import StarIcon from "@/assets/images/star-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
@@ -21,26 +22,67 @@ const WalletComponent = () => {
   const router = useRouter();
   const [payAmount, setPayAmount] = useState("");
   const [receiveAmount, setReceiveAmount] = useState("");
-  const [showPayDropdown, setShowPayDropdown] = useState(false);
-  const [showReceiveDropdown, setShowReceiveDropdown] = useState(false);
-  const [selectedReceiveCurrency, setSelectedReceiveCurrency] = useState("NGN");
-  const [email, setEmail] = useState("");
+  const [walletAddress, setWalletAddress] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
   const { selectedToken } = useToken();
+  const {
+    addFavoriteWallet,
+    removeFavoriteWallet,
+    isWalletFavorite,
+    favoriteWallets,
+    selectedWalletFromFavorite,
+    clearSelectedWalletFromFavorite,
+  } = useFavoriteWallets();
 
-  const handleEmailChange = (text) => {
-    setEmail(text);
+  // Handle selected wallet from favorites
+  useEffect(() => {
+    if (selectedWalletFromFavorite) {
+      setWalletAddress(selectedWalletFromFavorite);
+      clearSelectedWalletFromFavorite();
+    }
+  }, [selectedWalletFromFavorite, clearSelectedWalletFromFavorite]);
+
+  // Check if current wallet address is already in favorites when it changes
+  useEffect(() => {
+    if (walletAddress) {
+      setIsFavorite(isWalletFavorite(walletAddress));
+    } else {
+      setIsFavorite(false);
+    }
+  }, [walletAddress, isWalletFavorite]);
+
+  const handleWalletAddressChange = (text: string) => {
+    setWalletAddress(text);
+  };
+
+  const handleFavoriteToggle = (value: boolean) => {
+    setIsFavorite(value);
+    if (value && walletAddress) {
+      addFavoriteWallet(walletAddress);
+    } else if (!value && walletAddress) {
+      // Find and remove the wallet from favorites
+      const favoriteWallet = favoriteWallets.find(
+        (fav) => fav.walletAddress === walletAddress
+      );
+      if (favoriteWallet) {
+        removeFavoriteWallet(favoriteWallet.id);
+      }
+    }
+  };
+
+  const handleFavoritesPress = () => {
+    router.push("/(action)/favorites-wallet-page");
   };
 
   const exchangeRate = 1.5802;
   const dailyLimit = 1000;
   const usedLimit = 0;
 
-  const handlePayAmountChange = (text) => {
+  const handlePayAmountChange = (text: string) => {
     const numericValue = text.replace(/[^0-9.]/g, "");
     setPayAmount(numericValue);
 
-    if (numericValue && !isNaN(numericValue)) {
+    if (numericValue && !isNaN(parseFloat(numericValue))) {
       const calculatedReceive = (
         parseFloat(numericValue) * exchangeRate
       ).toFixed(2);
@@ -50,11 +92,11 @@ const WalletComponent = () => {
     }
   };
 
-  const handleReceiveAmountChange = (text) => {
+  const handleReceiveAmountChange = (text: string) => {
     const numericValue = text.replace(/[^0-9.]/g, "");
     setReceiveAmount(numericValue);
 
-    if (numericValue && !isNaN(numericValue)) {
+    if (numericValue && !isNaN(parseFloat(numericValue))) {
       const calculatedPay = (parseFloat(numericValue) / exchangeRate).toFixed(
         6
       );
@@ -81,8 +123,7 @@ const WalletComponent = () => {
   };
 
   const handleSwap = () => {
-    if (payAmount && receiveAmount) {
-      // Navigate to review transaction page with parameters
+    if (payAmount && receiveAmount && walletAddress) {
       router.push({
         pathname: "/(action)/review-transaction",
         params: {
@@ -92,19 +133,17 @@ const WalletComponent = () => {
           receiveCurrency: "NGN",
           network: "Solana",
           exchangeRate: exchangeRate.toString(),
+          walletAddress,
         },
       });
     }
   };
 
   const isSwapDisabled =
-    !payAmount || !receiveAmount || parseFloat(payAmount) === 0;
-
-  const receiveCurrencies = [
-    { id: "NGN", name: "NGN", country: "Nigeria" },
-    { id: "USD", name: "USD", country: "United States" },
-    { id: "EUR", name: "EUR", country: "Europe" },
-  ];
+    !payAmount ||
+    !receiveAmount ||
+    parseFloat(payAmount) === 0 ||
+    !walletAddress;
 
   const renderTokenIcon = (IconComponent: React.ComponentType<any>) => {
     return <IconComponent width={30} height={30} />;
@@ -135,21 +174,23 @@ const WalletComponent = () => {
                 <Text style={{ color: "#B0BACB", fontSize: 16 }}>
                   Recipient wallet address
                 </Text>
-                <View
+                <TouchableOpacity
                   style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
+                  onPress={handleFavoritesPress}
                 >
                   <StarIcon />
                   <Text style={{ color: "#E2E6F0" }}>Favorites</Text>
                   <Ionicons name="chevron-down" color="#4A9DFF" />
-                </View>
+                </TouchableOpacity>
               </View>
               <View style={{ position: "relative" }}>
                 <TextInput
                   style={styles.emailInput}
-                  placeholder=""
-                  placeholderTextColor="#FFFFFF"
-                  onChangeText={handleEmailChange}
-                  keyboardType="email-address"
+                  placeholder="Enter wallet address"
+                  placeholderTextColor="#757B85"
+                  value={walletAddress}
+                  onChangeText={handleWalletAddressChange}
+                  keyboardType="default"
                   autoCapitalize="none"
                   autoCorrect={false}
                 />
@@ -175,7 +216,7 @@ const WalletComponent = () => {
                   trackColor={{ false: "#000", true: "#4B5563" }}
                   thumbColor={isFavorite ? "#B0BACB" : "#9CA3AF"}
                   ios_backgroundColor="#4B5563"
-                  onValueChange={() => setIsFavorite(!isFavorite)}
+                  onValueChange={handleFavoriteToggle}
                   value={isFavorite}
                   style={{ transform: [{ scale: 0.6 }] }}
                 />
@@ -254,7 +295,6 @@ const WalletComponent = () => {
           </View>
         </ScrollView>
 
-        {/* Fixed Swap Button at Bottom */}
         <View style={styles.swapButtonContainer}>
           <TouchableOpacity
             style={[
@@ -266,14 +306,7 @@ const WalletComponent = () => {
             onPress={handleSwap}
             disabled={isSwapDisabled}
           >
-            <Text
-              style={[
-                styles.swapButtonText,
-                isSwapDisabled ,
-              ]}
-            >
-              Send
-            </Text>
+            <Text style={[styles.swapButtonText]}>Send</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -296,7 +329,7 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     flexGrow: 1,
-    paddingBottom: 80, // Space for the fixed button
+    paddingBottom: 80,
   },
   content: {
     flex: 1,
@@ -316,8 +349,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#3B82F6",
   },
   swapButtonDisabled: {
-    backgroundColor: "#3B82F6", 
-    opacity: 0.4, 
+    backgroundColor: "#3B82F6",
+    opacity: 0.4,
   },
   swapButtonText: {
     fontSize: 18,

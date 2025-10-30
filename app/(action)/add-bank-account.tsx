@@ -12,7 +12,6 @@ import {
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useBankAccount } from "../contexts/BankAccountContext";
 
-// Dummy array of Nigerian banks
 const NIGERIAN_BANKS = [
   { id: 1, name: "Access Bank", code: "044" },
   { id: 2, name: "Citibank", code: "023" },
@@ -37,7 +36,6 @@ const NIGERIAN_BANKS = [
   { id: 21, name: "Zenith Bank", code: "057" },
 ];
 
-// Dummy bank accounts with account numbers and names
 const DUMMY_BANK_ACCOUNTS = [
   {
     bankId: 1,
@@ -194,7 +192,6 @@ export default function AddBankAccount() {
     }
   };
 
-
   const validateForm = () => {
     if (!selectedBank) {
       setError("Please select a bank");
@@ -211,7 +208,6 @@ export default function AddBankAccount() {
     return true;
   };
 
-
   const handleAddAccount = () => {
     if (validateForm()) {
       const newAccount = {
@@ -220,7 +216,7 @@ export default function AddBankAccount() {
         accountName: accountName,
         bankCode: selectedBank.code,
       };
-      
+
       addBankAccount(newAccount);
       router.back();
     }
@@ -229,7 +225,8 @@ export default function AddBankAccount() {
   const handleDropdownToggle = () => {
     setShowBankList(!showBankList);
     if (!showBankList) {
-      setSearchQuery("");  }
+      setSearchQuery("");
+    }
   };
 
   return (
@@ -249,7 +246,6 @@ export default function AddBankAccount() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
-
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Bank Name</Text>
               <TouchableOpacity

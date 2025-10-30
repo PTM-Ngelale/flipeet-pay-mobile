@@ -5,9 +5,12 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
 import { BankAccountProvider } from "../app/contexts/BankAccountContext";
+import { BridgeTokenProvider } from "../app/contexts/BridgeTokenContext";
 import { CurrencyProvider } from "../app/contexts/CurrencySelectorContext";
-import { BridgeTokenProvider } from "./contexts/BridgeTokenContext";
-import { TokenProvider } from "./contexts/TokenContext";
+import { TokenProvider } from "../app/contexts/TokenContext";
+import { FavoriteBanksProvider } from "./contexts/FavoriteBanksContext";
+import { FavoriteEmailsProvider } from "./contexts/FavoriteEmailsContext";
+import { FavoriteWalletsProvider } from "./contexts/FavoriteWalletsContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -37,40 +40,49 @@ export default function RootLayout() {
         <CurrencyProvider>
           <TokenProvider>
             <BridgeTokenProvider>
-              <StatusBar
-                style="light"
-                translucent
-                backgroundColor="transparent"
-              />
-              <Stack
-                screenOptions={{
-                  headerStyle: {
-                    backgroundColor: "#000000",
-                  },
-                  headerTintColor: "#FFFFFF",
-                  headerTitleStyle: {
-                    fontWeight: "bold",
-                    fontFamily: "Lato-Regular",
-                  },
+              <FavoriteEmailsProvider>
+                <FavoriteBanksProvider>
+                  <FavoriteWalletsProvider>
+                    <StatusBar
+                      style="light"
+                      translucent
+                      backgroundColor="transparent"
+                    />
+                    <Stack
+                      screenOptions={{
+                        headerStyle: {
+                          backgroundColor: "#000000",
+                        },
+                        headerTintColor: "#FFFFFF",
+                        headerTitleStyle: {
+                          fontWeight: "bold",
+                          fontFamily: "Lato-Regular",
+                        },
 
-                  contentStyle: {
-                    backgroundColor: "transparent",
-                  },
-                }}
-              >
-                <Stack.Screen
-                  name="index"
-                  options={{ headerShown: false, statusBarTranslucent: true }}
-                />
-                <Stack.Screen
-                  name="(action)"
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="(recent-activity)"
-                  options={{ headerShown: false }}
-                />
-              </Stack>
+                        contentStyle: {
+                          backgroundColor: "transparent",
+                        },
+                      }}
+                    >
+                      <Stack.Screen
+                        name="index"
+                        options={{
+                          headerShown: false,
+                          statusBarTranslucent: true,
+                        }}
+                      />
+                      <Stack.Screen
+                        name="(action)"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="(recent-activity)"
+                        options={{ headerShown: false }}
+                      />
+                    </Stack>
+                  </FavoriteWalletsProvider>
+                </FavoriteBanksProvider>
+              </FavoriteEmailsProvider>
             </BridgeTokenProvider>
           </TokenProvider>
         </CurrencyProvider>
