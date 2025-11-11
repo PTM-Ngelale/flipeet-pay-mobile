@@ -68,6 +68,57 @@ export default function ProfileAndSettingsLayout() {
             headerShown: false,
           }}
         />
+
+        <Stack.Screen
+          name="change-email"
+          options={{
+            title: "New Email",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="verify-email"
+          options={{
+            title: "Verify Email",
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
+          name="success-email"
+          options={{
+            title: "Success",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="change-pin"
+          options={{
+            title: "Change Pin",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="create-new-pin"
+          options={{
+            title: "Create New Pin",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="success-pin"
+          options={{
+            title: "Success",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="reauthenticate"
+          options={{
+            title: "PIN Authentication",
+            headerShown: false,
+          }}
+        />
       </Stack>
     </>
   );

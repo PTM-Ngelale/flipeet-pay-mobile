@@ -47,7 +47,7 @@ const SecurityAndPrivacy = () => {
                   padding: 10,
                   borderRadius: 7,
                 }}
-                onPress={() => router.push("/")}
+                onPress={() => router.push("/change-email")}
               >
                 <Text style={{ color: "#4A9DFF", fontWeight: 600 }}>
                   Change
@@ -72,7 +72,7 @@ const SecurityAndPrivacy = () => {
                   padding: 10,
                   borderRadius: 7,
                 }}
-                onPress={() => router.push("/")}
+                onPress={() => router.push("/change-pin")}
               >
                 <Text style={{ color: "#4A9DFF", fontWeight: 600 }}>
                   Change
@@ -97,10 +97,10 @@ const SecurityAndPrivacy = () => {
                   padding: 10,
                   borderRadius: 7,
                 }}
-                onPress={() => router.push("/")}
+                onPress={() => router.push("/reauthenticate")}
               >
                 <Text style={{ color: "#4A9DFF", fontWeight: 600 }}>
-                  Change
+                  Set up
                 </Text>
               </TouchableOpacity>
             </View>
