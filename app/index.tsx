@@ -21,6 +21,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { useProfile } from "./contexts/ProfileContext";
 
 type IconComponentType = React.ComponentType<{ size?: number; color?: string }>;
 
@@ -75,6 +76,7 @@ interface ActionButton {
 export default function WalletHomeScreen() {
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const router = useRouter();
+  const { username, profileImage } = useProfile();
 
   // Memoized data with dynamic icons based on color scheme
   const assets = useMemo<Asset[]>(
@@ -143,12 +145,20 @@ export default function WalletHomeScreen() {
   const renderHeader = () => (
     <View style={styles.header}>
       <View style={styles.userInfo}>
-        <UserProfile width={48} height={48} />
+        <TouchableOpacity
+          onPress={() => router.push("/(profile-and-settings)")}
+        >
+          {profileImage ? (
+            <Image source={{ uri: profileImage }} style={styles.userAvatar} />
+          ) : (
+            <UserProfile width={48} height={48} />
+          )}
+        </TouchableOpacity>
         <View>
           <Text style={[styles.userName, { color: "#B0BACB" }]}>Welcome</Text>
-          {/* <Text style={[styles.userName, { color: COLORS.textPrimary }]}>
-            Heritage
-          </Text> */}
+          <Text style={[styles.userName, { color: COLORS.textPrimary }]}>
+            {username || ""}
+          </Text>
         </View>
       </View>
       <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>

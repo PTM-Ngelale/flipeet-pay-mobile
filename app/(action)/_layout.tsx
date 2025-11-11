@@ -1,27 +1,11 @@
-import { Stack, useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useColorScheme } from "react-native";
 
 export default function ActionLayout() {
-  const router = useRouter();
-  const colorScheme = useColorScheme();
-
   return (
     <>
-      <StatusBar
-        // style={colorScheme === "dark" ? "light" : "dark"}
-        style="light"
-        translucent
-        backgroundColor="transparent"
-      />
+      <StatusBar style="light" translucent backgroundColor="transparent" />
       <Stack
-        // screenOptions={{
-        //   headerBackground: () => <CustomHeaderBackground />,
-        //   headerTintColor: colorScheme === "dark" ? "#757B85" : "#000000",
-        //   headerTitleStyle: {
-        //     fontWeight: "bold",
-        //   },
-        // }}
         screenOptions={{
           headerStyle: {
             backgroundColor: "#000000",

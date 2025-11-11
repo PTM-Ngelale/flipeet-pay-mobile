@@ -11,6 +11,7 @@ import { TokenProvider } from "../app/contexts/TokenContext";
 import { FavoriteBanksProvider } from "./contexts/FavoriteBanksContext";
 import { FavoriteEmailsProvider } from "./contexts/FavoriteEmailsContext";
 import { FavoriteWalletsProvider } from "./contexts/FavoriteWalletsContext";
+import { ProfileProvider } from "./contexts/ProfileContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -43,43 +44,49 @@ export default function RootLayout() {
               <FavoriteEmailsProvider>
                 <FavoriteBanksProvider>
                   <FavoriteWalletsProvider>
-                    <StatusBar
-                      style="light"
-                      translucent
-                      backgroundColor="transparent"
-                    />
-                    <Stack
-                      screenOptions={{
-                        headerStyle: {
-                          backgroundColor: "#000000",
-                        },
-                        headerTintColor: "#FFFFFF",
-                        headerTitleStyle: {
-                          fontWeight: "bold",
-                          fontFamily: "Lato-Regular",
-                        },
+                    <ProfileProvider>
+                      <StatusBar
+                        style="light"
+                        translucent
+                        backgroundColor="transparent"
+                      />
+                      <Stack
+                        screenOptions={{
+                          headerStyle: {
+                            backgroundColor: "#000000",
+                          },
+                          headerTintColor: "#FFFFFF",
+                          headerTitleStyle: {
+                            fontWeight: "bold",
+                            fontFamily: "Lato-Regular",
+                          },
 
-                        contentStyle: {
-                          backgroundColor: "transparent",
-                        },
-                      }}
-                    >
-                      <Stack.Screen
-                        name="index"
-                        options={{
-                          headerShown: false,
-                          statusBarTranslucent: true,
+                          contentStyle: {
+                            backgroundColor: "transparent",
+                          },
                         }}
-                      />
-                      <Stack.Screen
-                        name="(action)"
-                        options={{ headerShown: false }}
-                      />
-                      <Stack.Screen
-                        name="(recent-activity)"
-                        options={{ headerShown: false }}
-                      />
-                    </Stack>
+                      >
+                        <Stack.Screen
+                          name="index"
+                          options={{
+                            headerShown: false,
+                            statusBarTranslucent: true,
+                          }}
+                        />
+                        <Stack.Screen
+                          name="(action)"
+                          options={{ headerShown: false }}
+                        />
+                        <Stack.Screen
+                          name="(recent-activity)"
+                          options={{ headerShown: false }}
+                        />
+                        <Stack.Screen
+                          name="(profile-and-settings)"
+                          options={{ headerShown: false }}
+                        />
+                      </Stack>
+                    </ProfileProvider>
                   </FavoriteWalletsProvider>
                 </FavoriteBanksProvider>
               </FavoriteEmailsProvider>
