@@ -74,6 +74,22 @@ export default function RootLayout() {
                           }}
                         />
                         <Stack.Screen
+                          name="(auth)"
+                          options={{
+                            headerShown: false,
+                            statusBarTranslucent: true,
+                          }}
+                        />
+
+                        <Stack.Screen
+                          name="home"
+                          options={{
+                            headerShown: false,
+                            statusBarTranslucent: true,
+                          }}
+                        />
+
+                        <Stack.Screen
                           name="(action)"
                           options={{ headerShown: false }}
                         />

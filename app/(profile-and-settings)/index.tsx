@@ -3,7 +3,6 @@ import AboutIcon from "@/assets/images/settings-icons/about-icon.svg";
 import PreferencesIcon from "@/assets/images/settings-icons/preferences-icon.svg";
 import SecurityIcon from "@/assets/images/settings-icons/security-icon.svg";
 import SupportIcon from "@/assets/images/settings-icons/support-icon.svg";
-import UserProfile from "@/assets/images/user.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -91,7 +90,12 @@ const SettingsAndProfile = () => {
                   style={{ width: 100, height: 100, borderRadius: 50 }}
                 />
               ) : (
-                <UserProfile width={100} height={100} />
+                // <UserProfile width={100} height={100} />
+                <Ionicons
+                  name="person-circle-outline"
+                  size={100}
+                  color="#B0BACB"
+                />
               )}
             </TouchableOpacity>
           </View>
