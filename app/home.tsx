@@ -155,9 +155,9 @@ export default function WalletHomeScreen() {
           )}
         </TouchableOpacity>
         <View>
-          <Text style={[styles.userName, { color: "#B0BACB" }]}>Welcome</Text>
+          {/* <Text style={[styles.userName, { color: "#B0BACB" }]}>Welcome</Text> */}
           <Text style={[styles.userName, { color: COLORS.textPrimary }]}>
-            {username || ""}
+            {username ? `@${username}` : ""}
           </Text>
         </View>
       </View>
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flexDirection: "row",
-    gap: 8,
+    gap: 5,
     alignItems: "center",
   },
   userAvatar: {
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   userName: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: "bold",
   },
   balanceSection: {
