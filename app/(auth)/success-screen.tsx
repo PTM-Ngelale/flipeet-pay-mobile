@@ -17,14 +17,14 @@ export default function SuccessScreen() {
         <View style={styles.content}>
           <SuccessIcon />
           <View style={styles.textContainer}>
-            <Text style={styles.title}>Email Verified</Text>
+            <Text style={styles.title}>Account Created!</Text>
           </View>
         </View>
 
         {/* Close Button at Bottom */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity style={styles.view} onPress={handleCreate}>
-            <Text style={styles.viewText}>Create a PIN</Text>
+            <Text style={styles.viewText}>Create a PIN to unlock app</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

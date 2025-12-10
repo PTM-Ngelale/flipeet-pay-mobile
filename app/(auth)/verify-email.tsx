@@ -13,13 +13,17 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch } from "react-redux";
+import { verifyOtp } from "../store/authSlice";
 
 export default function VerifyEmailScreen() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const router = useRouter();
   const params = useLocalSearchParams();
-  const flow = params.flow as string; // 'signup' or undefined
+  const flow = (params.flow as string) || ""; // 'signup' or undefined
+  const email = (params.email as string) || "";
   const inputRefs = useRef<Array<TextInput | null>>([]);
+  const dispatch = useDispatch<any>();
 
   const handleOtpChange = (text: string, index: number) => {
     if (text.length > 1) {
@@ -50,14 +54,27 @@ export default function VerifyEmailScreen() {
     }
   };
 
-  const handleVerify = () => {
-    // Verification logic would go here
-    if (flow === "signup") {
-      //   router.push("/pin?flow=signup");
-      router.push("/success-screen");
-    } else {
-      // For other flows, go back or to appropriate screen
+  const handleVerify = async () => {
+    if (!email) {
+      // email missing - go back
       router.back();
+      return;
+    }
+    const code = otp.join("");
+    try {
+      await dispatch(verifyOtp({ email, code })).unwrap();
+      console.log("Email verified successfully");
+
+      if (flow === "signup") {
+        // After successful signup verification, go to login screen
+        router.replace("/login");
+      } else if (flow === "login") {
+        router.push("/pin?flow=login");
+      } else {
+        router.back();
+      }
+    } catch (err) {
+      console.warn("verify failed", err);
     }
   };
 

@@ -1,8 +1,10 @@
 import GoogleLogo from "@/assets/images/google-logo.svg";
 import { Ionicons } from "@expo/vector-icons";
+import * as Google from "expo-auth-session/providers/google";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,27 +15,102 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch } from "react-redux";
+import {
+  googleSignIn,
+  setEmail as setAuthEmail,
+  signIn,
+} from "../store/authSlice";
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState("");
+  const [email, setLocalEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [keepLoggedIn, setKeepLoggedIn] = useState(false);
   const router = useRouter();
+  const dispatch = useDispatch<any>();
 
-  const handleLogin = () => {
-    // Login logic would go here
-    router.push("/pin?flow=login");
+  // Configure Google OAuth
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId:
+      "289967638710-tjaaoepq7d43hkukdnt4r7acnv09raop.apps.googleusercontent.com",
+    scopes: ["profile", "email"],
+  });
+
+  // Handle Google OAuth response
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { authentication } = response;
+      if (authentication?.accessToken) {
+        handleGoogleToken(authentication.accessToken);
+      }
+    } else if (response?.type === "error") {
+      console.error("Google OAuth error:", response.error);
+      Alert.alert(
+        "Authentication Error",
+        "Failed to authenticate with Google. Please try again.",
+        [{ text: "OK" }]
+      );
+    }
+  }, [response]);
+
+  const handleGoogleToken = async (token: string) => {
+    try {
+      console.log("Sending Google token to backend for validation...");
+      const result = await dispatch(googleSignIn({ token })).unwrap();
+      console.log("Google sign-in successful:", result);
+
+      // Navigate to home on success
+      router.replace(`/home`);
+    } catch (error: any) {
+      console.error("Google sign-in failed:", error);
+
+      // Show specific error messages
+      if (
+        error?.message?.includes("User not found") ||
+        error?.response?.data?.error === "User not found"
+      ) {
+        Alert.alert(
+          "Account Not Found",
+          "No account found with this Google account. Please sign up first.",
+          [{ text: "OK" }]
+        );
+      } else {
+        Alert.alert(
+          "Authentication Failed",
+          error?.message || "Failed to sign in with Google. Please try again.",
+          [{ text: "OK" }]
+        );
+      }
+    }
   };
 
   const handleGoogleLogin = () => {
-    // Google login logic would go here
-    router.push("/pin?flow=login");
+    promptAsync();
+  };
+
+  const handleLogin = async () => {
+    // Authenticate with email+password
+    dispatch(setAuthEmail(email));
+
+    try {
+      const result = await dispatch(signIn({ email, password })).unwrap();
+      console.log("Login successful, result:", result);
+      // Only navigate if we have a successful response
+      router.replace(`/home`);
+    } catch (err: any) {
+      // Error is already set in Redux by the thunk rejection
+      // The AuthErrorModal will display it automatically
+      console.error("Login failed:", err);
+      // Stay on login screen when authentication fails
+    }
   };
 
   const handleSignUp = () => {
     router.push("/sign-up");
   };
 
-  const isLoginDisabled = !email.trim();
+  const isLoginDisabled = !email.trim() || !password.trim();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -57,6 +134,7 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={styles.googleButton}
               onPress={handleGoogleLogin}
+              disabled={!request}
             >
               <GoogleLogo />
               <Text style={styles.googleButtonText}>Login with Google</Text>
@@ -82,12 +160,40 @@ export default function LoginScreen() {
                 placeholder="Enter your email"
                 placeholderTextColor="#757B85"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={setLocalEmail}
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="email-address"
                 autoComplete="email"
               />
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Enter Password</Text>
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#757B85"
+                  value={password}
+                  onChangeText={setPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  secureTextEntry={!showPassword}
+                  autoComplete="password"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color="#757B85"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Keep me logged in */}
@@ -227,6 +333,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#374151",
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1C1C1C",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#374151",
+  },
+  passwordInput: {
+    flex: 1,
+    color: "#FFFFFF",
+    fontSize: 16,
+    padding: 16,
+  },
+  eyeIcon: {
+    padding: 16,
   },
   rememberMeContainer: {
     flexDirection: "row",

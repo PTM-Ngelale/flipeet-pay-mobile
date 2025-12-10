@@ -15,12 +15,23 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "../store";
+import { logout } from "../store/authSlice";
 
 import { useProfile } from "../contexts/ProfileContext";
 
 const SettingsAndProfile = () => {
   const router = useRouter();
+  const dispatch = useDispatch<any>();
   const { username, profileImage, pickImage } = useProfile();
+  const email =
+    useSelector((state: RootState) => state.auth.email) || "No email set";
+
+  const handleLogout = () => {
+    dispatch(logout());
+    router.replace("/login");
+  };
 
   const settingsData = [
     {
@@ -65,7 +76,9 @@ const SettingsAndProfile = () => {
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile & Settings</Text>
-          <View style={styles.headerPlaceholder} />
+          <TouchableOpacity onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
 
         {/* User Profile Section */}
@@ -108,7 +121,7 @@ const SettingsAndProfile = () => {
               <>
                 <Text style={styles.username}>{username}</Text>
 
-                <Text style={styles.email}>preciousngelale@gmail.com</Text>
+                <Text style={styles.email}>{email}</Text>
 
                 <View
                   style={{ flexDirection: "row", justifyContent: "center" }}
@@ -125,7 +138,7 @@ const SettingsAndProfile = () => {
               </>
             ) : (
               <>
-                <Text style={styles.email}>preciousngelale@gmail.com</Text>
+                <Text style={styles.email}>{email}</Text>
                 <View
                   style={{ flexDirection: "row", justifyContent: "center" }}
                 >
@@ -192,6 +205,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: "#757B85",
     fontSize: 18,
+    fontWeight: "600",
+  },
+  logoutText: {
+    color: "#FF4A4A",
+    fontSize: 14,
     fontWeight: "600",
   },
   headerPlaceholder: {

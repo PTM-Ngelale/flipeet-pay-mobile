@@ -1,9 +1,11 @@
+import AuthErrorModal from "@/components/ui/AuthErrorModal";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import "react-native-reanimated";
+import { Provider as ReduxProvider } from "react-redux";
 import { BankAccountProvider } from "../app/contexts/BankAccountContext";
 import { BridgeTokenProvider } from "../app/contexts/BridgeTokenContext";
 import { CurrencyProvider } from "../app/contexts/CurrencySelectorContext";
@@ -12,6 +14,7 @@ import { FavoriteBanksProvider } from "./contexts/FavoriteBanksContext";
 import { FavoriteEmailsProvider } from "./contexts/FavoriteEmailsContext";
 import { FavoriteWalletsProvider } from "./contexts/FavoriteWalletsContext";
 import { ProfileProvider } from "./contexts/ProfileContext";
+import { store } from "./store";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -36,7 +39,7 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <ReduxProvider store={store}>
       <BankAccountProvider>
         <CurrencyProvider>
           <TokenProvider>
@@ -102,6 +105,7 @@ export default function RootLayout() {
                           options={{ headerShown: false }}
                         />
                       </Stack>
+                      <AuthErrorModal />
                     </ProfileProvider>
                   </FavoriteWalletsProvider>
                 </FavoriteBanksProvider>
@@ -110,6 +114,6 @@ export default function RootLayout() {
           </TokenProvider>
         </CurrencyProvider>
       </BankAccountProvider>
-    </>
+    </ReduxProvider>
   );
 }

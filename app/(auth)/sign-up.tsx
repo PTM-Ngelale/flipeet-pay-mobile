@@ -1,7 +1,10 @@
 import GoogleLogo from "@/assets/images/google-logo.svg";
+import { Ionicons } from "@expo/vector-icons";
+import * as Google from "expo-auth-session/providers/google";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,26 +15,135 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch } from "react-redux";
+import {
+  googleSignIn,
+  requestOtp,
+  setEmail as setAuthEmail,
+  signUp,
+} from "../store/authSlice";
 
 export default function SignUpScreen() {
-  const [email, setEmail] = useState("");
+  const [email, setLocalEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const dispatch = useDispatch<any>();
 
-  const handleSignUp = () => {
-    // Sign up logic would go here
-    router.push("/verify-email?flow=signup");
+  // Configure Google OAuth
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId:
+      "289967638710-tjaaoepq7d43hkukdnt4r7acnv09raop.apps.googleusercontent.com",
+    scopes: ["profile", "email"],
+  });
+
+  // Handle Google OAuth response
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { authentication } = response;
+      if (authentication?.accessToken) {
+        handleGoogleToken(authentication.accessToken);
+      }
+    } else if (response?.type === "error") {
+      console.error("Google OAuth error:", response.error);
+      Alert.alert(
+        "Authentication Error",
+        "Failed to authenticate with Google. Please try again.",
+        [{ text: "OK" }]
+      );
+    }
+  }, [response]);
+
+  const handleGoogleToken = async (token: string) => {
+    try {
+      console.log("Sending Google token to backend for validation...");
+      const result = await dispatch(googleSignIn({ token })).unwrap();
+      console.log("Google sign-in successful:", result);
+
+      // Navigate to home on success
+      router.replace(`/home`);
+    } catch (error: any) {
+      console.error("Google sign-in failed:", error);
+
+      // Show specific error messages for sign-up
+      if (
+        error?.message?.includes("User not found") ||
+        error?.response?.data?.error === "User not found"
+      ) {
+        Alert.alert(
+          "Account Not Found",
+          "No account found with this Google account. Please create an account first using email and password.",
+          [
+            {
+              text: "Create Account",
+              onPress: () => {
+                // Focus email field
+              },
+            },
+            { text: "OK" },
+          ]
+        );
+      } else {
+        Alert.alert(
+          "Authentication Failed",
+          error?.message || "Failed to sign in with Google. Please try again.",
+          [{ text: "OK" }]
+        );
+      }
+    }
   };
 
   const handleGoogleSignUp = () => {
-    // Google sign up logic would go here
-    router.push("/verify-email?flow=signup");
+    promptAsync();
+  };
+
+  const handleSignUp = async () => {
+    // Create account with email and password
+    dispatch(setAuthEmail(email));
+
+    const payload = {
+      firstname: "",
+      lastname: "",
+      email: email,
+      phonenumber: "",
+      password: password,
+      isMerchant: false,
+      company: "",
+      companyCountry: "",
+      businessType: "",
+    };
+
+    try {
+      // Step 1: Create the account
+      await dispatch(signUp(payload)).unwrap();
+      console.log("Account created successfully");
+
+      // Step 2: Request OTP for email verification
+      await dispatch(requestOtp({ email, type: "signup" })).unwrap();
+      console.log("OTP sent to email");
+
+      // Step 3: Navigate to verify-email screen
+      router.push({
+        pathname: "/verify-email",
+        params: { email, flow: "signup" },
+      });
+    } catch (err: any) {
+      // Error is already set in Redux by the thunk rejection
+      // The AuthErrorModal will display it automatically
+      console.warn("sign-up failed", err);
+    }
   };
 
   const handleLogin = () => {
     router.push("/login");
   };
 
-  const isSignUpDisabled = !email.trim();
+  const isSignUpDisabled = !email?.trim() || !password?.trim();
+
+  // keep local state var name aligned
+  function setEmail(v: string) {
+    setLocalEmail(v);
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -49,7 +161,7 @@ export default function SignUpScreen() {
             <View style={styles.header}>
               <Text style={styles.welcomeText}>Create account</Text>
               <Text style={styles.subtitle}>
-                Welcome to Flipeet Pay - Let’s create your account{" "}
+                Welcome to Flipeet Pay - Let's create your account{" "}
               </Text>
             </View>
 
@@ -57,8 +169,8 @@ export default function SignUpScreen() {
             <TouchableOpacity
               style={styles.googleButton}
               onPress={handleGoogleSignUp}
+              disabled={!request}
             >
-              {/* <Ionicons name="logo-google" size={20} color="#FFFFFF" /> */}
               <GoogleLogo />
               <Text style={styles.googleButtonText}>Continue with Google</Text>
             </TouchableOpacity>
@@ -89,6 +201,34 @@ export default function SignUpScreen() {
                 keyboardType="email-address"
                 autoComplete="email"
               />
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Enter Password</Text>
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#757B85"
+                  value={password}
+                  onChangeText={setPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  secureTextEntry={!showPassword}
+                  autoComplete="password"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color="#757B85"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Sign Up Button */}
@@ -206,6 +346,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#374151",
+  },
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1C1C1C",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#374151",
+  },
+  passwordInput: {
+    flex: 1,
+    color: "#FFFFFF",
+    fontSize: 16,
+    padding: 16,
+  },
+  eyeIcon: {
+    padding: 16,
   },
   signUpButton: {
     backgroundColor: "#4A9DFF",

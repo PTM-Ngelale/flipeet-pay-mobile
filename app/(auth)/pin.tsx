@@ -11,6 +11,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "../store";
+import { setPin as setAuthPin, setError, signIn } from "../store/authSlice";
 
 export default function PinScreen() {
   const [pin, setPin] = useState(["", "", "", "", "", ""]);
@@ -51,15 +54,41 @@ export default function PinScreen() {
     }
   };
 
-  const handleSubmit = () => {
+  const dispatch = useDispatch<any>();
+  const email = useSelector((s: RootState) => s.auth.email);
+  const storedPin = useSelector((s: RootState) => s.auth.pin);
+
+  const handleSubmit = async () => {
     if (pin.some((digit) => !digit)) return;
+    const pinCode = pin.join("");
 
     if (isLoginFlow) {
-      // Login with PIN - go to home
-      //   router.replace("/(tabs)");
-      router.replace("/home");
+      // For login: compare entered PIN against stored PIN from signup flow (demo)
+      if (!email) {
+        console.warn("email missing for login");
+        return;
+      }
+      if (!storedPin) {
+        // Fall back to server verification if no stored PIN
+        try {
+          await dispatch(signIn({ email, password: pinCode })).unwrap();
+          router.replace("/home");
+          return;
+        } catch (err) {
+          console.warn("sign-in failed", err);
+          dispatch(setError("Login failed. Please try again."));
+          return;
+        }
+      }
+
+      if (pinCode === storedPin) {
+        router.replace("/home");
+      } else {
+        dispatch(setError("Incorrect PIN. Please try again."));
+      }
     } else if (isSignupFlow) {
-      // Signup flow - PIN created, go to login
+      // Store the PIN for app unlock (account already created in sign-up screen)
+      dispatch(setAuthPin(pinCode));
       router.replace("/login");
     }
   };
@@ -105,7 +134,9 @@ export default function PinScreen() {
               {pin.map((digit, index) => (
                 <TextInput
                   key={index}
-                  ref={(ref) => (inputRefs.current[index] = ref)}
+                  ref={(ref) => {
+                    inputRefs.current[index] = ref;
+                  }}
                   style={styles.pinInput}
                   value={digit}
                   onChangeText={(text) => handlePinChange(text, index)}
