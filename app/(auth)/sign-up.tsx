@@ -26,7 +26,9 @@ import {
 export default function SignUpScreen() {
   const [email, setLocalEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch<any>();
 
@@ -138,7 +140,12 @@ export default function SignUpScreen() {
     router.push("/login");
   };
 
-  const isSignUpDisabled = !email?.trim() || !password?.trim();
+  const passwordsMatch = password === confirmPassword;
+  const isSignUpDisabled =
+    !email?.trim() ||
+    !password?.trim() ||
+    !confirmPassword?.trim() ||
+    !passwordsMatch;
 
   // keep local state var name aligned
   function setEmail(v: string) {
@@ -229,6 +236,37 @@ export default function SignUpScreen() {
                   />
                 </TouchableOpacity>
               </View>
+            </View>
+
+            {/* Confirm Password Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Confirm Password</Text>
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholder="Confirm your password"
+                  placeholderTextColor="#757B85"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  secureTextEntry={!showConfirmPassword}
+                  autoComplete="password"
+                />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons
+                    name={showConfirmPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color="#757B85"
+                  />
+                </TouchableOpacity>
+              </View>
+              {confirmPassword.length > 0 && !passwordsMatch && (
+                <Text style={styles.errorText}>Passwords do not match</Text>
+              )}
             </View>
 
             {/* Sign Up Button */}
@@ -363,6 +401,11 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     padding: 16,
+  },
+  errorText: {
+    color: "#FF6B6B",
+    fontSize: 12,
+    marginTop: 4,
   },
   signUpButton: {
     backgroundColor: "#4A9DFF",
