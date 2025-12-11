@@ -1,4 +1,5 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { apiGet, apiPost } from "../constants/api";
 
 type AuthState = {
@@ -93,6 +94,58 @@ export const googleSignIn = createAsyncThunk(
   }
 );
 
+export const fetchUserBalances = createAsyncThunk(
+  "auth/fetchUserBalances",
+  async (_, thunkAPI: any) => {
+    try {
+      const state = thunkAPI.getState();
+      const { token, user } = state.auth;
+
+      if (!token) {
+        return thunkAPI.rejectWithValue("No authentication token");
+      }
+
+      if (!user?.id && !user?.userId) {
+        return thunkAPI.rejectWithValue("No user ID found");
+      }
+
+      const userId = user.id || user.userId;
+      const { apiGetAuth } = await import("../constants/api");
+      const data = await apiGetAuth(`/user/${userId}/balances`, token);
+      return data;
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue(
+        err.message || "Failed to fetch balances"
+      );
+    }
+  }
+);
+
+// Load authentication state from AsyncStorage
+export const loadAuthState = createAsyncThunk(
+  "auth/loadAuthState",
+  async (_, thunkAPI: any) => {
+    try {
+      console.log("Loading auth state from AsyncStorage...");
+      const token = await AsyncStorage.getItem("auth_token");
+      const userJson = await AsyncStorage.getItem("auth_user");
+      const email = await AsyncStorage.getItem("auth_email");
+
+      if (token && userJson) {
+        const user = JSON.parse(userJson);
+        console.log("Auth state loaded successfully. Token:", token.substring(0, 20) + "...");
+        return { token, user, email };
+      }
+
+      console.log("No saved auth state found");
+      return thunkAPI.rejectWithValue("No saved auth state");
+    } catch (err: any) {
+      console.error("Failed to load auth state:", err);
+      return thunkAPI.rejectWithValue("Failed to load auth state");
+    }
+  }
+);
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
@@ -116,6 +169,8 @@ const authSlice = createSlice({
       state.pin = null;
       state.error = null;
       state.loading = false;
+      // Clear AsyncStorage
+      AsyncStorage.multiRemove(["auth_token", "auth_user", "auth_email"]);
     },
   },
   extraReducers: (builder: any) => {
@@ -149,6 +204,7 @@ const authSlice = createSlice({
       })
       .addCase(signIn.fulfilled, (state: any, action: any) => {
         state.loading = false;
+        state.error = null;
         // Handle different possible response structures
         const payload = action.payload || {};
         console.log(
@@ -159,13 +215,31 @@ const authSlice = createSlice({
         // Try to safely extract user and token from various response structures
         try {
           const data = payload.data || {};
+          const credentials = data.credentials || {};
+          
           state.user = payload.user || data.user || null;
           state.token =
+            credentials.accessToken ||
             payload.accessToken ||
             payload.token ||
             data.accessToken ||
             data.token ||
             null;
+
+          // Persist to AsyncStorage
+          if (state.token) {
+            console.log("Saving token to AsyncStorage:", state.token.substring(0, 20) + "...");
+            AsyncStorage.setItem("auth_token", state.token);
+          } else {
+            console.warn("No token found in response to save");
+          }
+          if (state.user) {
+            console.log("Saving user to AsyncStorage:", state.user);
+            AsyncStorage.setItem("auth_user", JSON.stringify(state.user));
+          }
+          if (state.email) {
+            AsyncStorage.setItem("auth_email", state.email);
+          }
         } catch (e) {
           console.error("Error extracting auth data:", e);
           state.user = null;
@@ -225,6 +299,17 @@ const authSlice = createSlice({
         } else {
           state.error = action.payload || String(action.error?.message || "");
         }
+      })
+      .addCase(loadAuthState.fulfilled, (state: any, action: any) => {
+        const { token, user, email } = action.payload;
+        console.log("loadAuthState fulfilled - restoring token to Redux state");
+        state.token = token;
+        state.user = user;
+        state.email = email;
+        state.loading = false;
+      })
+      .addCase(loadAuthState.rejected, (state: any) => {
+        state.loading = false;
       });
   },
 });

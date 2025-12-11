@@ -31,3 +31,22 @@ export async function apiPost(path: string, body: any) {
   }
   return res.json().catch(() => null);
 }
+
+export async function apiGetAuth(path: string, token: string) {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    let errorMessage = errorText;
+    try {
+      const errorJson = JSON.parse(errorText);
+      errorMessage = errorJson.message || errorJson.error || errorText;
+    } catch {}
+    throw new Error(errorMessage);
+  }
+  return res.json().catch(() => null);
+}

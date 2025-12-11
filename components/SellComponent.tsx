@@ -5,8 +5,9 @@ import ExchangeIcon from "@/assets/images/exchange-icon.svg";
 import NGNFlag from "@/assets/images/ngn-flag.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -16,6 +17,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSelector } from "react-redux";
+import { RootState } from "../app/store";
 
 const SellComponent = () => {
   const router = useRouter();
@@ -27,17 +30,65 @@ const SellComponent = () => {
   const { selectedAccount } = useBankAccount();
   const { savedCurrency } = useCurrency();
   const { selectedToken } = useToken();
-  
+  const token = useSelector((state: RootState) => state.auth.token);
 
-  const exchangeRate = 1.5802;
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [loadingRate, setLoadingRate] = useState<boolean>(false);
   const dailyLimit = 1000;
   const usedLimit = 0;
+
+  // Fetch exchange rate from API
+  useEffect(() => {
+    const fetchExchangeRate = async () => {
+      if (!token) {
+        console.log("No auth token available");
+        return;
+      }
+
+      try {
+        setLoadingRate(true);
+        const asset = selectedToken?.symbol || "USDC";
+        const currency = savedCurrency || "NGN";
+        const amount = 1;
+        const provider = "bread";
+
+        const url = `https://api.pay.flipeet.io/api/v1/ramp/rate?amount=${amount}&asset=${asset}&currency=${currency}&provider=${provider}`;
+
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        const data = await response.json();
+        console.log("Exchange rate API response:", data);
+
+        if (!response.ok) {
+          console.error("API error:", data);
+          throw new Error(data.message || "Failed to fetch exchange rate");
+        }
+
+        // The rate is directly in data property
+        const rate = data.data || data.rate || data.exchangeRate;
+        if (rate) {
+          setExchangeRate(rate);
+        }
+      } catch (error) {
+        console.error("Error fetching exchange rate:", error);
+      } finally {
+        setLoadingRate(false);
+      }
+    };
+
+    fetchExchangeRate();
+  }, [selectedToken, savedCurrency, token]);
 
   const handlePayAmountChange = (text) => {
     const numericValue = text.replace(/[^0-9.]/g, "");
     setPayAmount(numericValue);
 
-    if (numericValue && !isNaN(numericValue)) {
+    if (numericValue && !isNaN(numericValue) && exchangeRate) {
       const calculatedReceive = (
         parseFloat(numericValue) * exchangeRate
       ).toFixed(2);
@@ -51,7 +102,7 @@ const SellComponent = () => {
     const numericValue = text.replace(/[^0-9.]/g, "");
     setReceiveAmount(numericValue);
 
-    if (numericValue && !isNaN(numericValue)) {
+    if (numericValue && !isNaN(numericValue) && exchangeRate) {
       const calculatedPay = (parseFloat(numericValue) / exchangeRate).toFixed(
         6
       );
@@ -62,12 +113,14 @@ const SellComponent = () => {
   };
 
   const handleHalf = () => {
+    if (!exchangeRate) return;
     const halfBalance = (0.00678 / 2).toString();
     setPayAmount(halfBalance);
     setReceiveAmount((parseFloat(halfBalance) * exchangeRate).toFixed(2));
   };
 
   const handleMax = () => {
+    if (!exchangeRate) return;
     setPayAmount("0.00678");
     setReceiveAmount((0.00678 * exchangeRate).toFixed(2));
   };
@@ -88,14 +141,17 @@ const SellComponent = () => {
           payCurrency: "USDC",
           receiveCurrency: savedCurrency || "NGN",
           network: "Solana",
-          exchangeRate: exchangeRate.toString(),
+          exchangeRate: exchangeRate ? exchangeRate.toString() : "0",
         },
       });
     }
   };
 
   const isSwapDisabled =
-    !payAmount || !receiveAmount || parseFloat(payAmount) === 0;
+    !payAmount ||
+    !receiveAmount ||
+    parseFloat(payAmount) === 0 ||
+    !exchangeRate;
 
   // Get currency symbol based on selected currency
   const getCurrencySymbol = () => {
@@ -208,69 +264,76 @@ const SellComponent = () => {
         </View>
 
         {/* Receive Section */}
-       
-<View style={styles.section}>
-        <View style={styles.sectionRow}>
-          <View style={styles.sectionLeft}>
-            <Text style={styles.sectionLabel}>Receive</Text>
-            <View style={styles.amountInputContainer}>
-              <Text style={styles.currencySymbol}>{getCurrencySymbol()}</Text>
-              <TextInput
-                style={styles.amountInput}
-                placeholder="0.00"
-                placeholderTextColor="#E2E6F0"
-                value={receiveAmount}
-                onChangeText={handleReceiveAmountChange}
-                keyboardType="numeric"
-              />
-            </View>
-          </View>
-          <View style={styles.sectionRight}>
-            {selectedAccount ? ( // Changed from savedAccount to selectedAccount
-              <TouchableOpacity
-                style={styles.savedAccountButton}
-                onPress={() => router.push("/(action)/saved-bank-accounts")}
-              >
-                <View style={styles.accountInfo}>
 
-                  <Text style={styles.accountNumber}>
-                    {selectedAccount.accountNumber.slice(0, 7)}...
+        <View style={styles.section}>
+          <View style={styles.sectionRow}>
+            <View style={styles.sectionLeft}>
+              <Text style={styles.sectionLabel}>Receive</Text>
+              <View style={styles.amountInputContainer}>
+                <Text style={styles.currencySymbol}>{getCurrencySymbol()}</Text>
+                <TextInput
+                  style={styles.amountInput}
+                  placeholder="0.00"
+                  placeholderTextColor="#E2E6F0"
+                  value={receiveAmount}
+                  onChangeText={handleReceiveAmountChange}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+            <View style={styles.sectionRight}>
+              {selectedAccount ? ( // Changed from savedAccount to selectedAccount
+                <TouchableOpacity
+                  style={styles.savedAccountButton}
+                  onPress={() => router.push("/(action)/saved-bank-accounts")}
+                >
+                  <View style={styles.accountInfo}>
+                    <Text style={styles.accountNumber}>
+                      {selectedAccount.accountNumber.slice(0, 7)}...
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-down" size={20} color="#4A9DFF" />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.addBankButton}
+                  onPress={() => router.push("/(action)/add-bank-account")}
+                >
+                  <Text style={styles.addBankText}>+ Add Bank Account</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={styles.currencySelector}
+                onPress={() => router.push("/(action)/currency-selector")}
+              >
+                <View>{renderCurrencyIcon()}</View>
+                <View>
+                  <Text style={styles.currencyName}>
+                    {savedCurrency || "NGN"}
                   </Text>
                 </View>
-                <Ionicons name="chevron-down" size={20} color="#4A9DFF" />
+                <View>
+                  <Ionicons name="chevron-down" color={"#4A9DFF"} />
+                </View>
               </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={styles.addBankButton}
-                onPress={() => router.push("/(action)/add-bank-account")}
-              >
-                <Text style={styles.addBankText}>+ Add Bank Account</Text>
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={styles.currencySelector}
-              onPress={() => router.push("/(action)/currency-selector")}
-            >
-              <View>{renderCurrencyIcon()}</View>
-              <View>
-                <Text style={styles.currencyName}>
-                  {savedCurrency || "NGN"}
-                </Text>
-              </View>
-              <View>
-                <Ionicons name="chevron-down" color={"#4A9DFF"} />
-              </View>
-            </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
-
 
         {/* Exchange Rate */}
         <View style={styles.exchangeRateContainer}>
-          <Text style={styles.exchangeRateText}>
-            1 USDC = {exchangeRate} {savedCurrency || "NGN"}
-          </Text>
+          {loadingRate ? (
+            <ActivityIndicator size="small" color="#4A9DFF" />
+          ) : exchangeRate ? (
+            <Text style={styles.exchangeRateText}>
+              1 {selectedToken?.symbol || "USDC"} = {exchangeRate.toFixed(2)}{" "}
+              {savedCurrency || "NGN"}
+            </Text>
+          ) : (
+            <Text style={[styles.exchangeRateText, { color: "#FF6B6B" }]}>
+              Unable to fetch exchange rate
+            </Text>
+          )}
         </View>
 
         {/* Daily Swap Limit */}
@@ -300,14 +363,7 @@ const SellComponent = () => {
             onPress={handleSwap}
             disabled={isSwapDisabled}
           >
-            <Text
-              style={[
-                styles.swapButtonText,
-                isSwapDisabled,
-              ]}
-            >
-              Swap
-            </Text>
+            <Text style={styles.swapButtonText}>Swap</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -489,8 +545,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#3B82F6",
   },
   swapButtonDisabled: {
-    backgroundColor: "#3B82F6", 
-    opacity: 0.4, 
+    backgroundColor: "#3B82F6",
+    opacity: 0.4,
   },
   swapButtonText: {
     fontSize: 18,

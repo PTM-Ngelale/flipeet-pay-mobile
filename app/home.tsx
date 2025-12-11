@@ -9,10 +9,11 @@ import { GlobalStyles } from "@/styles/global";
 import Entypo from "@expo/vector-icons/Entypo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Image,
   ImageBackground,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -20,7 +21,10 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch, useSelector } from "react-redux";
 import { useProfile } from "./contexts/ProfileContext";
+import type { AppDispatch, RootState } from "./store";
+import { fetchUserBalances } from "./store/authSlice";
 
 type IconComponentType = React.ComponentType<{ size?: number; color?: string }>;
 
@@ -74,8 +78,36 @@ interface ActionButton {
 
 export default function WalletHomeScreen() {
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
   const { username, profileImage } = useProfile();
+  const dispatch = useDispatch<AppDispatch>();
+
+  // Get balances from Redux
+  const balances = useSelector((state: RootState) => state.auth.balances);
+  const loading = useSelector((state: RootState) => state.auth.loading);
+
+  // Fetch balances on mount
+  useEffect(() => {
+    dispatch(fetchUserBalances());
+  }, [dispatch]);
+
+  // Calculate total balance in USD from API response
+  const totalBalanceUSD = useMemo(() => {
+    if (!balances || balances.length === 0) return 0;
+
+    return balances.reduce((total, balance) => {
+      const amount = balance.usdValue || balance.amount || 0;
+      return total + parseFloat(amount.toString());
+    }, 0);
+  }, [balances]);
+
+  // Pull to refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await dispatch(fetchUserBalances());
+    setRefreshing(false);
+  };
 
   // Memoized data with dynamic icons based on color scheme
   const assets = useMemo<Asset[]>(
@@ -177,9 +209,7 @@ export default function WalletHomeScreen() {
             GlobalStyles.textBold,
           ]}
         >
-          {isBalanceVisible
-            ? `$${formatCurrency(TOTAL_BALANCE_USD)}`
-            : "******"}
+          {isBalanceVisible ? `$${totalBalanceUSD.toFixed(2)}` : "******"}
         </Text>
         <TouchableOpacity onPress={toggleBalanceVisibility}>
           <Entypo
@@ -335,6 +365,14 @@ export default function WalletHomeScreen() {
           style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollViewContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={COLORS.textSecondary}
+              colors={[COLORS.actionIcon]}
+            />
+          }
         >
           <ImageBackground
             source={require("@/assets/images/circle.png")}
