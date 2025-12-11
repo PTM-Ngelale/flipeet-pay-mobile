@@ -32,8 +32,8 @@ export default function LoginScreen() {
 
   // Configure Google OAuth
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId:
-      "289967638710-tjaaoepq7d43hkukdnt4r7acnv09raop.apps.googleusercontent.com",
+    androidClientId: "289967638710-ek2k5v76t6sbcih4gv9v45qhd949r0rh.apps.googleusercontent.com",
+    iosClientId: "289967638710-tjaaoepq7d43hkukdnt4r7acnv09raop.apps.googleusercontent.com",
     scopes: ["profile", "email"],
   });
 
