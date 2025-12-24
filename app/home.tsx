@@ -11,6 +11,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   ImageBackground,
   RefreshControl,
@@ -85,20 +86,28 @@ export default function WalletHomeScreen() {
 
   // Get balances from Redux
   const balances = useSelector((state: RootState) => state.auth.balances);
-  const loading = useSelector((state: RootState) => state.auth.loading);
+  const balancesLoading = useSelector(
+    (state: RootState) => state.auth.balancesLoading
+  );
+  const token = useSelector((state: RootState) => state.auth.token);
 
-  // Fetch balances on mount
+  // Fetch balances on mount and when token becomes available
   useEffect(() => {
-    dispatch(fetchUserBalances());
-  }, [dispatch]);
+    if (token) {
+      dispatch(fetchUserBalances());
+    }
+  }, [dispatch, token]);
 
   // Calculate total balance in USD from API response
   const totalBalanceUSD = useMemo(() => {
-    if (!balances || balances.length === 0) return 0;
+    if (!balances || !Array.isArray(balances) || balances.length === 0)
+      return 0;
 
     return balances.reduce((total, balance) => {
-      const amount = balance.usdValue || balance.amount || 0;
-      return total + parseFloat(amount.toString());
+      // Try different property names for USD value
+      const usdValue =
+        balance.usdValue || balance.usdBalance || balance.balanceUSD || 0;
+      return total + parseFloat(usdValue.toString());
     }, 0);
   }, [balances]);
 
@@ -109,28 +118,79 @@ export default function WalletHomeScreen() {
     setRefreshing(false);
   };
 
-  // Memoized data with dynamic icons based on color scheme
-  const assets = useMemo<Asset[]>(
-    () => [
-      {
-        id: "usdc",
-        name: "USDC",
-        balance: 0.5564,
-        usdValue: 0.55,
-        gain: 142500,
-        icon: "USDCIcon",
-      },
-      {
-        id: "usdt",
-        name: "USDT",
-        balance: 0.5564,
-        usdValue: 0.55,
-        gain: -5000,
-        icon: "USDTIcon",
-      },
-    ],
-    []
-  );
+  // Map API balances to assets with proper icons
+  const assets = useMemo<Asset[]>(() => {
+    if (!balances || !Array.isArray(balances) || balances.length === 0) {
+      // Return default tokens showing 0 balance
+      return [
+        {
+          id: "usdc",
+          name: "USDC",
+          balance: 0,
+          usdValue: 0,
+          gain: 0,
+          icon: "USDCIcon",
+        },
+        {
+          id: "usdt",
+          name: "USDT",
+          balance: 0,
+          usdValue: 0,
+          gain: 0,
+          icon: "USDTIcon",
+        },
+      ];
+    }
+
+    // Group balances by token (sum across all networks)
+    const grouped: {
+      [key: string]: { balance: number; usdValue: number; networks: string[] };
+    } = {};
+
+    balances.forEach((balance: any) => {
+      const symbol = (
+        balance.asset ||
+        balance.symbol ||
+        balance.currency ||
+        ""
+      ).toUpperCase();
+      const amount = parseFloat(balance.balance || balance.amount || 0);
+      const usdValue = parseFloat(
+        balance.usdValue || balance.usdBalance || balance.balanceUSD || amount
+      );
+      const network = balance.network || "unknown";
+
+      if (!grouped[symbol]) {
+        grouped[symbol] = { balance: 0, usdValue: 0, networks: [] };
+      }
+
+      grouped[symbol].balance += amount;
+      grouped[symbol].usdValue += usdValue;
+      grouped[symbol].networks.push(network);
+    });
+
+    // Convert grouped data to array
+    return Object.keys(grouped).map((symbol) => {
+      const data = grouped[symbol];
+
+      // Map symbol to icon
+      let icon = "USDCIcon";
+      if (symbol === "USDT") {
+        icon = "USDTIcon";
+      } else if (symbol === "USDC") {
+        icon = "USDCIcon";
+      }
+
+      return {
+        id: symbol.toLowerCase(),
+        name: symbol,
+        balance: data.balance,
+        usdValue: data.usdValue,
+        gain: 0, // Can be calculated if we have historical data
+        icon: icon,
+      };
+    });
+  }, [balances]);
 
   const actionButtons = useMemo<ActionButton[]>(
     () => [
@@ -351,7 +411,31 @@ export default function WalletHomeScreen() {
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.tokensScrollContent}
     >
-      <View style={styles.tokensList}>{assets.map(renderTokenItem)}</View>
+      {balancesLoading ? (
+        <View style={{ paddingVertical: 40, alignItems: "center" }}>
+          <ActivityIndicator size="large" color={COLORS.actionIcon} />
+          <Text style={{ color: COLORS.textSecondary, marginTop: 12 }}>
+            Loading balances...
+          </Text>
+        </View>
+      ) : assets.length > 0 ? (
+        <View style={styles.tokensList}>{assets.map(renderTokenItem)}</View>
+      ) : (
+        <View style={{ paddingVertical: 40, alignItems: "center" }}>
+          <Text style={{ color: COLORS.textSecondary, fontSize: 16 }}>
+            No tokens found
+          </Text>
+          <Text
+            style={{
+              color: COLORS.textTertiary,
+              marginTop: 8,
+              textAlign: "center",
+            }}
+          >
+            Your wallet balances will appear here
+          </Text>
+        </View>
+      )}
     </ScrollView>
   );
 

@@ -1,8 +1,8 @@
-// import { useProfile } from "@/contexts/ProfileContext";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -14,21 +14,32 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useProfile } from "../contexts/ProfileContext";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "../store";
+import { updateUsername } from "../store/authSlice";
 
 export default function UsernameScreen() {
   const [username, setUsername] = useState("");
   const router = useRouter();
-  const { setUsername: saveUsername } = useProfile();
+  const dispatch = useDispatch<any>();
+  const loading = useSelector((state: RootState) => state.auth.loading);
+  const currentUsername = useSelector(
+    (state: RootState) => state.auth.user?.username
+  );
 
-  const handleSaveUsername = () => {
+  const handleSaveUsername = async () => {
     if (!username.trim()) {
       Alert.alert("Error", "Please enter a username");
       return;
     }
 
-    saveUsername(username.trim());
-    router.back();
+    try {
+      await dispatch(updateUsername(username.trim())).unwrap();
+      Alert.alert("Success", "Username updated successfully");
+      router.back();
+    } catch (error: any) {
+      Alert.alert("Error", error || "Failed to update username");
+    }
   };
 
   const isSaveButtonDisabled = !username.trim();
@@ -85,19 +96,23 @@ export default function UsernameScreen() {
           <TouchableOpacity
             style={[
               styles.saveButton,
-              isSaveButtonDisabled && styles.saveButtonDisabled,
+              (isSaveButtonDisabled || loading) && styles.saveButtonDisabled,
             ]}
             onPress={handleSaveUsername}
-            disabled={isSaveButtonDisabled}
+            disabled={isSaveButtonDisabled || loading}
           >
-            <Text
-              style={[
-                styles.saveButtonText,
-                isSaveButtonDisabled && styles.saveButtonTextDisabled,
-              ]}
-            >
-              Add
-            </Text>
+            {loading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text
+                style={[
+                  styles.saveButtonText,
+                  isSaveButtonDisabled && styles.saveButtonTextDisabled,
+                ]}
+              >
+                {currentUsername ? "Update" : "Add"}
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

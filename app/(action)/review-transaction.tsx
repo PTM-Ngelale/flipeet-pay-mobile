@@ -1,11 +1,24 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
+import type { RootState } from "../store";
 
 export default function ReviewTransactionScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const [processing, setProcessing] = useState(false);
+  const token = useSelector((state: RootState) => state.auth.token);
+  const user = useSelector((state: RootState) => state.auth.user);
 
   const {
     payAmount,
@@ -14,17 +27,94 @@ export default function ReviewTransactionScreen() {
     receiveCurrency = "NGN",
     network = "Solana",
     exchangeRate = "1.5802",
+    walletAddress,
+    recipient,
+    recipientType, // 'wallet', 'email', or 'bank'
   } = params;
 
-  // Calculate transaction fee (you can modify this logic as needed)
+  // Calculate transaction fee (can be dynamic from API later)
   const transactionFee = "0.50";
-  const totalValue = parseFloat(payAmount).toFixed(6);
+  const totalValue = (
+    parseFloat(payAmount as string) + parseFloat(transactionFee)
+  ).toFixed(6);
 
-  const handleConfirm = () => {
-    // console.log("Transaction confirmed");
-    router.push("/(action)/success-screen");
-    // You can navigate to a success screen or back to swap
-    // router.push("/transaction-success");
+  const handleConfirm = async () => {
+    if (!token) {
+      Alert.alert("Error", "Please log in to send funds");
+      return;
+    }
+
+    setProcessing(true);
+
+    try {
+      // Prepare transaction payload based on recipient type
+      let endpoint = "";
+      let payload: any = {
+        amount: parseFloat(payAmount as string),
+        asset: payCurrency,
+        network: (network as string).toLowerCase(),
+      };
+
+      if (recipientType === "wallet" && walletAddress) {
+        endpoint = "/transactions/send";
+        payload.recipientAddress = walletAddress;
+      } else if (recipientType === "email" && recipient) {
+        endpoint = "/transactions/send-to-email";
+        payload.recipientEmail = recipient;
+      } else if (recipientType === "bank") {
+        endpoint = "/ramp/sell";
+        // For bank transfer/sell, include bank account details
+        const { bankName, bankCode, accountNumber, accountName } = params;
+        payload.currency = receiveCurrency; // Fiat currency
+        payload.bankAccount = {
+          bankName,
+          bankCode,
+          accountNumber,
+          accountName,
+        };
+      }
+
+      console.log("Sending transaction:", payload);
+
+      const response = await fetch(
+        `https://api.pay.flipeet.io/api/v1${endpoint}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await response.json();
+      console.log("Transaction response:", data);
+
+      if (response.ok) {
+        router.replace({
+          pathname: "/(action)/success-screen",
+          params: {
+            transactionId: data.data?.id || data.data?.transactionId || "N/A",
+            amount: payAmount,
+            currency: payCurrency,
+          },
+        });
+      } else {
+        Alert.alert(
+          "Transaction Failed",
+          data.message || "Failed to process transaction. Please try again."
+        );
+      }
+    } catch (error: any) {
+      console.error("Transaction error:", error);
+      Alert.alert(
+        "Error",
+        "Failed to send transaction. Please check your connection and try again."
+      );
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -71,7 +161,9 @@ export default function ReviewTransactionScreen() {
 
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Recipient</Text>
-              <Text style={styles.detailValue}>Zenith PLC -226••••742</Text>
+              <Text style={styles.detailValue}>
+                {recipient || walletAddress || "N/A"}
+              </Text>
             </View>
           </View>
 
@@ -106,10 +198,18 @@ export default function ReviewTransactionScreen() {
 
           {/* Confirm Button */}
           <TouchableOpacity
-            style={styles.confirmButton}
+            style={[
+              styles.confirmButton,
+              processing && styles.confirmButtonDisabled,
+            ]}
             onPress={handleConfirm}
+            disabled={processing}
           >
-            <Text style={styles.confirmButtonText}>Confirm Swap</Text>
+            {processing ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.confirmButtonText}>Confirm Transaction</Text>
+            )}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -181,6 +281,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
     marginTop: "auto",
+  },
+  confirmButtonDisabled: {
+    opacity: 0.6,
   },
   confirmButtonText: {
     color: "#FFFFFF",

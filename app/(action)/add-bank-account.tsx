@@ -1,7 +1,9 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,144 +12,59 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch, useSelector } from "react-redux";
 import { useBankAccount } from "../contexts/BankAccountContext";
-
-const NIGERIAN_BANKS = [
-  { id: 1, name: "Access Bank", code: "044" },
-  { id: 2, name: "Citibank", code: "023" },
-  { id: 3, name: "Diamond Bank", code: "063" },
-  { id: 4, name: "Ecobank Nigeria", code: "050" },
-  { id: 5, name: "Fidelity Bank", code: "070" },
-  { id: 6, name: "First Bank of Nigeria", code: "011" },
-  { id: 7, name: "First City Monument Bank", code: "214" },
-  { id: 8, name: "Guaranty Trust Bank", code: "058" },
-  { id: 9, name: "Heritage Bank", code: "030" },
-  { id: 10, name: "Keystone Bank", code: "082" },
-  { id: 11, name: "Polaris Bank", code: "076" },
-  { id: 12, name: "Providus Bank", code: "101" },
-  { id: 13, name: "Stanbic IBTC Bank", code: "221" },
-  { id: 14, name: "Standard Chartered Bank", code: "068" },
-  { id: 15, name: "Sterling Bank", code: "232" },
-  { id: 16, name: "Suntrust Bank", code: "100" },
-  { id: 17, name: "Union Bank of Nigeria", code: "032" },
-  { id: 18, name: "United Bank for Africa", code: "033" },
-  { id: 19, name: "Unity Bank", code: "215" },
-  { id: 20, name: "Wema Bank", code: "035" },
-  { id: 21, name: "Zenith Bank", code: "057" },
-];
-
-const DUMMY_BANK_ACCOUNTS = [
-  {
-    bankId: 1,
-    bankName: "Access Bank",
-    accountNumber: "1218549167",
-    accountName: "Precious Ngelale",
-  },
-  {
-    bankId: 1,
-    bankName: "Access Bank",
-    accountNumber: "2345678901",
-    accountName: "Chinedu Okoro",
-  },
-  {
-    bankId: 1,
-    bankName: "Access Bank",
-    accountNumber: "3456789012",
-    accountName: "Aisha Bello",
-  },
-
-  {
-    bankId: 8,
-    bankName: "Guaranty Trust Bank",
-    accountNumber: "4567890123",
-    accountName: "Emeka Nwosu",
-  },
-  {
-    bankId: 8,
-    bankName: "Guaranty Trust Bank",
-    accountNumber: "631004789",
-    accountName: "Heritage Chibugwu Egwim",
-  },
-
-  {
-    bankId: 18,
-    bankName: "United Bank for Africa",
-    accountNumber: "6789012345",
-    accountName: "Oluwatobi Adekunle",
-  },
-  {
-    bankId: 18,
-    bankName: "United Bank for Africa",
-    accountNumber: "7890123456",
-    accountName: "Grace Okafor",
-  },
-
-  {
-    bankId: 21,
-    bankName: "Zenith Bank",
-    accountNumber: "2268654742",
-    accountName: "Heritage Egwim",
-  },
-  {
-    bankId: 21,
-    bankName: "Zenith Bank",
-    accountNumber: "9012345678",
-    accountName: "Jennifer Musa",
-  },
-
-  {
-    bankId: 6,
-    bankName: "First Bank of Nigeria",
-    accountNumber: "1122334455",
-    accountName: "Samuel Johnson",
-  },
-  {
-    bankId: 6,
-    bankName: "First Bank of Nigeria",
-    accountNumber: "2233445566",
-    accountName: "Blessing Okon",
-  },
-
-  {
-    bankId: 5,
-    bankName: "Fidelity Bank",
-    accountNumber: "3344556677",
-    accountName: "Michael Eze",
-  },
-  {
-    bankId: 5,
-    bankName: "Fidelity Bank",
-    accountNumber: "4455667788",
-    accountName: "Patience Aliyu",
-  },
-
-  {
-    bankId: 17,
-    bankName: "Union Bank of Nigeria",
-    accountNumber: "5566778899",
-    accountName: "Collins Ibe",
-  },
-  {
-    bankId: 17,
-    bankName: "Union Bank of Nigeria",
-    accountNumber: "6677889900",
-    accountName: "Ruth Adebayo",
-  },
-];
+import type { AppDispatch, RootState } from "../store";
+import { fetchBanks, verifyBankAccount } from "../store/bankAccountSlice";
 
 export default function AddBankAccount() {
   const router = useRouter();
-  const [selectedBank, setSelectedBank] = useState(null);
+  const dispatch = useDispatch<AppDispatch>();
+  const [selectedBank, setSelectedBank] = useState<any>(null);
   const [accountNumber, setAccountNumber] = useState("");
   const [showBankList, setShowBankList] = useState(false);
   const [accountName, setAccountName] = useState("");
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [savedAccount, setSavedAccount] = useState(null);
+
   const { addBankAccount } = useBankAccount();
+  const banks = useSelector((state: RootState) => state.bankAccount.banks);
+  const banksLoading = useSelector(
+    (state: RootState) => state.bankAccount.banksLoading
+  );
+  const verifying = useSelector(
+    (state: RootState) => state.bankAccount.verifying
+  );
+  const token = useSelector((state: RootState) => state.auth.token);
+
+  // Fetch banks from API on mount
+  useEffect(() => {
+    if (token && banks.length === 0 && !banksLoading) {
+      console.log("[AddBankAccount] Dispatching fetchBanks");
+      dispatch(fetchBanks())
+        .unwrap()
+        .then((banks) => {
+          console.log("[AddBankAccount] Banks loaded:", banks.length);
+        })
+        .catch((error) => {
+          console.error("[AddBankAccount] Failed to load banks:", error);
+          Alert.alert(
+            "Failed to Load Banks",
+            `Could not fetch bank list: ${error}. Please check your internet connection and try again.`,
+            [
+              { text: "OK" },
+              {
+                text: "Retry",
+                onPress: () => dispatch(fetchBanks()),
+              },
+            ]
+          );
+        });
+    }
+  }, [token, dispatch]);
 
   // Filter banks based on search query
-  const filteredBanks = NIGERIAN_BANKS.filter((bank) =>
+  const filteredBanks = banks.filter((bank) =>
     bank.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -176,19 +93,41 @@ export default function AddBankAccount() {
   };
 
   // Function to lookup account name based on bank and account number
-  const lookupAccountName = (bankId, accNumber) => {
-    // Find matching account in dummy data
-    const matchedAccount = DUMMY_BANK_ACCOUNTS.find(
-      (account) =>
-        account.bankId === bankId && account.accountNumber === accNumber
-    );
+  const lookupAccountName = async (bankId: number, accNumber: string) => {
+    if (!token) {
+      setError("Please log in to verify account");
+      return;
+    }
 
-    if (matchedAccount) {
-      setAccountName(matchedAccount.accountName);
-      setError("");
-    } else {
-      setAccountName("");
-      setError("Account number not found for selected bank");
+    setError("");
+    setAccountName("");
+
+    try {
+      const bank = banks.find((b) => b.id === bankId);
+      if (!bank) {
+        setError("Bank not found");
+        return;
+      }
+
+      const result = await dispatch(
+        verifyBankAccount({
+          accountNumber: accNumber,
+          bankCode: bank.code,
+          bankName: bank.name,
+          currency: "NGN",
+        })
+      ).unwrap();
+
+      if (result.accountName) {
+        setAccountName(result.accountName);
+        setError("");
+      } else {
+        setError("Account name not found");
+      }
+    } catch (err: any) {
+      console.error("Account verification error:", err);
+      const errorMsg = err.message || "Failed to verify account";
+      setError(`${errorMsg}. You can enter the account name manually below.`);
     }
   };
 
@@ -246,6 +185,23 @@ export default function AddBankAccount() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
+            {/* Debug info - remove this after testing */}
+            {__DEV__ && (
+              <View
+                style={{
+                  padding: 10,
+                  backgroundColor: "#f0f0f0",
+                  marginBottom: 10,
+                  borderRadius: 8,
+                }}
+              >
+                <Text style={{ fontSize: 12, color: "#333" }}>
+                  🔍 Debug: {banks.length} banks loaded | Loading:{" "}
+                  {banksLoading ? "Yes" : "No"} | Token: {token ? "✓" : "✗"}
+                </Text>
+              </View>
+            )}
+
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Bank Name</Text>
               <TouchableOpacity
@@ -302,7 +258,38 @@ export default function AddBankAccount() {
                     nestedScrollEnabled={true}
                     showsVerticalScrollIndicator={true}
                   >
-                    {filteredBanks.length > 0 ? (
+                    {banksLoading ? (
+                      <View style={{ padding: 20, alignItems: "center" }}>
+                        <ActivityIndicator size="small" color="#4A9DFF" />
+                        <Text style={{ color: "#757B85", marginTop: 8 }}>
+                          Loading banks...
+                        </Text>
+                      </View>
+                    ) : banks.length === 0 && !banksLoading ? (
+                      <View style={styles.noResults}>
+                        <Text style={styles.noResultsText}>
+                          No banks available
+                        </Text>
+                        <TouchableOpacity
+                          style={{
+                            marginTop: 10,
+                            padding: 10,
+                            backgroundColor: "#4A9DFF",
+                            borderRadius: 8,
+                          }}
+                          onPress={() => {
+                            console.log("[AddBankAccount] Manual retry");
+                            dispatch(fetchBanks());
+                          }}
+                        >
+                          <Text
+                            style={{ color: "#FFFFFF", textAlign: "center" }}
+                          >
+                            Retry Loading Banks
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : filteredBanks.length > 0 ? (
                       filteredBanks.map((bank) => (
                         <TouchableOpacity
                           key={bank.id}
@@ -323,7 +310,9 @@ export default function AddBankAccount() {
                       ))
                     ) : (
                       <View style={styles.noResults}>
-                        <Text style={styles.noResultsText}>No banks found</Text>
+                        <Text style={styles.noResultsText}>
+                          No banks match your search
+                        </Text>
                       </View>
                     )}
                   </ScrollView>
@@ -347,8 +336,15 @@ export default function AddBankAccount() {
               </View>
             </View>
 
-            {/* Account Name Display */}
-            {accountName ? (
+            {/* Account Verification Status */}
+            {verifying ? (
+              <View style={styles.fieldContainer}>
+                <View style={styles.verifyingContainer}>
+                  <ActivityIndicator size="small" color="#4A9DFF" />
+                  <Text style={styles.verifyingText}>Verifying account...</Text>
+                </View>
+              </View>
+            ) : accountName ? (
               <View style={styles.fieldContainer}>
                 <View style={styles.accountNameDisplay}>
                   <Text style={styles.accountNameText}>
@@ -511,6 +507,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 16,
     color: "#FFFFFF",
+    fontSize: 16,
+  },
+  verifyingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#1A1A1A",
+    borderWidth: 1,
+    borderColor: "#333333",
+    borderRadius: 8,
+    padding: 16,
+    gap: 12,
+  },
+  verifyingText: {
+    color: "#4A9DFF",
     fontSize: 16,
   },
   accountNameDisplay: {

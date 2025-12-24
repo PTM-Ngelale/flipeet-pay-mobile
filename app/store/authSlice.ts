@@ -1,5 +1,5 @@
-import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { apiGet, apiPost } from "../constants/api";
 
 type AuthState = {
@@ -8,7 +8,11 @@ type AuthState = {
   email?: string | null;
   user?: any | null;
   token?: string | null;
-  pin?: string | null; // stored pin (demo only)
+  pin?: string | null;
+  balances?: any[] | null;
+  transactions?: any[] | null;
+  balancesLoading?: boolean;
+  transactionsLoading?: boolean;
 };
 
 const initialState: AuthState = {
@@ -18,6 +22,10 @@ const initialState: AuthState = {
   user: null,
   token: null,
   pin: null,
+  balances: null,
+  transactions: null,
+  balancesLoading: false,
+  transactionsLoading: false,
 };
 
 export const requestOtp = createAsyncThunk(
@@ -121,6 +129,172 @@ export const fetchUserBalances = createAsyncThunk(
   }
 );
 
+export const fetchTransactions = createAsyncThunk(
+  "auth/fetchTransactions",
+  async (_, thunkAPI: any) => {
+    try {
+      const state = thunkAPI.getState();
+      const { token, user } = state.auth;
+
+      if (!token) {
+        return thunkAPI.rejectWithValue("No authentication token");
+      }
+
+      if (!user?.id && !user?.userId) {
+        return thunkAPI.rejectWithValue("No user ID found");
+      }
+
+      const userId = user.id || user.userId;
+      const { apiGetAuth } = await import("../constants/api");
+      const data = await apiGetAuth(`/user/${userId}/transactions`, token);
+      return data;
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue(
+        err.message || "Failed to fetch transactions"
+      );
+    }
+  }
+);
+
+export const updateUsername = createAsyncThunk(
+  "auth/updateUsername",
+  async (username: string, thunkAPI: any) => {
+    try {
+      const state = thunkAPI.getState();
+      const { token, user } = state.auth;
+
+      if (!token) {
+        return thunkAPI.rejectWithValue("No authentication token");
+      }
+
+      const response = await fetch(
+        "https://api.pay.flipeet.io/api/v1/user/profile",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ username }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return thunkAPI.rejectWithValue(
+          errorData.message || "Failed to update username"
+        );
+      }
+
+      const data = await response.json();
+      return { username };
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue(
+        err.message || "Failed to update username"
+      );
+    }
+  }
+);
+
+export const fetchUserProfile = createAsyncThunk(
+  "auth/fetchUserProfile",
+  async (_, thunkAPI: any) => {
+    try {
+      const state = thunkAPI.getState();
+      const { token } = state.auth;
+
+      if (!token) {
+        return thunkAPI.rejectWithValue("No authentication token");
+      }
+
+      const { apiGetAuth } = await import("../constants/api");
+      const data = await apiGetAuth("/user/profile", token);
+      return data;
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue(err.message || "Failed to fetch profile");
+    }
+  }
+);
+
+export const changePin = createAsyncThunk(
+  "auth/changePin",
+  async (
+    { oldPin, newPin }: { oldPin: string; newPin: string },
+    thunkAPI: any
+  ) => {
+    try {
+      const state = thunkAPI.getState();
+      const { token } = state.auth;
+
+      if (!token) {
+        return thunkAPI.rejectWithValue("No authentication token");
+      }
+
+      const response = await fetch(
+        "https://api.pay.flipeet.io/api/v1/user/pin",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ oldPin, newPin }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return thunkAPI.rejectWithValue(
+          errorData.message || "Failed to change PIN"
+        );
+      }
+
+      const data = await response.json();
+      return { success: true };
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue(err.message || "Failed to change PIN");
+    }
+  }
+);
+
+export const changeEmail = createAsyncThunk(
+  "auth/changeEmail",
+  async (newEmail: string, thunkAPI: any) => {
+    try {
+      const state = thunkAPI.getState();
+      const { token } = state.auth;
+
+      if (!token) {
+        return thunkAPI.rejectWithValue("No authentication token");
+      }
+
+      const response = await fetch(
+        "https://api.pay.flipeet.io/api/v1/user/email",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ email: newEmail }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        return thunkAPI.rejectWithValue(
+          errorData.message || "Failed to change email"
+        );
+      }
+
+      const data = await response.json();
+      return { email: newEmail };
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue(err.message || "Failed to change email");
+    }
+  }
+);
+
 // Load authentication state from AsyncStorage
 export const loadAuthState = createAsyncThunk(
   "auth/loadAuthState",
@@ -133,7 +307,10 @@ export const loadAuthState = createAsyncThunk(
 
       if (token && userJson) {
         const user = JSON.parse(userJson);
-        console.log("Auth state loaded successfully. Token:", token.substring(0, 20) + "...");
+        console.log(
+          "Auth state loaded successfully. Token:",
+          token.substring(0, 20) + "..."
+        );
         return { token, user, email };
       }
 
@@ -169,6 +346,8 @@ const authSlice = createSlice({
       state.pin = null;
       state.error = null;
       state.loading = false;
+      state.balances = [];
+      state.transactions = [];
       // Clear AsyncStorage
       AsyncStorage.multiRemove(["auth_token", "auth_user", "auth_email"]);
     },
@@ -216,7 +395,7 @@ const authSlice = createSlice({
         try {
           const data = payload.data || {};
           const credentials = data.credentials || {};
-          
+
           state.user = payload.user || data.user || null;
           state.token =
             credentials.accessToken ||
@@ -228,7 +407,10 @@ const authSlice = createSlice({
 
           // Persist to AsyncStorage
           if (state.token) {
-            console.log("Saving token to AsyncStorage:", state.token.substring(0, 20) + "...");
+            console.log(
+              "Saving token to AsyncStorage:",
+              state.token.substring(0, 20) + "..."
+            );
             AsyncStorage.setItem("auth_token", state.token);
           } else {
             console.warn("No token found in response to save");
@@ -310,6 +492,119 @@ const authSlice = createSlice({
       })
       .addCase(loadAuthState.rejected, (state: any) => {
         state.loading = false;
+      })
+      .addCase(fetchUserBalances.pending, (state: any) => {
+        state.balancesLoading = true;
+      })
+      .addCase(fetchUserBalances.fulfilled, (state: any, action: any) => {
+        state.balancesLoading = false;
+        const payload = action.payload || {};
+        console.log("Balances API response:", JSON.stringify(payload, null, 2));
+
+        // Handle nested structure: { balances: { network: { token: amount } } }
+        if (payload.balances && typeof payload.balances === "object") {
+          // Flatten nested structure into array
+          const flatBalances: any[] = [];
+          const networks = payload.balances;
+
+          Object.keys(networks).forEach((network) => {
+            const tokens = networks[network];
+            Object.keys(tokens).forEach((token) => {
+              const balance = tokens[token];
+              // Only include tokens with balance > 0 or always include for display
+              flatBalances.push({
+                network: network,
+                asset: token.toUpperCase(),
+                balance: balance,
+                usdValue: balance, // Assuming 1:1 for stablecoins, can be improved
+              });
+            });
+          });
+
+          state.balances = flatBalances;
+          console.log("Flattened balances:", flatBalances);
+        } else {
+          state.balances = payload.data || payload || [];
+        }
+      })
+      .addCase(fetchUserBalances.rejected, (state: any, action: any) => {
+        state.balancesLoading = false;
+        console.error("Failed to fetch balances:", action.payload);
+      })
+      .addCase(fetchTransactions.pending, (state: any) => {
+        state.transactionsLoading = true;
+      })
+      .addCase(fetchTransactions.fulfilled, (state: any, action: any) => {
+        state.transactionsLoading = false;
+        const payload = action.payload || {};
+        // Handle different response structures
+        state.transactions =
+          payload.data || payload.transactions || payload || [];
+        console.log("Transactions fetched:", state.transactions);
+      })
+      .addCase(fetchTransactions.rejected, (state: any, action: any) => {
+        state.transactionsLoading = false;
+        console.error("Failed to fetch transactions:", action.payload);
+      })
+      .addCase(updateUsername.pending, (state: any) => {
+        state.loading = true;
+      })
+      .addCase(updateUsername.fulfilled, (state: any, action: any) => {
+        state.loading = false;
+        // Update username in user object
+        if (state.user) {
+          state.user.username = action.payload.username;
+          AsyncStorage.setItem("auth_user", JSON.stringify(state.user));
+        }
+        console.log("Username updated:", action.payload.username);
+      })
+      .addCase(updateUsername.rejected, (state: any, action: any) => {
+        state.loading = false;
+        state.error = action.payload || "Failed to update username";
+        console.error("Failed to update username:", action.payload);
+      })
+      .addCase(fetchUserProfile.pending, (state: any) => {
+        state.loading = true;
+      })
+      .addCase(fetchUserProfile.fulfilled, (state: any, action: any) => {
+        state.loading = false;
+        const payload = action.payload || {};
+        // Update user profile data
+        if (payload.data) {
+          state.user = { ...state.user, ...payload.data };
+          AsyncStorage.setItem("auth_user", JSON.stringify(state.user));
+        }
+        console.log("User profile fetched:", payload.data);
+      })
+      .addCase(fetchUserProfile.rejected, (state: any, action: any) => {
+        state.loading = false;
+        console.error("Failed to fetch profile:", action.payload);
+      })
+      .addCase(changePin.pending, (state: any) => {
+        state.loading = true;
+      })
+      .addCase(changePin.fulfilled, (state: any) => {
+        state.loading = false;
+        console.log("PIN changed successfully");
+      })
+      .addCase(changePin.rejected, (state: any, action: any) => {
+        state.loading = false;
+        state.error = action.payload || "Failed to change PIN";
+        console.error("Failed to change PIN:", action.payload);
+      })
+      .addCase(changeEmail.pending, (state: any) => {
+        state.loading = true;
+      })
+      .addCase(changeEmail.fulfilled, (state: any, action: any) => {
+        state.loading = false;
+        state.email = action.payload.email;
+        AsyncStorage.setItem("auth_email", action.payload.email);
+        console.log("Email changed successfully:", action.payload.email);
+      })
+      .addCase(changeEmail.rejected, (state: any, action: any) => {
+        state.loading = false;
+        state.error = action.payload || "Failed to change email";
+        console.error("Failed to change email:", action.payload);
       });
   },
 });

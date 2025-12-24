@@ -1,12 +1,16 @@
 import { useCurrency } from "@/app/contexts/CurrencySelectorContext";
 import { useFavoriteBanks } from "@/app/contexts/FavoriteBanksContext";
 import { useToken } from "@/app/contexts/TokenContext";
+import { AppDispatch, RootState } from "@/app/store";
+import { fetchBanks, verifyBankAccount } from "@/app/store/bankAccountSlice";
 import NGNFlag from "@/assets/images/ngn-flag.svg";
 import StarIcon from "@/assets/images/star-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -18,126 +22,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-
-const NIGERIAN_BANKS = [
-  { id: 1, name: "Access Bank", code: "044" },
-  { id: 2, name: "Citibank", code: "023" },
-  { id: 3, name: "Diamond Bank", code: "063" },
-  { id: 4, name: "Ecobank Nigeria", code: "050" },
-  { id: 5, name: "Fidelity Bank", code: "070" },
-  { id: 6, name: "First Bank of Nigeria", code: "011" },
-  { id: 7, name: "First City Monument Bank", code: "214" },
-  { id: 8, name: "Guaranty Trust Bank", code: "058" },
-  { id: 9, name: "Heritage Bank", code: "030" },
-  { id: 10, name: "Keystone Bank", code: "082" },
-  { id: 11, name: "Polaris Bank", code: "076" },
-  { id: 12, name: "Providus Bank", code: "101" },
-  { id: 13, name: "Stanbic IBTC Bank", code: "221" },
-  { id: 14, name: "Standard Chartered Bank", code: "068" },
-  { id: 15, name: "Sterling Bank", code: "232" },
-  { id: 16, name: "Suntrust Bank", code: "100" },
-  { id: 17, name: "Union Bank of Nigeria", code: "032" },
-  { id: 18, name: "United Bank for Africa", code: "033" },
-  { id: 19, name: "Unity Bank", code: "215" },
-  { id: 20, name: "Wema Bank", code: "035" },
-  { id: 21, name: "Zenith Bank", code: "057" },
-];
-
-const DUMMY_BANK_ACCOUNTS = [
-  {
-    bankId: 1,
-    bankName: "Access Bank",
-    accountNumber: "1218549167",
-    accountName: "Precious Ngelale",
-  },
-  {
-    bankId: 1,
-    bankName: "Access Bank",
-    accountNumber: "2345678901",
-    accountName: "Chinedu Okoro",
-  },
-  {
-    bankId: 1,
-    bankName: "Access Bank",
-    accountNumber: "3456789012",
-    accountName: "Aisha Bello",
-  },
-  {
-    bankId: 8,
-    bankName: "Guaranty Trust Bank",
-    accountNumber: "4567890123",
-    accountName: "Emeka Nwosu",
-  },
-  {
-    bankId: 8,
-    bankName: "Guaranty Trust Bank",
-    accountNumber: "631004789",
-    accountName: "Heritage Chibugwu Egwim",
-  },
-  {
-    bankId: 18,
-    bankName: "United Bank for Africa",
-    accountNumber: "6789012345",
-    accountName: "Oluwatobi Adekunle",
-  },
-  {
-    bankId: 18,
-    bankName: "United Bank for Africa",
-    accountNumber: "7890123456",
-    accountName: "Grace Okafor",
-  },
-  {
-    bankId: 21,
-    bankName: "Zenith Bank",
-    accountNumber: "2268654742",
-    accountName: "Heritage Egwim",
-  },
-  {
-    bankId: 21,
-    bankName: "Zenith Bank",
-    accountNumber: "9012345678",
-    accountName: "Jennifer Musa",
-  },
-  {
-    bankId: 6,
-    bankName: "First Bank of Nigeria",
-    accountNumber: "1122334455",
-    accountName: "Samuel Johnson",
-  },
-  {
-    bankId: 6,
-    bankName: "First Bank of Nigeria",
-    accountNumber: "2233445566",
-    accountName: "Blessing Okon",
-  },
-  {
-    bankId: 5,
-    bankName: "Fidelity Bank",
-    accountNumber: "3344556677",
-    accountName: "Michael Eze",
-  },
-  {
-    bankId: 5,
-    bankName: "Fidelity Bank",
-    accountNumber: "4455667788",
-    accountName: "Patience Aliyu",
-  },
-  {
-    bankId: 17,
-    bankName: "Union Bank of Nigeria",
-    accountNumber: "5566778899",
-    accountName: "Collins Ibe",
-  },
-  {
-    bankId: 17,
-    bankName: "Union Bank of Nigeria",
-    accountNumber: "6677889900",
-    accountName: "Ruth Adebayo",
-  },
-];
+import { useDispatch, useSelector } from "react-redux";
 
 const BankComponent = () => {
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
   const [payAmount, setPayAmount] = useState("");
   const [receiveAmount, setReceiveAmount] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
@@ -152,6 +41,13 @@ const BankComponent = () => {
   const [accountName, setAccountName] = useState("");
   const { selectedToken } = useToken();
   const { savedCurrency } = useCurrency();
+  const balances = useSelector((state: RootState) => state.auth.balances);
+  const token = useSelector((state: RootState) => state.auth.token);
+  const banks = useSelector((state: RootState) => state.bankAccount.banks);
+  const banksLoading = useSelector((state: RootState) => state.bankAccount.banksLoading);
+  const verifying = useSelector((state: RootState) => state.bankAccount.verifying);
+  const [exchangeRate, setExchangeRate] = useState<number | null>(null);
+  const [loadingRate, setLoadingRate] = useState<boolean>(false);
   const {
     addFavoriteBank,
     removeFavoriteBank,
@@ -160,6 +56,43 @@ const BankComponent = () => {
     selectedBankFromFavorite,
     clearSelectedBankFromFavorite,
   } = useFavoriteBanks();
+
+  // Fetch banks on mount
+  useEffect(() => {
+    if (token && banks.length === 0 && !banksLoading) {
+      console.log("[BankComponent] Dispatching fetchBanks");
+      dispatch(fetchBanks())
+        .unwrap()
+        .then((banks) => {
+          console.log("[BankComponent] Banks loaded:", banks.length);
+        })
+        .catch((error) => {
+          console.error("[BankComponent] Failed to load banks:", error);
+          Alert.alert(
+            "Failed to Load Banks",
+            `Could not fetch bank list: ${error}. Please check your internet connection.`,
+            [
+              { text: "OK" },
+              {
+                text: "Retry",
+                onPress: () => dispatch(fetchBanks()),
+              },
+            ]
+          );
+        });
+    }
+  }, [token, dispatch, banks.length, banksLoading]);
+
+  // Get balance for Solana tokens only
+  const getTokenBalance = (symbol: string) => {
+    if (!balances || !Array.isArray(balances)) return 0;
+    const balance = balances.find(
+      (b: any) => b.token === symbol && b.network === "Solana"
+    );
+    return balance?.balance || 0;
+  };
+
+  const tokenBalance = getTokenBalance(selectedToken?.symbol || "USDC");
 
   // Handle selected bank from favorites
   useEffect(() => {
@@ -171,7 +104,7 @@ const BankComponent = () => {
       setAccountNumber(selectedAccountNumber);
 
       // Find and set the corresponding bank
-      const bank = NIGERIAN_BANKS.find((b) => b.name === bankName);
+      const bank = banks.find((b) => b.name === bankName);
       if (bank) {
         setSelectedBank(bank);
       }
@@ -179,7 +112,7 @@ const BankComponent = () => {
       // Clear the selected bank from favorites
       clearSelectedBankFromFavorite();
     }
-  }, [selectedBankFromFavorite, clearSelectedBankFromFavorite]);
+  }, [selectedBankFromFavorite, clearSelectedBankFromFavorite, banks]);
 
   // Check if current account number is already in favorites when it changes
   useEffect(() => {
@@ -192,17 +125,32 @@ const BankComponent = () => {
 
   // Validate account number when bank or account number changes
   useEffect(() => {
-    if (selectedBank && accountNumber) {
-      const matchedAccount = DUMMY_BANK_ACCOUNTS.find(
-        (account) =>
-          account.bankId === selectedBank.id &&
-          account.accountNumber === accountNumber
-      );
-      setAccountName(matchedAccount?.accountName || "");
-    } else {
-      setAccountName("");
-    }
-  }, [selectedBank, accountNumber]);
+    const verifyAccount = async () => {
+      if (selectedBank && accountNumber.length === 10 && token) {
+        try {
+          const result = await dispatch(
+            verifyBankAccount({
+              accountNumber,
+              bankCode: selectedBank.code,
+              bankName: selectedBank.name,
+              currency: "NGN",
+            })
+          ).unwrap();
+
+          if (result.accountName) {
+            setAccountName(result.accountName);
+          }
+        } catch (error) {
+          console.error("Account verification failed:", error);
+          setAccountName("");
+        }
+      } else {
+        setAccountName("");
+      }
+    };
+
+    verifyAccount();
+  }, [selectedBank, accountNumber, dispatch, token]);
 
   const handleAccountNumberChange = (number: string) => {
     // Only allow numbers
@@ -238,13 +186,52 @@ const BankComponent = () => {
     setBankSearchQuery("");
   };
 
-  const filteredBanks = NIGERIAN_BANKS.filter((bank) =>
+  const filteredBanks = banks.filter((bank) =>
     bank.name.toLowerCase().includes(bankSearchQuery.toLowerCase())
   );
 
-  const exchangeRate = 1.5802;
-  const dailyLimit = 1000;
-  const usedLimit = 0;
+  // Fetch exchange rate from API
+  useEffect(() => {
+    const fetchExchangeRate = async () => {
+      if (!token) {
+        console.log("No auth token available");
+        return;
+      }
+
+      try {
+        setLoadingRate(true);
+        const asset = selectedToken?.symbol || "USDC";
+        const currency = savedCurrency || "NGN";
+        const amount = 1;
+        const provider = "bread";
+
+        const url = `https://api.pay.flipeet.io/api/v1/ramp/rate?amount=${amount}&asset=${asset}&currency=${currency}&provider=${provider}`;
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const rate = data.data?.rate;
+          setExchangeRate(rate);
+          console.log("Exchange rate fetched:", rate);
+        } else {
+          console.log("Failed to fetch exchange rate");
+        }
+      } catch (error) {
+        console.error("Error fetching exchange rate:", error);
+      } finally {
+        setLoadingRate(false);
+      }
+    };
+
+    fetchExchangeRate();
+  }, [token, selectedToken?.symbol, savedCurrency]);
 
   const handlePayAmountChange = (text: string) => {
     const numericValue = text.replace(/[^0-9.]/g, "");
@@ -275,14 +262,19 @@ const BankComponent = () => {
   };
 
   const handleHalf = () => {
-    const halfBalance = (0.00678 / 2).toString();
+    const halfBalance = (tokenBalance / 2).toFixed(6);
     setPayAmount(halfBalance);
-    setReceiveAmount((parseFloat(halfBalance) * exchangeRate).toFixed(2));
+    if (exchangeRate) {
+      setReceiveAmount((parseFloat(halfBalance) * exchangeRate).toFixed(2));
+    }
   };
 
   const handleMax = () => {
-    setPayAmount("0.00678");
-    setReceiveAmount((0.00678 * exchangeRate).toFixed(2));
+    const maxBalance = tokenBalance.toFixed(6);
+    setPayAmount(maxBalance);
+    if (exchangeRate) {
+      setReceiveAmount((tokenBalance * exchangeRate).toFixed(2));
+    }
   };
 
   const handleSync = () => {
@@ -303,11 +295,14 @@ const BankComponent = () => {
         params: {
           payAmount,
           receiveAmount,
-          payCurrency: "USDC",
-          receiveCurrency: "NGN",
-          network: "Solana",
-          exchangeRate: exchangeRate.toString(),
+          payCurrency: selectedToken?.symbol || "USDC",
+          receiveCurrency: savedCurrency || "NGN",
+          network: "Solana", // Only Solana supported
+          exchangeRate: exchangeRate ? exchangeRate.toString() : "0",
+          recipient: `${accountName} - ${accountNumber}`,
+          recipientType: "bank",
           bankName: selectedBank.name,
+          bankCode: selectedBank.code,
           accountNumber,
           accountName,
         },
@@ -451,7 +446,15 @@ const BankComponent = () => {
                       style={styles.bankList}
                       nestedScrollEnabled={true}
                     >
-                      {filteredBanks.map((bank) => (
+                      {banksLoading ? (
+                        <View style={{ padding: 20, alignItems: "center" }}>
+                          <ActivityIndicator size="small" color="#4A9DFF" />
+                          <Text style={{ color: "#757B85", marginTop: 8 }}>
+                            Loading banks...
+                          </Text>
+                        </View>
+                      ) : filteredBanks.length > 0 ? (
+                        filteredBanks.map((bank) => (
                         <TouchableOpacity
                           key={bank.id}
                           style={[
@@ -478,7 +481,12 @@ const BankComponent = () => {
                             />
                           )}
                         </TouchableOpacity>
-                      ))}
+                        ))
+                      ) : (
+                        <View style={{ padding: 20, alignItems: "center" }}>
+                          <Text style={{ color: "#757B85" }}>No banks found</Text>
+                        </View>
+                      )}
                     </ScrollView>
                   </View>
                 )}
@@ -520,8 +528,16 @@ const BankComponent = () => {
                   keyboardType="numeric"
                 />
 
+                {/* Verifying State */}
+                {verifying && (
+                  <View style={styles.accountNameContainer}>
+                    <ActivityIndicator size="small" color="#4A9DFF" />
+                    <Text style={styles.accountNameText}>Verifying account...</Text>
+                  </View>
+                )}
+
                 {/* Account Name Display */}
-                {accountName && (
+                {!verifying && accountName && (
                   <View style={styles.accountNameContainer}>
                     <Ionicons
                       name="checkmark-circle"
@@ -533,7 +549,7 @@ const BankComponent = () => {
                 )}
 
                 {/* Validation Error */}
-                {selectedBank && accountNumber && !accountName && (
+                {!verifying && selectedBank && accountNumber.length === 10 && !accountName && (
                   <View style={styles.accountErrorContainer}>
                     <Ionicons
                       name="information-circle"
@@ -541,7 +557,7 @@ const BankComponent = () => {
                       color="#EF4444"
                     />
                     <Text style={styles.accountErrorText}>
-                      Account number not found in {selectedBank.name}
+                      Could not verify account. Please check account number.
                     </Text>
                   </View>
                 )}
@@ -633,7 +649,10 @@ const BankComponent = () => {
                         source={require("@/assets/images/wallet-icon.png")}
                         style={{ width: 13, height: 13 }}
                       />
-                      <Text style={styles.balanceText}>0.00678 USDC</Text>
+                      <Text style={styles.balanceText}>
+                        {tokenBalance.toFixed(6)}{" "}
+                        {selectedToken?.symbol || "USDC"}
+                      </Text>
                     </View>
                   </View>
                 </View>

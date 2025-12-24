@@ -87,13 +87,12 @@ const tokens = generateTokensForAllNetworks();
 
 export default function TokenSelector() {
   const router = useRouter();
+  // Only Solana is supported for Send operations
   const [selectedNetwork, setSelectedNetwork] = useState("solana");
   const { selectedToken, setSelectedToken } = useToken();
 
-  // Filter tokens based on selected network
-  const filteredTokens = tokens.filter(
-    (token) => token.network === selectedNetwork
-  );
+  // Filter tokens based on selected network (Solana only for now)
+  const filteredTokens = tokens.filter((token) => token.network === "solana");
 
   const handleTokenSelect = (token: any) => {
     const network = networks.find((net) => net.id === token.network);
@@ -190,8 +189,8 @@ export default function TokenSelector() {
               />
             </View>
 
-            {/* Networks List */}
-            <View style={styles.section}>
+            {/* Networks List - Hidden as only Solana is supported */}
+            {/* <View style={styles.section}>
               <Text style={styles.sectionTitle}>Available Networks</Text>
               <FlatList
                 data={networks}
@@ -199,6 +198,14 @@ export default function TokenSelector() {
                 keyExtractor={(item) => item.id}
                 renderItem={renderNetworkItem}
               />
+            </View> */}
+
+            {/* Info Banner */}
+            <View style={styles.infoBanner}>
+              <Ionicons name="information-circle" size={20} color="#4A9DFF" />
+              <Text style={styles.infoBannerText}>
+                Only Solana network is currently supported for Send transactions
+              </Text>
             </View>
           </>
         }
@@ -310,5 +317,20 @@ const styles = StyleSheet.create({
   tokenBalance: {
     color: "#FFFFFF",
     fontSize: 14,
+  },
+  infoBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1A2A3A",
+    padding: 12,
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderRadius: 8,
+    gap: 8,
+  },
+  infoBannerText: {
+    color: "#B0BACB",
+    fontSize: 14,
+    flex: 1,
   },
 });

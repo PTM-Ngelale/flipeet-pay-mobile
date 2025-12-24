@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
-import type { RootState } from "../store";
+import type { AppDispatch, RootState } from "../store";
 import { setPin as setAuthPin, setError, signIn } from "../store/authSlice";
 
 export default function PinScreen() {
@@ -21,6 +21,8 @@ export default function PinScreen() {
   const params = useLocalSearchParams();
   const flow = params.flow as string; // 'login' or 'signup'
   const inputRefs = useRef<Array<TextInput | null>>([]);
+
+  const dispatch = useDispatch<AppDispatch>();
 
   const isLoginFlow = flow === "login";
   const isSignupFlow = flow === "signup";
@@ -54,7 +56,6 @@ export default function PinScreen() {
     }
   };
 
-  const dispatch = useDispatch<any>();
   const email = useSelector((s: RootState) => s.auth.email);
   const storedPin = useSelector((s: RootState) => s.auth.pin);
 
@@ -87,7 +88,7 @@ export default function PinScreen() {
         dispatch(setError("Incorrect PIN. Please try again."));
       }
     } else if (isSignupFlow) {
-      // Store the PIN for app unlock (account already created in sign-up screen)
+      // Store the PIN (account already created in sign-up screen)
       dispatch(setAuthPin(pinCode));
       router.replace("/login");
     }

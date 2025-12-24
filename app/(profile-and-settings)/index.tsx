@@ -24,9 +24,10 @@ import { useProfile } from "../contexts/ProfileContext";
 const SettingsAndProfile = () => {
   const router = useRouter();
   const dispatch = useDispatch<any>();
-  const { username, profileImage, pickImage } = useProfile();
+  const { profileImage, pickImage } = useProfile();
   const email =
     useSelector((state: RootState) => state.auth.email) || "No email set";
+  const username = useSelector((state: RootState) => state.auth.user?.username);
 
   const handleLogout = () => {
     dispatch(logout());

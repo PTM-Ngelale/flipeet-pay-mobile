@@ -1,9 +1,11 @@
 import { useToken } from "@/app/contexts/TokenContext";
+import { RootState } from "@/app/store";
 import ExchangeIcon from "@/assets/images/exchange-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -13,6 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSelector } from "react-redux";
 
 import { useBridgeToken } from "@/app/contexts/BridgeTokenContext";
 
@@ -25,10 +28,70 @@ const BridgeComponent = () => {
   const [selectedReceiveCurrency, setSelectedReceiveCurrency] = useState("ETH");
   const { selectedToken } = useToken();
   const { fromToken, toToken, setFromToken, setToToken } = useBridgeToken();
+  const token = useSelector((state: RootState) => state.auth.token);
+  const balances = useSelector((state: RootState) => state.auth.balances);
 
-  const exchangeRate = 1.0062;
+  const [exchangeRate, setExchangeRate] = useState<number>(1.0);
+  const [loadingRate, setLoadingRate] = useState<boolean>(false);
   const dailyLimit = 5000;
   const usedLimit = 0;
+
+  // Get user balance for selected tokens
+  const getTokenBalance = (symbol: string, network: string) => {
+    if (!balances || !Array.isArray(balances)) return 0;
+    const balance = balances.find(
+      (b: any) => b.token === symbol && b.network === network
+    );
+    return balance?.balance || 0;
+  };
+
+  const fromBalance = getTokenBalance(fromToken.symbol, fromToken.network);
+  const toBalance = getTokenBalance(toToken.symbol, toToken.network);
+
+  // Fetch real-time swap rate from API
+  useEffect(() => {
+    if (!token || !fromToken?.symbol || !toToken?.symbol) {
+      return;
+    }
+
+    const fetchSwapRate = async () => {
+      try {
+        setLoadingRate(true);
+        const fromAsset = fromToken.symbol;
+        const toAsset = toToken.symbol;
+        const amount = 1;
+
+        // Using bridge/swap rate endpoint
+        const url = `https://api.pay.flipeet.io/api/v1/transactions/bridge/quote?fromAsset=${fromAsset}&toAsset=${toAsset}&amount=${amount}`;
+
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          // API should return rate or quote
+          const rate = data.data?.rate || data.data?.exchangeRate || 1.0;
+          setExchangeRate(rate);
+          console.log("Swap rate fetched:", rate);
+        } else {
+          console.log("Failed to fetch swap rate, using default 1.0");
+          setExchangeRate(1.0);
+        }
+      } catch (error) {
+        console.error("Error fetching swap rate:", error);
+        setExchangeRate(1.0);
+      } finally {
+        setLoadingRate(false);
+      }
+    };
+
+    fetchSwapRate();
+  }, [token, fromToken?.symbol, toToken?.symbol]);
 
   const handlePayAmountChange = (text) => {
     const numericValue = text.replace(/[^0-9.]/g, "");
@@ -59,14 +122,14 @@ const BridgeComponent = () => {
   };
 
   const handleHalf = () => {
-    const halfBalance = (1000 / 2).toString();
+    const halfBalance = (fromBalance / 2).toString();
     setPayAmount(halfBalance);
     setReceiveAmount((parseFloat(halfBalance) * exchangeRate).toFixed(6));
   };
 
   const handleMax = () => {
-    setPayAmount("1000");
-    setReceiveAmount((1000 * exchangeRate).toFixed(6));
+    setPayAmount(fromBalance.toString());
+    setReceiveAmount((fromBalance * exchangeRate).toFixed(6));
   };
 
   const handleSync = () => {
@@ -159,7 +222,9 @@ const BridgeComponent = () => {
                   keyboardType="numeric"
                 />
               </View>
-              <Text style={styles.usdEquivalent}>$0.00</Text>
+              <Text style={styles.usdEquivalent}>
+                ${payAmount ? (parseFloat(payAmount) * 1).toFixed(2) : "0.00"}
+              </Text>
             </View>
             <View style={styles.sectionRight}>
               <View>
@@ -191,7 +256,7 @@ const BridgeComponent = () => {
                     style={{ width: 13, height: 13 }}
                   />
                   <Text style={styles.balanceText}>
-                    0.00678 {fromToken.symbol}
+                    {fromBalance.toFixed(6)} {fromToken.symbol}
                   </Text>
                 </View>
               </View>
@@ -218,7 +283,12 @@ const BridgeComponent = () => {
                   keyboardType="numeric"
                 />
               </View>
-              <Text style={styles.usdEquivalent}>$0.00</Text>
+              <Text style={styles.usdEquivalent}>
+                $
+                {receiveAmount
+                  ? (parseFloat(receiveAmount) * 1).toFixed(2)
+                  : "0.00"}
+              </Text>
             </View>
             <View style={styles.sectionRight}>
               <View>
@@ -249,7 +319,9 @@ const BridgeComponent = () => {
                     source={require("@/assets/images/wallet-icon.png")}
                     style={{ width: 13, height: 13 }}
                   />
-                  <Text style={styles.balanceText}>0.00678 USDT</Text>
+                  <Text style={styles.balanceText}>
+                    {toBalance.toFixed(6)} {toToken.symbol}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -258,9 +330,13 @@ const BridgeComponent = () => {
 
         {/* Exchange Rate */}
         <View style={styles.exchangeRateContainer}>
-          <Text style={styles.exchangeRateText}>
-            1 USDT = {exchangeRate} USDC
-          </Text>
+          {loadingRate ? (
+            <ActivityIndicator size="small" color="#4A9DFF" />
+          ) : (
+            <Text style={styles.exchangeRateText}>
+              1 {fromToken.symbol} = {exchangeRate.toFixed(6)} {toToken.symbol}
+            </Text>
+          )}
         </View>
 
         {/* Button at Bottom */}
@@ -275,12 +351,7 @@ const BridgeComponent = () => {
             onPress={handleBridge}
             disabled={isBridgeDisabled}
           >
-            <Text
-              style={[
-                styles.bridgeButtonText,
-                isBridgeDisabled ,
-              ]}
-            >
+            <Text style={[styles.bridgeButtonText, isBridgeDisabled]}>
               Swap
             </Text>
           </TouchableOpacity>
@@ -415,8 +486,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#3B82F6",
   },
   bridgeButtonDisabled: {
-    backgroundColor: "#3B82F6", 
-    opacity: 0.4, 
+    backgroundColor: "#3B82F6",
+    opacity: 0.4,
   },
   bridgeButtonText: {
     fontSize: 18,

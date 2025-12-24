@@ -6,8 +6,8 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 export default function SuccessScreen() {
   const router = useRouter();
 
-  const handleCreate = () => {
-    router.push("/pin?flow=signup");
+  const handleContinue = () => {
+    router.replace("/login");
   };
 
   return (
@@ -21,10 +21,10 @@ export default function SuccessScreen() {
           </View>
         </View>
 
-        {/* Close Button at Bottom */}
+        {/* Button at Bottom */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.view} onPress={handleCreate}>
-            <Text style={styles.viewText}>Create a PIN to unlock app</Text>
+          <TouchableOpacity style={styles.view} onPress={handleContinue}>
+            <Text style={styles.viewText}>Continue to Login</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

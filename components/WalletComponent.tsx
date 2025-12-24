@@ -1,5 +1,6 @@
 import { useFavoriteWallets } from "@/app/contexts/FavoriteWalletsContext";
 import { useToken } from "@/app/contexts/TokenContext";
+import { RootState } from "@/app/store";
 import ScanIcon from "@/assets/images/scan-icon.svg";
 import StarIcon from "@/assets/images/star-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -17,6 +18,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSelector } from "react-redux";
 
 const WalletComponent = () => {
   const router = useRouter();
@@ -25,6 +27,7 @@ const WalletComponent = () => {
   const [walletAddress, setWalletAddress] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
   const { selectedToken } = useToken();
+  const balances = useSelector((state: RootState) => state.auth.balances);
   const {
     addFavoriteWallet,
     removeFavoriteWallet,
@@ -33,6 +36,17 @@ const WalletComponent = () => {
     selectedWalletFromFavorite,
     clearSelectedWalletFromFavorite,
   } = useFavoriteWallets();
+
+  // Get balance for Solana tokens only
+  const getTokenBalance = (symbol: string) => {
+    if (!balances || !Array.isArray(balances)) return 0;
+    const balance = balances.find(
+      (b: any) => b.token === symbol && b.network === "Solana"
+    );
+    return balance?.balance || 0;
+  };
+
+  const tokenBalance = getTokenBalance(selectedToken?.symbol || "USDC");
 
   // Handle selected wallet from favorites
   useEffect(() => {
@@ -74,47 +88,23 @@ const WalletComponent = () => {
     router.push("/(action)/favorites-wallet-page");
   };
 
-  const exchangeRate = 1.5802;
-  const dailyLimit = 1000;
-  const usedLimit = 0;
-
   const handlePayAmountChange = (text: string) => {
     const numericValue = text.replace(/[^0-9.]/g, "");
     setPayAmount(numericValue);
-
-    if (numericValue && !isNaN(parseFloat(numericValue))) {
-      const calculatedReceive = (
-        parseFloat(numericValue) * exchangeRate
-      ).toFixed(2);
-      setReceiveAmount(calculatedReceive);
-    } else {
-      setReceiveAmount("");
-    }
-  };
-
-  const handleReceiveAmountChange = (text: string) => {
-    const numericValue = text.replace(/[^0-9.]/g, "");
+    // For wallet-to-wallet, send amount = receive amount (same crypto)
     setReceiveAmount(numericValue);
-
-    if (numericValue && !isNaN(parseFloat(numericValue))) {
-      const calculatedPay = (parseFloat(numericValue) / exchangeRate).toFixed(
-        6
-      );
-      setPayAmount(calculatedPay);
-    } else {
-      setPayAmount("");
-    }
   };
 
   const handleHalf = () => {
-    const halfBalance = (0.00678 / 2).toString();
+    const halfBalance = (tokenBalance / 2).toFixed(6);
     setPayAmount(halfBalance);
-    setReceiveAmount((parseFloat(halfBalance) * exchangeRate).toFixed(2));
+    setReceiveAmount(halfBalance);
   };
 
   const handleMax = () => {
-    setPayAmount("0.00678");
-    setReceiveAmount((0.00678 * exchangeRate).toFixed(2));
+    const maxBalance = tokenBalance.toFixed(6);
+    setPayAmount(maxBalance);
+    setReceiveAmount(maxBalance);
   };
 
   const handleSync = () => {
@@ -123,17 +113,17 @@ const WalletComponent = () => {
   };
 
   const handleSwap = () => {
-    if (payAmount && receiveAmount && walletAddress) {
+    if (payAmount && walletAddress) {
       router.push({
         pathname: "/(action)/review-transaction",
         params: {
           payAmount,
-          receiveAmount,
-          payCurrency: "USDC",
-          receiveCurrency: "NGN",
-          network: "Solana",
-          exchangeRate: exchangeRate.toString(),
+          receiveAmount: payAmount, // Same amount for crypto-to-crypto
+          payCurrency: selectedToken?.symbol || "USDC",
+          receiveCurrency: selectedToken?.symbol || "USDC",
+          network: "Solana", // Only Solana supported
           walletAddress,
+          recipientType: "wallet",
         },
       });
     }
@@ -141,8 +131,8 @@ const WalletComponent = () => {
 
   const isSwapDisabled =
     !payAmount ||
-    !receiveAmount ||
     parseFloat(payAmount) === 0 ||
+    parseFloat(payAmount) > tokenBalance ||
     !walletAddress;
 
   const renderTokenIcon = (IconComponent: React.ComponentType<any>) => {
@@ -286,7 +276,10 @@ const WalletComponent = () => {
                         source={require("@/assets/images/wallet-icon.png")}
                         style={{ width: 13, height: 13 }}
                       />
-                      <Text style={styles.balanceText}>0.00678 USDC</Text>
+                      <Text style={styles.balanceText}>
+                        {tokenBalance.toFixed(6)}{" "}
+                        {selectedToken?.symbol || "USDC"}
+                      </Text>
                     </View>
                   </View>
                 </View>

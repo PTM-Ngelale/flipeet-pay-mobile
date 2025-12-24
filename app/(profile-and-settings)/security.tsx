@@ -65,7 +65,6 @@ const SecurityAndPrivacy = () => {
                 <Text style={styles.label}>PIN</Text>
                 <Text style={styles.description}>******</Text>
               </View>
-              {/* <Ionicons name="chevron-forward" size={20} color="#757B85" /> */}
               <TouchableOpacity
                 style={{
                   backgroundColor: "#1A212A",
@@ -90,7 +89,6 @@ const SecurityAndPrivacy = () => {
                 <Text style={styles.label}>Re-authenticate PIN</Text>
                 <Text style={styles.description}>Immediately</Text>
               </View>
-              {/* <Ionicons name="chevron-forward" size={20} color="#757B85" /> */}
               <TouchableOpacity
                 style={{
                   backgroundColor: "#1A212A",

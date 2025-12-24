@@ -1,8 +1,6 @@
-import { useBankAccount } from "@/app/contexts/BankAccountContext";
 import { useCurrency } from "@/app/contexts/CurrencySelectorContext";
 import { useToken } from "@/app/contexts/TokenContext";
-import ExchangeIcon from "@/assets/images/exchange-icon.svg";
-import NGNFlag from "@/assets/images/ngn-flag.svg";
+import { RootState } from "@/app/store";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -18,25 +16,36 @@ import {
   View,
 } from "react-native";
 import { useSelector } from "react-redux";
-import { RootState } from "../app/store";
 
-const SellComponent = () => {
+const BuyComponent = () => {
   const router = useRouter();
   const [payAmount, setPayAmount] = useState("");
   const [receiveAmount, setReceiveAmount] = useState("");
-  const [showPayDropdown, setShowPayDropdown] = useState(false);
-  const [showReceiveDropdown, setShowReceiveDropdown] = useState(false);
-  const { selectedAccount } = useBankAccount();
   const { savedCurrency } = useCurrency();
   const { selectedToken } = useToken();
   const token = useSelector((state: RootState) => state.auth.token);
+  const balances = useSelector((state: RootState) => state.auth.balances);
 
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [loadingRate, setLoadingRate] = useState<boolean>(false);
-  const dailyLimit = 1000;
+  const dailyLimit = 10000;
   const usedLimit = 0;
 
-  // Fetch exchange rate from API
+  // Get user balance for selected token
+  const getTokenBalance = (symbol: string, network: string) => {
+    if (!balances || !Array.isArray(balances)) return 0;
+    const balance = balances.find(
+      (b: any) => b.token === symbol && b.network === network
+    );
+    return balance?.balance || 0;
+  };
+
+  const tokenBalance = getTokenBalance(
+    selectedToken?.symbol || "USDC",
+    selectedToken?.network || "Solana"
+  );
+
+  // Fetch exchange rate from API (buy rate)
   useEffect(() => {
     const fetchExchangeRate = async () => {
       if (!token) {
@@ -51,27 +60,24 @@ const SellComponent = () => {
         const amount = 1;
         const provider = "bread";
 
-        const url = `https://api.pay.flipeet.io/api/v1/ramp/rate?amount=${amount}&asset=${asset}&currency=${currency}&provider=${provider}`;
+        // For buy, we use the buy rate endpoint
+        const url = `https://api.pay.flipeet.io/api/v1/ramp/rate?amount=${amount}&asset=${asset}&currency=${currency}&provider=${provider}&type=buy`;
 
         const response = await fetch(url, {
+          method: "GET",
           headers: {
-            Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
         });
 
-        const data = await response.json();
-        console.log("Exchange rate API response:", data);
-
-        if (!response.ok) {
-          console.error("API error:", data);
-          throw new Error(data.message || "Failed to fetch exchange rate");
-        }
-
-        // The rate is directly in data property
-        const rate = data.data || data.rate || data.exchangeRate;
-        if (rate) {
+        if (response.ok) {
+          const data = await response.json();
+          const rate = data.data?.rate;
           setExchangeRate(rate);
+          console.log("Buy exchange rate fetched:", rate);
+        } else {
+          console.log("Failed to fetch exchange rate");
         }
       } catch (error) {
         console.error("Error fetching exchange rate:", error);
@@ -81,7 +87,7 @@ const SellComponent = () => {
     };
 
     fetchExchangeRate();
-  }, [selectedToken, savedCurrency, token]);
+  }, [token, selectedToken?.symbol, savedCurrency]);
 
   const handlePayAmountChange = (text: string) => {
     const numericValue = text.replace(/[^0-9.]/g, "");
@@ -89,8 +95,8 @@ const SellComponent = () => {
 
     if (numericValue && !isNaN(parseFloat(numericValue)) && exchangeRate) {
       const calculatedReceive = (
-        parseFloat(numericValue) * exchangeRate
-      ).toFixed(2);
+        parseFloat(numericValue) / exchangeRate
+      ).toFixed(6);
       setReceiveAmount(calculatedReceive);
     } else {
       setReceiveAmount("");
@@ -102,8 +108,8 @@ const SellComponent = () => {
     setReceiveAmount(numericValue);
 
     if (numericValue && !isNaN(parseFloat(numericValue)) && exchangeRate) {
-      const calculatedPay = (parseFloat(numericValue) / exchangeRate).toFixed(
-        6
+      const calculatedPay = (parseFloat(numericValue) * exchangeRate).toFixed(
+        2
       );
       setPayAmount(calculatedPay);
     } else {
@@ -111,55 +117,36 @@ const SellComponent = () => {
     }
   };
 
-  const handleHalf = () => {
-    if (!exchangeRate) return;
-    const halfBalance = (0.00678 / 2).toString();
-    setPayAmount(halfBalance);
-    setReceiveAmount((parseFloat(halfBalance) * exchangeRate).toFixed(2));
-  };
-
-  const handleMax = () => {
-    if (!exchangeRate) return;
-    setPayAmount("0.00678");
-    setReceiveAmount((0.00678 * exchangeRate).toFixed(2));
-  };
-
   const handleSync = () => {
     setPayAmount("");
     setReceiveAmount("");
   };
 
-  const handleSwap = () => {
-    if (payAmount && receiveAmount && selectedAccount) {
-      // Navigate to review transaction page with parameters
+  const handleBuy = () => {
+    if (payAmount && receiveAmount) {
+      // For now, show alert that buy is coming soon
+      // In future, this will navigate to payment provider or review screen
       router.push({
         pathname: "/(action)/review-transaction",
         params: {
           payAmount,
           receiveAmount,
-          payCurrency: selectedToken?.symbol || "USDC",
-          receiveCurrency: savedCurrency || "NGN",
+          payCurrency: savedCurrency || "NGN",
+          receiveCurrency: selectedToken?.symbol || "USDC",
           network: selectedToken?.network || "Solana",
           exchangeRate: exchangeRate ? exchangeRate.toString() : "0",
-          recipient: `${selectedAccount.accountName} - ${selectedAccount.accountNumber}`,
-          recipientType: "bank",
-          bankName: selectedAccount.bankName,
-          bankCode: selectedAccount.bankCode,
-          accountNumber: selectedAccount.accountNumber,
-          accountName: selectedAccount.accountName,
+          recipientType: "buy",
         },
       });
     }
   };
 
-  const isSwapDisabled =
+  const isBuyDisabled =
     !payAmount ||
     !receiveAmount ||
     parseFloat(payAmount) === 0 ||
-    !exchangeRate ||
-    !selectedAccount;
+    !exchangeRate;
 
-  // Get currency symbol based on selected currency
   const getCurrencySymbol = () => {
     switch (savedCurrency) {
       case "NGN":
@@ -168,36 +155,19 @@ const SellComponent = () => {
         return "$";
       case "EUR":
         return "€";
-      case "KES":
-        return "KSh";
-      case "GHS":
-        return "GH₵";
-      case "BRL":
-        return "R$";
-      case "ARS":
-        return "$";
+      case "GBP":
+        return "£";
       default:
-        return "₦"; // Default to NGN symbol
+        return savedCurrency || "NGN";
     }
   };
 
-  // Get currency flag/icon based on selected currency
-  const renderCurrencyIcon = () => {
-    switch (savedCurrency) {
-      case "NGN":
-        return <NGNFlag />;
-      // Add cases for other currencies if you have their icons
-      // case "USD":
-      //   return <USDFlag />;
-      // case "EUR":
-      //   return <EURFlag />;
-      default:
-        return <NGNFlag />; // Default to NGN flag
-    }
+  const handleTokenSelect = () => {
+    router.push("/(action)/token-selector");
   };
 
-  const renderTokenIcon = (IconComponent: React.ComponentType<any>) => {
-    return <IconComponent width={30} height={30} />;
+  const handleCurrencySelect = () => {
+    router.push("/(action)/currency-selector");
   };
 
   return (
@@ -207,11 +177,14 @@ const SellComponent = () => {
     >
       <View style={styles.amountControls}>
         <View style={styles.amountButtons}>
-          <TouchableOpacity onPress={handleHalf} style={styles.amountButton}>
-            <Text style={styles.amountButtonText}>Half</Text>
+          <TouchableOpacity style={styles.amountButton}>
+            <Text style={styles.amountButtonText}>100</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleMax} style={styles.amountButton}>
-            <Text style={styles.amountButtonText}>Max</Text>
+          <TouchableOpacity style={styles.amountButton}>
+            <Text style={styles.amountButtonText}>500</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.amountButton}>
+            <Text style={styles.amountButtonText}>1000</Text>
           </TouchableOpacity>
         </View>
         <View>
@@ -220,14 +193,14 @@ const SellComponent = () => {
           </TouchableOpacity>
         </View>
       </View>
+
       <View style={styles.content}>
-        {/* Pay Section */}
+        {/* You Pay Section */}
         <View style={styles.section}>
           <View style={styles.sectionRow}>
             <View style={styles.sectionLeft}>
-              <Text style={styles.sectionLabel}>Pay</Text>
+              <Text style={styles.sectionLabel}>You Pay</Text>
               <View style={styles.amountInputContainer}>
-                <Text style={styles.currencySymbol}>$</Text>
                 <TextInput
                   style={styles.amountInput}
                   placeholder="0.00"
@@ -237,46 +210,42 @@ const SellComponent = () => {
                   keyboardType="numeric"
                 />
               </View>
+              <Text style={styles.usdEquivalent}>
+                ≈ $
+                {payAmount
+                  ? (parseFloat(payAmount) / (exchangeRate || 1)).toFixed(2)
+                  : "0.00"}
+              </Text>
             </View>
             <View style={styles.sectionRight}>
-              <TouchableOpacity
-                style={styles.tokenSelector}
-                onPress={() => router.push("/(action)/token-selector")}
-              >
-                <View>{renderTokenIcon(selectedToken.icon)}</View>
-                <View>
-                  <Text style={styles.tokenName}>{selectedToken.symbol}</Text>
-                  <Text style={styles.tokenNetwork}>
-                    {selectedToken.network}
+              <View>
+                <TouchableOpacity
+                  style={styles.currencySelector}
+                  onPress={handleCurrencySelect}
+                >
+                  <Text style={styles.currencySymbol}>
+                    {getCurrencySymbol()}
                   </Text>
-                </View>
-                <View>
-                  <Ionicons name="chevron-down" color={"#4A9DFF"} />
-                </View>
-              </TouchableOpacity>
-              <View style={styles.balanceContainer}>
-                <Image
-                  source={require("@/assets/images/wallet-icon.png")}
-                  style={{ width: 13, height: 13 }}
-                />
-                <Text style={styles.balanceText}>0.00678 USDC</Text>
+                  <View>
+                    <Text style={styles.tokenName}>
+                      {savedCurrency || "NGN"}
+                    </Text>
+                  </View>
+                  <View>
+                    <Ionicons name="chevron-down" color={"#4A9DFF"} />
+                  </View>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
         </View>
 
-        <View style={styles.exchangeIconContainer}>
-          <ExchangeIcon />
-        </View>
-
-        {/* Receive Section */}
-
+        {/* You Receive Section */}
         <View style={styles.section}>
           <View style={styles.sectionRow}>
             <View style={styles.sectionLeft}>
-              <Text style={styles.sectionLabel}>Receive</Text>
+              <Text style={styles.sectionLabel}>You Receive</Text>
               <View style={styles.amountInputContainer}>
-                <Text style={styles.currencySymbol}>{getCurrencySymbol()}</Text>
                 <TextInput
                   style={styles.amountInput}
                   placeholder="0.00"
@@ -286,42 +255,39 @@ const SellComponent = () => {
                   keyboardType="numeric"
                 />
               </View>
+              <Text style={styles.usdEquivalent}>
+                ≈ $
+                {receiveAmount ? parseFloat(receiveAmount).toFixed(2) : "0.00"}
+              </Text>
             </View>
             <View style={styles.sectionRight}>
-              {selectedAccount ? ( // Changed from savedAccount to selectedAccount
+              <View>
                 <TouchableOpacity
-                  style={styles.savedAccountButton}
-                  onPress={() => router.push("/(action)/saved-bank-accounts")}
+                  style={styles.tokenSelector}
+                  onPress={handleTokenSelect}
                 >
-                  <View style={styles.accountInfo}>
-                    <Text style={styles.accountNumber}>
-                      {selectedAccount.accountNumber.slice(0, 7)}...
+                  <View>
+                    <Text style={styles.tokenName}>
+                      {selectedToken?.symbol || "USDC"}
+                    </Text>
+                    <Text style={styles.tokenNetwork}>
+                      {selectedToken?.network || "Solana"}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-down" size={20} color="#4A9DFF" />
+                  <View>
+                    <Ionicons name="chevron-down" color={"#4A9DFF"} />
+                  </View>
                 </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.addBankButton}
-                  onPress={() => router.push("/(action)/add-bank-account")}
-                >
-                  <Text style={styles.addBankText}>+ Add Bank Account</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={styles.currencySelector}
-                onPress={() => router.push("/(action)/currency-selector")}
-              >
-                <View>{renderCurrencyIcon()}</View>
-                <View>
-                  <Text style={styles.currencyName}>
-                    {savedCurrency || "NGN"}
+                <View style={styles.balanceContainer}>
+                  <Image
+                    source={require("@/assets/images/wallet-icon.png")}
+                    style={{ width: 13, height: 13 }}
+                  />
+                  <Text style={styles.balanceText}>
+                    {tokenBalance.toFixed(6)} {selectedToken?.symbol || "USDC"}
                   </Text>
                 </View>
-                <View>
-                  <Ionicons name="chevron-down" color={"#4A9DFF"} />
-                </View>
-              </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
@@ -342,7 +308,7 @@ const SellComponent = () => {
           )}
         </View>
 
-        {/* Daily Swap Limit */}
+        {/* Daily Buy Limit */}
         <View style={{ marginTop: "auto", marginBottom: 20, width: "100%" }}>
           <View style={styles.limitContainer}>
             <View style={styles.limitBar}>
@@ -354,30 +320,30 @@ const SellComponent = () => {
               />
             </View>
             <View style={styles.limitTextContainer}>
-              <Text style={styles.limitUsed}>Daily Swap Limit: 1000 USD</Text>
-              <Text style={styles.limitRemaining}>Remaining: 1000 USD</Text>
+              <Text style={styles.limitUsed}>
+                Daily Buy Limit: {dailyLimit} {savedCurrency || "NGN"}
+              </Text>
+              <Text style={styles.limitRemaining}>
+                {dailyLimit - usedLimit} {savedCurrency || "NGN"} remaining
+              </Text>
             </View>
           </View>
 
           <TouchableOpacity
             style={[
-              styles.swapButton,
-              isSwapDisabled
-                ? styles.swapButtonDisabled
-                : styles.swapButtonActive,
+              styles.buyButton,
+              isBuyDisabled ? styles.buyButtonDisabled : styles.buyButtonActive,
             ]}
-            onPress={handleSwap}
-            disabled={isSwapDisabled}
+            onPress={handleBuy}
+            disabled={isBuyDisabled}
           >
-            <Text style={styles.swapButtonText}>Swap</Text>
+            <Text style={styles.buyButtonText}>Buy Crypto</Text>
           </TouchableOpacity>
         </View>
       </View>
     </KeyboardAvoidingView>
   );
 };
-
-// ... styles remain the same ...
 
 const styles = StyleSheet.create({
   keyboardAvoidingView: {
@@ -396,6 +362,7 @@ const styles = StyleSheet.create({
   amountButton: {
     backgroundColor: "#2A2A2A",
     padding: 4,
+    paddingHorizontal: 12,
     borderRadius: 6,
   },
   amountButtonText: {
@@ -416,7 +383,7 @@ const styles = StyleSheet.create({
   sectionRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   sectionLeft: {
     flex: 1,
@@ -428,21 +395,23 @@ const styles = StyleSheet.create({
   sectionLabel: {
     color: "#E2E6F0",
     fontSize: 16,
+    marginBottom: 8,
   },
   amountInputContainer: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  currencySymbol: {
-    color: "white",
-    fontSize: 32,
-    marginRight: 4,
   },
   amountInput: {
     color: "white",
     fontSize: 32,
     padding: 0,
     margin: 0,
+    minWidth: 120,
+  },
+  usdEquivalent: {
+    color: "#B0BACB",
+    fontSize: 14,
+    marginTop: 4,
   },
   tokenSelector: {
     backgroundColor: "black",
@@ -452,6 +421,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+  },
+  currencySelector: {
+    backgroundColor: "black",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  currencySymbol: {
+    color: "#E2E6F0",
+    fontSize: 24,
+    fontWeight: "700",
   },
   tokenName: {
     color: "#E2E6F0",
@@ -470,40 +453,6 @@ const styles = StyleSheet.create({
     color: "#E2E6F0",
     fontSize: 12,
     marginLeft: 4,
-  },
-  exchangeIconContainer: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "center",
-    zIndex: 10,
-    position: "absolute",
-    top: "19%",
-  },
-  addBankButton: {
-    backgroundColor: "#2A2A2A",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  addBankText: {
-    color: "#B0BACB",
-    fontSize: 12,
-    marginTop: 4,
-  },
-  currencySelector: {
-    marginTop: 8,
-    backgroundColor: "black",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  currencyName: {
-    color: "#E2E6F0",
-    fontWeight: "700",
   },
   exchangeRateContainer: {
     flexDirection: "row",
@@ -542,60 +491,23 @@ const styles = StyleSheet.create({
     color: "#757B85",
     fontSize: 12,
   },
-  swapButton: {
+  buyButton: {
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: "center",
   },
-  swapButtonActive: {
+  buyButtonActive: {
     backgroundColor: "#3B82F6",
   },
-  swapButtonDisabled: {
+  buyButtonDisabled: {
     backgroundColor: "#3B82F6",
     opacity: 0.4,
   },
-  swapButtonText: {
+  buyButtonText: {
     fontSize: 18,
     fontWeight: "600",
     color: "#fff",
   },
-  savedAccountButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-evenly",
-    backgroundColor: "#1A1A1A",
-    borderWidth: 1,
-    borderColor: "#333333",
-    borderRadius: 8,
-    padding: 16,
-  },
-  accountInfo: {
-    // flex: 1,
-  },
-  bankName: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  accountNumber: {
-    color: "#757B85",
-    fontSize: 14,
-  },
-  tokenIconPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#4A9DFF",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
-  tokenIconText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
 });
 
-export default SellComponent;
+export default BuyComponent;

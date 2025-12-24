@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,13 +14,21 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch, useSelector } from "react-redux";
+import type { RootState } from "../store";
+import { changePin } from "../store/authSlice";
 
 export default function CreateNewPINScreen() {
   const [newPin, setNewPin] = useState(["", "", "", "", "", ""]);
   const [confirmPin, setConfirmPin] = useState(["", "", "", "", "", ""]);
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const dispatch = useDispatch<any>();
+  const loading = useSelector((state: RootState) => state.auth.loading);
   const newPinRefs = useRef<Array<TextInput | null>>([]);
   const confirmPinRefs = useRef<Array<TextInput | null>>([]);
+
+  const oldPin = params.oldPin as string;
 
   const handleNewPinChange = (text: string, index: number) => {
     if (text.length > 1) {
@@ -80,9 +90,20 @@ export default function CreateNewPINScreen() {
     }
   };
 
-  const handleSetPIN = () => {
-    // Set new PIN logic would go here
-    router.push("/success-pin");
+  const handleSetPIN = async () => {
+    if (!oldPin) {
+      Alert.alert("Error", "Old PIN is required");
+      return;
+    }
+
+    const newPinString = newPin.join("");
+
+    try {
+      await dispatch(changePin({ oldPin, newPin: newPinString })).unwrap();
+      router.push("/success-pin");
+    } catch (error: any) {
+      Alert.alert("Error", error || "Failed to change PIN");
+    }
   };
 
   const isNewPinComplete = newPin.every((digit) => digit);
@@ -176,19 +197,23 @@ export default function CreateNewPINScreen() {
           <TouchableOpacity
             style={[
               styles.setPinButton,
-              isSetPinDisabled && styles.setPinButtonDisabled,
+              (isSetPinDisabled || loading) && styles.setPinButtonDisabled,
             ]}
             onPress={handleSetPIN}
-            disabled={isSetPinDisabled}
+            disabled={isSetPinDisabled || loading}
           >
-            <Text
-              style={[
-                styles.setPinButtonText,
-                isSetPinDisabled && styles.setPinButtonTextDisabled,
-              ]}
-            >
-              Create
-            </Text>
+            {loading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text
+                style={[
+                  styles.setPinButtonText,
+                  isSetPinDisabled && styles.setPinButtonTextDisabled,
+                ]}
+              >
+                Create
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

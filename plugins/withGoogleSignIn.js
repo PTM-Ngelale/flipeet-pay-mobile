@@ -18,7 +18,8 @@ module.exports = function withGoogleSignIn(config) {
     // Add Google Sign-In Hub Activity
     const googleSignInActivity = {
       $: {
-        "android:name": "com.google.android.gms.auth.api.signin.internal.SignInHubActivity",
+        "android:name":
+          "com.google.android.gms.auth.api.signin.internal.SignInHubActivity",
         "android:exported": "true",
       },
       "intent-filter": [
@@ -45,7 +46,8 @@ module.exports = function withGoogleSignIn(config) {
           data: [
             {
               $: {
-                "android:scheme": "com.googleusercontent.apps.289967638710-ek2k5v76t6sbcih4gv9v45qhd949r0rh",
+                "android:scheme":
+                  "com.googleusercontent.apps.289967638710-ek2k5v76t6sbcih4gv9v45qhd949r0rh",
                 "android:host": "oauth2redirect",
               },
             },

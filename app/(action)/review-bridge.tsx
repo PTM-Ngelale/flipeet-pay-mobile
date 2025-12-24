@@ -2,14 +2,26 @@ import USDCIcon from "@/assets/images/review-icons/usdc-icon.svg";
 import USDTIcon from "@/assets/images/review-icons/usdt-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
 import { useBridgeToken } from "../contexts/BridgeTokenContext";
+import { RootState } from "../store";
 
 export default function ReviewBridgeScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { fromToken, toToken } = useBridgeToken();
+  const token = useSelector((state: RootState) => state.auth.token);
+  const [loading, setLoading] = useState(false);
 
   const {
     payAmount,
@@ -22,11 +34,70 @@ export default function ReviewBridgeScreen() {
   } = params;
 
   // Calculate total value in USDT (you can modify this logic as needed)
-  const totalValue = (parseFloat(payAmount) || 0).toFixed(2);
+  const totalValue = (parseFloat(payAmount as string) || 0).toFixed(2);
 
-  const handleConfirm = () => {
-    // console.log("Bridge transaction confirmed");
-    router.push("/(action)/success-screen");
+  const handleConfirm = async () => {
+    if (!token) {
+      Alert.alert("Error", "Authentication required. Please login again.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Prepare bridge/swap transaction payload
+      const payload = {
+        fromAsset: fromToken.symbol,
+        toAsset: toToken.symbol,
+        fromNetwork: fromToken.network.toLowerCase(),
+        toNetwork: toToken.network.toLowerCase(),
+        amount: parseFloat(payAmount as string),
+        expectedOutput: parseFloat(receiveAmount as string),
+      };
+
+      console.log("Executing bridge transaction:", payload);
+
+      const response = await fetch(
+        "https://api.pay.flipeet.io/api/v1/transactions/bridge",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const data = await response.json();
+      console.log("Bridge transaction response:", data);
+
+      if (response.ok) {
+        router.replace({
+          pathname: "/(action)/success-screen",
+          params: {
+            transactionId: data.data?.id || data.data?.transactionId || "N/A",
+            amount: payAmount,
+            currency: fromToken.symbol,
+            type: "bridge",
+          },
+        });
+      } else {
+        Alert.alert(
+          "Transaction Failed",
+          data.message ||
+            "Failed to execute bridge transaction. Please try again."
+        );
+      }
+    } catch (error: any) {
+      console.error("Bridge transaction error:", error);
+      Alert.alert(
+        "Error",
+        error.message || "An error occurred. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -89,10 +160,18 @@ export default function ReviewBridgeScreen() {
 
           {/* Confirm Button */}
           <TouchableOpacity
-            style={styles.confirmButton}
+            style={[
+              styles.confirmButton,
+              loading && styles.confirmButtonDisabled,
+            ]}
             onPress={handleConfirm}
+            disabled={loading}
           >
-            <Text style={styles.confirmButtonText}>Confirm Swap</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.confirmButtonText}>Confirm Swap</Text>
+            )}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -168,6 +247,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: "auto",
     marginBottom: 20,
+  },
+  confirmButtonDisabled: {
+    opacity: 0.6,
   },
   confirmButtonText: {
     color: "#FFFFFF",

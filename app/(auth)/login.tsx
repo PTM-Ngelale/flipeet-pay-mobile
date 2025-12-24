@@ -1,8 +1,8 @@
 import GoogleLogo from "@/assets/images/google-logo.svg";
 import { Ionicons } from "@expo/vector-icons";
-import * as Google from "expo-auth-session/providers/google";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import * as WebBrowser from "expo-web-browser";
+import React, { useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -22,6 +22,8 @@ import {
   signIn,
 } from "../store/authSlice";
 
+WebBrowser.maybeCompleteAuthSession();
+
 export default function LoginScreen() {
   const [email, setLocalEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,63 +32,64 @@ export default function LoginScreen() {
   const router = useRouter();
   const dispatch = useDispatch<any>();
 
-  // Configure Google OAuth
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: "289967638710-ek2k5v76t6sbcih4gv9v45qhd949r0rh.apps.googleusercontent.com",
-    iosClientId: "289967638710-tjaaoepq7d43hkukdnt4r7acnv09raop.apps.googleusercontent.com",
-    scopes: ["profile", "email"],
-  });
+  const handleGoogleLogin = async () => {
+    try {
+      // Open Google OAuth in web browser - works immediately without mobile config
+      const redirectUrl = "com.flipeet.pay:/oauth2redirect";
+      const clientId =
+        "289967638710-tjaaoepq7d43hkukdnt4r7acnv09raop.apps.googleusercontent.com";
 
-  // Handle Google OAuth response
-  useEffect(() => {
-    if (response?.type === "success") {
-      const { authentication } = response;
-      if (authentication?.accessToken) {
-        handleGoogleToken(authentication.accessToken);
+      const authUrl =
+        `https://accounts.google.com/o/oauth2/v2/auth?` +
+        `client_id=${clientId}&` +
+        `redirect_uri=${encodeURIComponent(redirectUrl)}&` +
+        `response_type=token&` +
+        `scope=profile email&` +
+        `include_granted_scopes=true`;
+
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        redirectUrl
+      );
+
+      if (result.type === "success") {
+        // Extract the access token from URL hash
+        const url = result.url;
+        const accessToken = url.match(/access_token=([^&]+)/)?.[1];
+
+        if (accessToken) {
+          // Send Google token to your backend for validation
+          const response = await fetch(
+            "https://api.pay.flipeet.io/api/v1/auth/oauth/validate",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ token: accessToken }),
+            }
+          );
+
+          const data = await response.json();
+
+          if (response.ok && data.data?.credentials?.accessToken) {
+            // Use the token from backend
+            const token = data.data.credentials.accessToken;
+
+            // Dispatch to Redux
+            await dispatch(googleSignIn({ token })).unwrap();
+            router.replace("/home");
+          } else {
+            throw new Error(data.message || "Failed to authenticate");
+          }
+        }
       }
-    } else if (response?.type === "error") {
-      console.error("Google OAuth error:", response.error);
+    } catch (error: any) {
+      console.error("Google sign-in failed:", error);
       Alert.alert(
-        "Authentication Error",
-        "Failed to authenticate with Google. Please try again.",
+        "Authentication Failed",
+        error?.message || "Failed to sign in with Google. Please try again.",
         [{ text: "OK" }]
       );
     }
-  }, [response]);
-
-  const handleGoogleToken = async (token: string) => {
-    try {
-      console.log("Sending Google token to backend for validation...");
-      const result = await dispatch(googleSignIn({ token })).unwrap();
-      console.log("Google sign-in successful:", result);
-
-      // Navigate to home on success
-      router.replace(`/home`);
-    } catch (error: any) {
-      console.error("Google sign-in failed:", error);
-
-      // Show specific error messages
-      if (
-        error?.message?.includes("User not found") ||
-        error?.response?.data?.error === "User not found"
-      ) {
-        Alert.alert(
-          "Account Not Found",
-          "No account found with this Google account. Please sign up first.",
-          [{ text: "OK" }]
-        );
-      } else {
-        Alert.alert(
-          "Authentication Failed",
-          error?.message || "Failed to sign in with Google. Please try again.",
-          [{ text: "OK" }]
-        );
-      }
-    }
-  };
-
-  const handleGoogleLogin = () => {
-    promptAsync();
   };
 
   const handleLogin = async () => {
@@ -134,7 +137,6 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={styles.googleButton}
               onPress={handleGoogleLogin}
-              disabled={!request}
             >
               <GoogleLogo />
               <Text style={styles.googleButtonText}>Login with Google</Text>

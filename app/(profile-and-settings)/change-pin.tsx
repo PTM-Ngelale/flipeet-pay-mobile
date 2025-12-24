@@ -51,8 +51,12 @@ export default function ChangePINScreen() {
   };
 
   const handleContinue = () => {
-    // Verify current PIN logic would go here
-    router.replace("/create-new-pin");
+    // Store current PIN and navigate to create new PIN
+    const pinString = currentPin.join("");
+    router.push({
+      pathname: "/create-new-pin",
+      params: { oldPin: pinString },
+    });
   };
 
   const isContinueDisabled = currentPin.some((digit) => !digit);

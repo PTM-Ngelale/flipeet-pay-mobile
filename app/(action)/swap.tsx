@@ -5,6 +5,7 @@ import HistoryIcon from "@/assets/images/history-icon.svg";
 import SellHighlighted from "@/assets/images/sell-highlight.svg";
 import SellIcon from "@/assets/images/sell-icon.svg";
 import BridgeComponent from "@/components/BridgeComponent";
+import BuyComponent from "@/components/BuyComponent";
 import SellComponent from "@/components/SellComponent";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
@@ -46,14 +47,7 @@ export default function SwapScreen() {
   const renderContent = () => {
     switch (activeTab) {
       case "Buy":
-        return (
-          <View style={styles.contentContainer}>
-            <Text style={styles.contentTitle}>Buy Crypto</Text>
-            <Text style={styles.contentDescription}>
-              Buy cryptocurrencies with fiat or other assets
-            </Text>
-          </View>
-        );
+        return <BuyComponent />;
       case "Sell":
         return <SellComponent />;
       case "Bridge":
@@ -72,7 +66,6 @@ export default function SwapScreen() {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Swap</Text>
           <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
-
             <HistoryIcon />
           </TouchableOpacity>
         </View>
