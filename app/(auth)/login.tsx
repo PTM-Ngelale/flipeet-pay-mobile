@@ -4,6 +4,7 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -29,10 +30,13 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [keepLoggedIn, setKeepLoggedIn] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch<any>();
 
   const handleGoogleLogin = async () => {
+    setIsGoogleLoading(true);
     try {
       // Open Google OAuth in web browser - works immediately without mobile config
       const redirectUrl = "com.flipeet.pay:/oauth2redirect";
@@ -89,10 +93,13 @@ export default function LoginScreen() {
         error?.message || "Failed to sign in with Google. Please try again.",
         [{ text: "OK" }]
       );
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
   const handleLogin = async () => {
+    setIsEmailLoading(true);
     // Authenticate with email+password
     dispatch(setAuthEmail(email));
 
@@ -106,6 +113,8 @@ export default function LoginScreen() {
       // The AuthErrorModal will display it automatically
       console.error("Login failed:", err);
       // Stay on login screen when authentication fails
+    } finally {
+      setIsEmailLoading(false);
     }
   };
 
@@ -137,9 +146,16 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={styles.googleButton}
               onPress={handleGoogleLogin}
+              disabled={isGoogleLoading}
             >
-              <GoogleLogo />
-              <Text style={styles.googleButtonText}>Login with Google</Text>
+              {isGoogleLoading ? (
+                <ActivityIndicator size="small" color="#000000" />
+              ) : (
+                <>
+                  <GoogleLogo />
+                  <Text style={styles.googleButtonText}>Login with Google</Text>
+                </>
+              )}
             </TouchableOpacity>
 
             <View style={styles.divider}>
@@ -224,19 +240,24 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={[
                 styles.loginButton,
-                isLoginDisabled && styles.loginButtonDisabled,
+                (isLoginDisabled || isEmailLoading) &&
+                  styles.loginButtonDisabled,
               ]}
               onPress={handleLogin}
-              disabled={isLoginDisabled}
+              disabled={isLoginDisabled || isEmailLoading}
             >
-              <Text
-                style={[
-                  styles.loginButtonText,
-                  isLoginDisabled && styles.loginButtonTextDisabled,
-                ]}
-              >
-                Log In
-              </Text>
+              {isEmailLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text
+                  style={[
+                    styles.loginButtonText,
+                    isLoginDisabled && styles.loginButtonTextDisabled,
+                  ]}
+                >
+                  Log In
+                </Text>
+              )}
             </TouchableOpacity>
 
             {/* Sign Up Link */}

@@ -31,9 +31,12 @@ const SettingsAndProfile = () => {
 
   const handleLogout = () => {
     dispatch(logout());
-    // Note: Not clearing bank account state to keep accounts after logout
+    // Temporarily not clearing bank accounts until backend persistence is fixed
     // dispatch(clearBankAccountState());
-    router.replace("/login");
+
+    // Reset navigation stack to prevent swipe back to authenticated screens
+    router.dismissAll();
+    router.replace("/(auth)/login");
   };
 
   const settingsData = [
