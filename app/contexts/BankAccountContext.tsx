@@ -1,43 +1,64 @@
 // app/contexts/BankAccountContext.tsx
-import React, { createContext, useContext, ReactNode, useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import type { AppDispatch, RootState } from '../store';
+import React, { createContext, ReactNode, useContext, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "../store";
 import {
+  BankAccount,
+  deleteBankAccount,
   fetchSavedBankAccounts,
   saveBankAccount,
-  deleteBankAccount,
   setSelectedAccount as setSelectedAccountAction,
-  BankAccount,
-} from '../store/bankAccountSlice';
+} from "../store/bankAccountSlice";
 
 interface BankAccountContextType {
   savedAccounts: BankAccount[];
   selectedAccount: BankAccount | null;
   loading: boolean;
   error: string | null;
-  addBankAccount: (account: Omit<BankAccount, 'id' | 'createdAt'>) => Promise<void>;
+  addBankAccount: (
+    account: Omit<BankAccount, "id" | "createdAt">
+  ) => Promise<void>;
   removeBankAccount: (accountId: string) => Promise<void>;
   setSelectedAccount: (account: BankAccount | null) => void;
   refreshBankAccounts: () => Promise<void>;
 }
 
-const BankAccountContext = createContext<BankAccountContextType | undefined>(undefined);
+const BankAccountContext = createContext<BankAccountContextType | undefined>(
+  undefined
+);
 
-export const BankAccountProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const BankAccountProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const dispatch = useDispatch<AppDispatch>();
   const { savedAccounts, selectedAccount, loading, error } = useSelector(
     (state: RootState) => state.bankAccount
   );
   const { token } = useSelector((state: RootState) => state.auth);
 
-  // Load saved bank accounts on mount
+  console.log("[BankAccountContext] savedAccounts:", savedAccounts);
+  console.log(
+    "[BankAccountContext] savedAccounts.length:",
+    savedAccounts.length
+  );
+
+  // Load saved bank accounts on mount (only if we don't have local accounts)
   useEffect(() => {
-    if (token) {
+    if (token && savedAccounts.length === 0) {
       dispatch(fetchSavedBankAccounts());
     }
-  }, [token, dispatch]);
+  }, [token, dispatch, savedAccounts.length]);
 
-  const addBankAccount = async (account: Omit<BankAccount, 'id' | 'createdAt'>) => {
+  // Auto-select the first account if none is selected and accounts exist
+  useEffect(() => {
+    if (savedAccounts.length > 0 && !selectedAccount) {
+      dispatch(setSelectedAccountAction(savedAccounts[0]));
+    }
+  }, [savedAccounts, selectedAccount, dispatch]);
+
+  const addBankAccount = async (
+    account: Omit<BankAccount, "id" | "createdAt">
+  ) => {
     await dispatch(saveBankAccount(account)).unwrap();
   };
 
@@ -74,7 +95,7 @@ export const BankAccountProvider: React.FC<{ children: ReactNode }> = ({ childre
 export const useBankAccount = () => {
   const context = useContext(BankAccountContext);
   if (context === undefined) {
-    throw new Error('useBankAccount must be used within a BankAccountProvider');
+    throw new Error("useBankAccount must be used within a BankAccountProvider");
   }
   return context;
 };

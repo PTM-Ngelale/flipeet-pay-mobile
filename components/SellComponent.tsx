@@ -30,11 +30,26 @@ const SellComponent = () => {
   const { savedCurrency } = useCurrency();
   const { selectedToken } = useToken();
   const token = useSelector((state: RootState) => state.auth.token);
+  const balances = useSelector((state: RootState) => state.auth.balances);
 
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [loadingRate, setLoadingRate] = useState<boolean>(false);
   const dailyLimit = 1000;
   const usedLimit = 0;
+
+  // Get user balance for selected token
+  const getTokenBalance = (symbol: string, network: string) => {
+    if (!balances || !Array.isArray(balances)) return 0;
+    const balance = balances.find(
+      (b: any) => b.token === symbol && b.network === network
+    );
+    return balance?.balance || 0;
+  };
+
+  const tokenBalance = getTokenBalance(
+    selectedToken?.symbol || "USDC",
+    selectedToken?.network || "Solana"
+  );
 
   // Fetch exchange rate from API
   useEffect(() => {
@@ -44,10 +59,19 @@ const SellComponent = () => {
         return;
       }
 
+      const currency = savedCurrency || "NGN";
+
+      // Only NGN is supported by the backend currently
+      if (currency !== "NGN") {
+        console.warn(`Currency ${currency} not yet supported by backend`);
+        setExchangeRate(null);
+        setLoadingRate(false);
+        return;
+      }
+
       try {
         setLoadingRate(true);
         const asset = selectedToken?.symbol || "USDC";
-        const currency = savedCurrency || "NGN";
         const amount = 1;
         const provider = "bread";
 
@@ -113,15 +137,15 @@ const SellComponent = () => {
 
   const handleHalf = () => {
     if (!exchangeRate) return;
-    const halfBalance = (0.00678 / 2).toString();
+    const halfBalance = (tokenBalance / 2).toString();
     setPayAmount(halfBalance);
     setReceiveAmount((parseFloat(halfBalance) * exchangeRate).toFixed(2));
   };
 
   const handleMax = () => {
     if (!exchangeRate) return;
-    setPayAmount("0.00678");
-    setReceiveAmount((0.00678 * exchangeRate).toFixed(2));
+    setPayAmount(tokenBalance.toString());
+    setReceiveAmount((tokenBalance * exchangeRate).toFixed(2));
   };
 
   const handleSync = () => {
@@ -259,7 +283,9 @@ const SellComponent = () => {
                   source={require("@/assets/images/wallet-icon.png")}
                   style={{ width: 13, height: 13 }}
                 />
-                <Text style={styles.balanceText}>0.00678 USDC</Text>
+                <Text style={styles.balanceText}>
+                  {tokenBalance.toFixed(6)} {selectedToken?.symbol || "USDC"}
+                </Text>
               </View>
             </View>
           </View>

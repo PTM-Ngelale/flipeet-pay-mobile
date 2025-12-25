@@ -63,14 +63,18 @@ export const fetchBanks = createAsyncThunk(
 
       console.log("[fetchBanks] Starting bank fetch...");
       console.log("[fetchBanks] Token available:", !!token);
-      console.log("[fetchBanks] Token (first 20 chars):", token?.substring(0, 20) + "...");
+      console.log(
+        "[fetchBanks] Token (first 20 chars):",
+        token?.substring(0, 20) + "..."
+      );
 
       if (!token) {
         console.error("[fetchBanks] No authentication token");
         return thunkAPI.rejectWithValue("No authentication token");
       }
 
-      const url = "https://api.pay.flipeet.io/api/v1/ramp/banks";
+      const url =
+        "https://api.pay.flipeet.io/api/v1/ramp/banks?currencyCode=NGN&provider=bread";
       const headers = {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -106,8 +110,16 @@ export const fetchBanks = createAsyncThunk(
         JSON.stringify(data, null, 2)
       );
       console.log("[fetchBanks] Response keys:", Object.keys(data));
-      console.log("[fetchBanks] data.data type:", typeof data.data, Array.isArray(data.data));
-      console.log("[fetchBanks] data.banks type:", typeof data.banks, Array.isArray(data.banks));
+      console.log(
+        "[fetchBanks] data.data type:",
+        typeof data.data,
+        Array.isArray(data.data)
+      );
+      console.log(
+        "[fetchBanks] data.banks type:",
+        typeof data.banks,
+        Array.isArray(data.banks)
+      );
       console.log("[fetchBanks] data itself is array:", Array.isArray(data));
 
       // Handle different response structures
@@ -122,7 +134,7 @@ export const fetchBanks = createAsyncThunk(
         console.warn("[fetchBanks] Unexpected response structure:", data);
         bankList = [];
       }
-      
+
       console.log("[fetchBanks] Bank list:", bankList);
       console.log("[fetchBanks] Is array:", Array.isArray(bankList));
       console.log("[fetchBanks] Length:", bankList?.length);
@@ -175,9 +187,19 @@ export const verifyBankAccount = createAsyncThunk(
         bankCode,
         bankName,
         currency: "NGN",
+        provider: "bread",
       };
 
-      console.log("Verifying account:", payload);
+      console.log("[verifyBankAccount] Starting verification...");
+      console.log(
+        "[verifyBankAccount] Payload:",
+        JSON.stringify(payload, null, 2)
+      );
+      console.log("[verifyBankAccount] Token available:", !!token);
+      console.log(
+        "[verifyBankAccount] Token (first 20 chars):",
+        token?.substring(0, 20) + "..."
+      );
 
       const response = await fetch(
         "https://api.pay.flipeet.io/api/v1/ramp/local/verify-account",
@@ -191,14 +213,31 @@ export const verifyBankAccount = createAsyncThunk(
         }
       );
 
-      const data = await response.json();
-      console.log("Account verification response:", data);
+      console.log("[verifyBankAccount] Response status:", response.status);
 
-      if (response.ok && data.data) {
+      const data = await response.json();
+      console.log(
+        "[verifyBankAccount] Full response:",
+        JSON.stringify(data, null, 2)
+      );
+
+      if (!response.ok) {
+        console.error("[verifyBankAccount] Error response:", data);
+        const errorMessage =
+          data.message ||
+          data.error ||
+          data.data?.message ||
+          data.data?.error ||
+          `Verification failed (Status: ${response.status})`;
+        return thunkAPI.rejectWithValue(errorMessage);
+      }
+
+      if (data.data) {
         const accountName =
           data.data.accountName || data.data.account_name || data.data.name;
 
         if (accountName) {
+          console.log("[verifyBankAccount] Success:", accountName);
           return {
             accountName,
             accountNumber,
@@ -206,15 +245,23 @@ export const verifyBankAccount = createAsyncThunk(
             bankName,
           };
         } else {
+          console.error(
+            "[verifyBankAccount] No account name in response:",
+            data.data
+          );
           return thunkAPI.rejectWithValue("Account name not found in response");
         }
       } else {
-        return thunkAPI.rejectWithValue(
-          data.message || "Account verification failed"
-        );
+        console.error("[verifyBankAccount] No data field in response:", data);
+        return thunkAPI.rejectWithValue("Invalid response format");
       }
     } catch (err: any) {
-      console.error("Account verification error:", err);
+      console.error("[verifyBankAccount] Exception:", err);
+      console.error("[verifyBankAccount] Error details:", {
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
+      });
       return thunkAPI.rejectWithValue(
         err.message || "Failed to verify account"
       );
@@ -231,35 +278,63 @@ export const fetchSavedBankAccounts = createAsyncThunk(
       const { token, user } = state.auth;
 
       if (!token) {
+        console.error("[fetchSavedBankAccounts] No authentication token");
         return thunkAPI.rejectWithValue("No authentication token");
       }
 
-      const userId = user?.id || user?.userId;
-      if (!userId) {
-        return thunkAPI.rejectWithValue("No user ID found");
-      }
-
-      const response = await fetch(
-        `https://api.pay.flipeet.io/api/v1/user/${userId}/bank-accounts`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
+      console.log("[fetchSavedBankAccounts] Starting fetch...");
+      console.log("[fetchSavedBankAccounts] User email:", user?.email);
+      console.log(
+        "[fetchSavedBankAccounts] User ID:",
+        user?.id || user?.userId
+      );
+      console.log("[fetchSavedBankAccounts] Token available:", !!token);
+      console.log(
+        "[fetchSavedBankAccounts] Token (first 20 chars):",
+        token?.substring(0, 20) + "..."
       );
 
+      const url =
+        "https://api.pay.flipeet.io/api/v1/ramp/local/accounts?currency=NGN";
+      console.log("[fetchSavedBankAccounts] URL:", url);
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      console.log("[fetchSavedBankAccounts] Response status:", response.status);
+
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { message: await response.text() };
+        }
+        console.error("[fetchSavedBankAccounts] Error response:", errorData);
         return thunkAPI.rejectWithValue(
-          errorData.message || "Failed to fetch bank accounts"
+          errorData.message ||
+            `Failed to fetch bank accounts (Status: ${response.status})`
         );
       }
 
       const data = await response.json();
-      console.log("Fetched bank accounts:", data);
+      console.log(
+        "[fetchSavedBankAccounts] Full response:",
+        JSON.stringify(data, null, 2)
+      );
 
       const accounts = data.data || data.bankAccounts || data || [];
+      console.log("[fetchSavedBankAccounts] Extracted accounts:", accounts);
+      console.log(
+        "[fetchSavedBankAccounts] Is array:",
+        Array.isArray(accounts)
+      );
+      console.log("[fetchSavedBankAccounts] Count:", accounts.length);
+
       return Array.isArray(accounts) ? accounts : [];
     } catch (err: any) {
       console.error("Failed to fetch bank accounts:", err);
@@ -276,29 +351,25 @@ export const saveBankAccount = createAsyncThunk(
   async (account: Omit<BankAccount, "id" | "createdAt">, thunkAPI: any) => {
     try {
       const state = thunkAPI.getState();
-      const { token, user } = state.auth;
+      const { token } = state.auth;
 
       if (!token) {
         return thunkAPI.rejectWithValue("No authentication token");
       }
 
-      const userId = user?.id || user?.userId;
-      if (!userId) {
-        return thunkAPI.rejectWithValue("No user ID found");
-      }
-
       const payload = {
-        bankName: account.bankName,
-        bankCode: account.bankCode,
         accountNumber: account.accountNumber,
         accountName: account.accountName,
+        bankCode: account.bankCode,
+        bankName: account.bankName,
         currency: account.currency || "NGN",
+        provider: "bread",
       };
 
-      console.log("Saving bank account:", payload);
+      console.log("[saveBankAccount] Saving bank account:", payload);
 
       const response = await fetch(
-        `https://api.pay.flipeet.io/api/v1/user/${userId}/bank-accounts`,
+        "https://api.pay.flipeet.io/api/v1/ramp/local/add-account",
         {
           method: "POST",
           headers: {
@@ -310,7 +381,10 @@ export const saveBankAccount = createAsyncThunk(
       );
 
       const data = await response.json();
-      console.log("Save bank account response:", data);
+      console.log(
+        "[saveBankAccount] Save response:",
+        JSON.stringify(data, null, 2)
+      );
 
       if (!response.ok) {
         return thunkAPI.rejectWithValue(
@@ -319,7 +393,21 @@ export const saveBankAccount = createAsyncThunk(
       }
 
       const savedAccount = data.data || data.bankAccount || data;
-      return savedAccount;
+      console.log("[saveBankAccount] Saved account:", savedAccount);
+
+      // Ensure the account has all required fields
+      const formattedAccount = {
+        id: savedAccount.id || savedAccount._id || Date.now().toString(),
+        bankName: savedAccount.bankName || account.bankName,
+        accountNumber: savedAccount.accountNumber || account.accountNumber,
+        accountName: savedAccount.accountName || account.accountName,
+        bankCode: savedAccount.bankCode || account.bankCode,
+        currency: savedAccount.currency || account.currency || "NGN",
+        createdAt: savedAccount.createdAt || new Date().toISOString(),
+      };
+
+      console.log("[saveBankAccount] Formatted account:", formattedAccount);
+      return formattedAccount;
     } catch (err: any) {
       console.error("Failed to save bank account:", err);
       return thunkAPI.rejectWithValue(
@@ -335,19 +423,16 @@ export const deleteBankAccount = createAsyncThunk(
   async (accountId: string, thunkAPI: any) => {
     try {
       const state = thunkAPI.getState();
-      const { token, user } = state.auth;
+      const { token } = state.auth;
 
       if (!token) {
         return thunkAPI.rejectWithValue("No authentication token");
       }
 
-      const userId = user?.id || user?.userId;
-      if (!userId) {
-        return thunkAPI.rejectWithValue("No user ID found");
-      }
+      console.log("[deleteBankAccount] Deleting account:", accountId);
 
       const response = await fetch(
-        `https://api.pay.flipeet.io/api/v1/user/${userId}/bank-accounts/${accountId}`,
+        `https://api.pay.flipeet.io/api/v1/ramp/local/account/${accountId}`,
         {
           method: "DELETE",
           headers: {
@@ -386,6 +471,16 @@ const bankAccountSlice = createSlice({
     },
     setSelectedAccount(state, action: PayloadAction<BankAccount | null>) {
       state.selectedAccount = action.payload;
+    },
+    clearBankAccountState(state) {
+      state.savedAccounts = [];
+      state.selectedAccount = null;
+      state.banks = [];
+      state.banksCachedAt = null;
+      state.error = null;
+      state.loading = false;
+      state.verifying = false;
+      state.banksLoading = false;
     },
     // For local-only operations before API persistence
     addBankAccountLocal(state, action: PayloadAction<BankAccount>) {
@@ -473,7 +568,12 @@ const bankAccountSlice = createSlice({
   },
 });
 
-export const { clearError, setError, setSelectedAccount, addBankAccountLocal } =
-  bankAccountSlice.actions;
+export const {
+  clearError,
+  setError,
+  setSelectedAccount,
+  clearBankAccountState,
+  addBankAccountLocal,
+} = bankAccountSlice.actions;
 
 export default bankAccountSlice.reducer;

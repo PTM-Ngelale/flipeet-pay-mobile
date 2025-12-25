@@ -89,6 +89,14 @@ export default function ActionLayout() {
         />
 
         <Stack.Screen
+          name="payment-webview"
+          options={{
+            title: "Payment",
+            headerShown: false,
+          }}
+        />
+
+        <Stack.Screen
           name="currency-selector"
           options={{
             title: "Currency Selector",

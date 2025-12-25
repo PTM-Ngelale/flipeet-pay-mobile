@@ -5,6 +5,8 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
 
 export interface FavoriteBank {
   id: string;
@@ -18,17 +20,19 @@ export interface FavoriteBank {
 interface FavoriteBanksContextType {
   favoriteBanks: FavoriteBank[];
   recentBanks: FavoriteBank[];
-  addFavoriteBank: (accountNumber: string, bankName: string) => void;
-  removeFavoriteBank: (bankId: string) => void;
+  addFavoriteBank: (accountNumber: string, bankName: string) => Promise<void>;
+  removeFavoriteBank: (bankId: string) => Promise<void>;
   isBankFavorite: (accountNumber: string) => boolean;
   markBankAsUsed: (accountNumber: string) => void;
   getBankById: (bankId: string) => FavoriteBank | undefined;
-  toggleFavorite: (bankId: string) => void;
+  toggleFavorite: (bankId: string) => Promise<void>;
   selectedBankFromFavorite: { accountNumber: string; bankName: string } | null;
   setSelectedBankFromFavorite: (
     bank: { accountNumber: string; bankName: string } | null
   ) => void;
   clearSelectedBankFromFavorite: () => void;
+  loading: boolean;
+  refreshFavorites: () => Promise<void>;
 }
 
 const FavoriteBanksContext = createContext<
@@ -68,10 +72,64 @@ export const FavoriteBanksProvider: React.FC<{ children: ReactNode }> = ({
     accountNumber: string;
     bankName: string;
   } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const token = useSelector((state: RootState) => state.auth.token);
+
+  // Fetch favorites from backend on mount
+  useEffect(() => {
+    if (token) {
+      fetchFavorites();
+    }
+  }, [token]);
 
   useEffect(() => {
     updateRecentBanks();
   }, [favoriteBanks]);
+
+  const fetchFavorites = async () => {
+    if (!token) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(
+        "https://api.pay.flipeet.io/api/v1/transaction/favorites?featureType=bank_account&page=1&limit=100",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Fetched favorite banks:", data);
+
+        // Map backend data to local format
+        const banks = (data.data?.favorites || data.data || []).map(
+          (item: any) => ({
+            id: item.id || item._id,
+            accountNumber: item.accountNumber || item.account || item.value,
+            bankName: item.bankName || item.bank || "Bank",
+            dateAdded:
+              item.createdAt || item.dateAdded || new Date().toISOString(),
+            lastUsed:
+              item.lastUsed || item.updatedAt || new Date().toISOString(),
+            isFavorite: true,
+          })
+        );
+
+        setFavoriteBanks(banks);
+      } else {
+        console.error("Failed to fetch favorite banks");
+      }
+    } catch (error) {
+      console.error("Error fetching favorite banks:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const updateRecentBanks = () => {
     const sortedByRecent = [...favoriteBanks]
@@ -84,49 +142,73 @@ export const FavoriteBanksProvider: React.FC<{ children: ReactNode }> = ({
     setRecentBanks(sortedByRecent);
   };
 
-  const generateId = () => {
-    return Date.now().toString() + Math.random().toString(36).substr(2, 9);
-  };
-
-  const addFavoriteBank = (
+  const addFavoriteBank = async (
     accountNumber: string,
     bankName: string = "Selected Bank"
   ) => {
-    const existingBank = favoriteBanks.find(
-      (fav) => fav.accountNumber === accountNumber
-    );
+    if (!token) return;
 
-    if (!existingBank) {
-      const newFavorite: FavoriteBank = {
-        id: generateId(),
-        accountNumber: accountNumber.trim(),
-        bankName,
-        dateAdded: new Date().toISOString(),
-        lastUsed: new Date().toISOString(),
-        isFavorite: true,
-      };
-      const updatedBanks = [...favoriteBanks, newFavorite];
-      setFavoriteBanks(updatedBanks);
-    } else {
-      const updatedBanks = favoriteBanks.map((fav) =>
-        fav.accountNumber === accountNumber
-          ? { ...fav, isFavorite: true, lastUsed: new Date().toISOString() }
-          : fav
+    try {
+      const response = await fetch(
+        "https://api.pay.flipeet.io/api/v1/transaction/favorites",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            featureType: "bank_account",
+            accountNumber: accountNumber.trim(),
+            bankName,
+          }),
+        }
       );
-      setFavoriteBanks(updatedBanks);
+
+      if (response.ok) {
+        await fetchFavorites(); // Refresh the list
+      } else {
+        console.error("Failed to add favorite bank");
+      }
+    } catch (error) {
+      console.error("Error adding favorite bank:", error);
     }
   };
 
-  const removeFavoriteBank = (bankId: string) => {
-    const updatedBanks = favoriteBanks.filter((fav) => fav.id !== bankId);
-    setFavoriteBanks(updatedBanks);
+  const removeFavoriteBank = async (bankId: string) => {
+    if (!token) return;
+
+    try {
+      const response = await fetch(
+        `https://api.pay.flipeet.io/api/v1/transaction/favorites/${bankId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        await fetchFavorites(); // Refresh the list
+      } else {
+        console.error("Failed to remove favorite bank");
+      }
+    } catch (error) {
+      console.error("Error removing favorite bank:", error);
+    }
   };
 
-  const toggleFavorite = (bankId: string) => {
-    const updatedBanks = favoriteBanks.map((fav) =>
-      fav.id === bankId ? { ...fav, isFavorite: !fav.isFavorite } : fav
-    );
-    setFavoriteBanks(updatedBanks);
+  const toggleFavorite = async (bankId: string) => {
+    const bank = favoriteBanks.find((b) => b.id === bankId);
+    if (!bank) return;
+
+    if (bank.isFavorite) {
+      await removeFavoriteBank(bankId);
+    } else {
+      await addFavoriteBank(bank.accountNumber, bank.bankName);
+    }
   };
 
   const isBankFavorite = (accountNumber: string) => {
@@ -153,6 +235,10 @@ export const FavoriteBanksProvider: React.FC<{ children: ReactNode }> = ({
     setSelectedBankFromFavorite(null);
   };
 
+  const refreshFavorites = async () => {
+    await fetchFavorites();
+  };
+
   const favoriteOnlyBanks = favoriteBanks.filter((bank) => bank.isFavorite);
 
   const value: FavoriteBanksContextType = {
@@ -167,6 +253,8 @@ export const FavoriteBanksProvider: React.FC<{ children: ReactNode }> = ({
     selectedBankFromFavorite,
     setSelectedBankFromFavorite,
     clearSelectedBankFromFavorite,
+    loading,
+    refreshFavorites,
   };
 
   return (

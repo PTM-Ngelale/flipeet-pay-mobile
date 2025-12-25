@@ -19,12 +19,48 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useCurrency } from "../contexts/CurrencySelectorContext";
 
 const currencies = [
-  { code: "NGN", name: "Nigerian Naira", symbol: "₦", icon: NGN },
-  { code: "KES", name: "Kenyan Shilling", symbol: "KSh", icon: KES },
-  { code: "GHS", name: "Ghanaian Cedi", symbol: "GH₵", icon: GHS },
-  { code: "USD", name: "United States Dollar", symbol: "$", icon: USD },
-  { code: "BRL", name: "Brazilian Real", symbol: "R$", icon: BRL },
-  { code: "ARS", name: "Argentinian Peso", symbol: "$", icon: ARS },
+  {
+    code: "NGN",
+    name: "Nigerian Naira",
+    symbol: "₦",
+    icon: NGN,
+    enabled: true,
+  },
+  {
+    code: "KES",
+    name: "Kenyan Shilling",
+    symbol: "KSh",
+    icon: KES,
+    enabled: false,
+  },
+  {
+    code: "GHS",
+    name: "Ghanaian Cedi",
+    symbol: "GH₵",
+    icon: GHS,
+    enabled: false,
+  },
+  {
+    code: "USD",
+    name: "United States Dollar",
+    symbol: "$",
+    icon: USD,
+    enabled: false,
+  },
+  {
+    code: "BRL",
+    name: "Brazilian Real",
+    symbol: "R$",
+    icon: BRL,
+    enabled: false,
+  },
+  {
+    code: "ARS",
+    name: "Argentinian Peso",
+    symbol: "$",
+    icon: ARS,
+    enabled: false,
+  },
 ];
 
 export default function CurrencySelector() {
@@ -38,7 +74,8 @@ export default function CurrencySelector() {
       currency.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleCurrencySelect = (currencyCode: string) => {
+  const handleCurrencySelect = (currencyCode: string, enabled: boolean) => {
+    if (!enabled) return; // Prevent selection of disabled currencies
     setSavedCurrency(currencyCode); // Update the context
     router.back();
   };
@@ -92,19 +129,38 @@ export default function CurrencySelector() {
           <TouchableOpacity
             style={[
               styles.currencyItem,
-              savedCurrency === item.code && styles.selectedCurrencyItem, // Use savedCurrency from context
+              savedCurrency === item.code && styles.selectedCurrencyItem,
+              !item.enabled && styles.disabledCurrencyItem,
             ]}
-            onPress={() => handleCurrencySelect(item.code)}
+            onPress={() => handleCurrencySelect(item.code, item.enabled)}
+            disabled={!item.enabled}
           >
             <View style={styles.currencyLeft}>
               {renderCurrencyIcon(item.icon, item.code)}
               <View style={styles.currencyInfo}>
-                <Text style={styles.currencyCode}>{item.code}</Text>
-                <Text style={styles.currencyName}>{item.name}</Text>
+                <Text
+                  style={[
+                    styles.currencyCode,
+                    !item.enabled && styles.disabledText,
+                  ]}
+                >
+                  {item.code}
+                </Text>
+                <Text
+                  style={[
+                    styles.currencyName,
+                    !item.enabled && styles.disabledText,
+                  ]}
+                >
+                  {item.name}
+                </Text>
               </View>
             </View>
             <View style={styles.currencyRight}>
-              {savedCurrency === item.code && ( // Use savedCurrency from context
+              {!item.enabled && (
+                <Text style={styles.comingSoonText}>Coming Soon</Text>
+              )}
+              {savedCurrency === item.code && item.enabled && (
                 <Ionicons name="checkmark" size={20} color="#4A9DFF" />
               )}
             </View>
@@ -170,6 +226,17 @@ const styles = StyleSheet.create({
   },
   selectedCurrencyItem: {
     borderColor: "#4A9DFF",
+  },
+  disabledCurrencyItem: {
+    opacity: 0.5,
+  },
+  disabledText: {
+    color: "#555",
+  },
+  comingSoonText: {
+    color: "#757B85",
+    fontSize: 12,
+    fontStyle: "italic",
   },
   currencyLeft: {
     flexDirection: "row",

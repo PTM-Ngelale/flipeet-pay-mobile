@@ -1,25 +1,38 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import {
   Alert,
+  Animated,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Modal,
-  Animated,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useBankAccount } from "../contexts/BankAccountContext";
 
 export default function SavedBankAccounts() {
   const router = useRouter();
-  const { savedAccounts, removeBankAccount, selectedAccount, setSelectedAccount } = useBankAccount();
+  const {
+    savedAccounts,
+    removeBankAccount,
+    selectedAccount,
+    setSelectedAccount,
+    loading,
+  } = useBankAccount();
   const [menuVisible, setMenuVisible] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const scaleAnim = useRef(new Animated.Value(0)).current;
+
+  console.log("[SavedBankAccounts] savedAccounts:", savedAccounts);
+  console.log(
+    "[SavedBankAccounts] savedAccounts.length:",
+    savedAccounts.length
+  );
+  console.log("[SavedBankAccounts] loading:", loading);
 
   const handleSelectAccount = (account: any) => {
     setSelectedAccount(account);
@@ -30,7 +43,7 @@ export default function SavedBankAccounts() {
     const { pageX, pageY } = event.nativeEvent;
     setMenuPosition({ x: pageX - 80, y: pageY + 10 });
     setMenuVisible(accountId);
-    
+
     Animated.spring(scaleAnim, {
       toValue: 1,
       duration: 200,
@@ -52,19 +65,25 @@ export default function SavedBankAccounts() {
     hideMenu();
     Alert.alert(
       "Delete Bank Account",
-      `Are you sure you want to delete account ending with ${accountNumber.slice(-4)}?`,
+      `Are you sure you want to delete account ending with ${accountNumber.slice(
+        -4
+      )}?`,
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
+        {
+          text: "Delete",
           style: "destructive",
           onPress: () => {
             removeBankAccount(accountId);
             if (selectedAccount?.id === accountId) {
-              setSelectedAccount(savedAccounts.length > 1 ? savedAccounts.find(acc => acc.id !== accountId) || null : null);
+              setSelectedAccount(
+                savedAccounts.length > 1
+                  ? savedAccounts.find((acc) => acc.id !== accountId) || null
+                  : null
+              );
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -86,11 +105,14 @@ export default function SavedBankAccounts() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[
               styles.scrollContent,
-              savedAccounts.length === 0 && styles.emptyStateContent
+              savedAccounts.length === 0 && styles.emptyStateContent,
             ]}
           >
-            
-            {savedAccounts.length === 0 ? (
+            {loading ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>Loading accounts...</Text>
+              </View>
+            ) : savedAccounts.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="card-outline" size={64} color="#757B85" />
                 <Text style={styles.emptyStateTitle}>No Bank Accounts</Text>
@@ -99,42 +121,63 @@ export default function SavedBankAccounts() {
                 </Text>
               </View>
             ) : (
-
-
-              savedAccounts.map((account) => (
-                <TouchableOpacity
-                  key={account.id}
-                  style={[
-                    styles.accountCard,
-                    selectedAccount?.id === account.id && styles.selectedAccountCard
-                  ]}
-                  onPress={() => handleSelectAccount(account)}
-                >
-                  <View style={styles.accountInfo}>
-                    <View>
-                    <Text style={styles.bankName}>{account.bankName}</Text>
-                    <Text style={styles.accountName}>{account.accountName}</Text>
-                    </View>
-                    <Text style={styles.separator}>-</Text>
-
-                    <Text style={styles.accountNumber}>
-                      {account.accountNumber}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.accountActions}>
-                    {selectedAccount?.id === account.id && (
-                      <Ionicons name="checkmark" size={24} color="#4A9DFF" />
-                    )}
-                    <TouchableOpacity 
-                      style={styles.menuButton}
-                      onPress={(e) => showMenu(account.id, e)}
+              <>
+                {console.log("[SavedBankAccounts] Rendering accounts list")}
+                {savedAccounts.map((account) => {
+                  console.log(
+                    "[SavedBankAccounts] Rendering account:",
+                    account.id,
+                    account.bankName
+                  );
+                  return (
+                    <TouchableOpacity
+                      key={account.id}
+                      style={[
+                        styles.accountCard,
+                        selectedAccount?.id === account.id &&
+                          styles.selectedAccountCard,
+                      ]}
+                      onPress={() => handleSelectAccount(account)}
                     >
-                      <Ionicons name="ellipsis-vertical" size={20} color="#757B85" />
+                      <View style={styles.accountInfo}>
+                        <View>
+                          <Text style={styles.bankName}>
+                            {account.bankName}
+                          </Text>
+                          <Text style={styles.accountName}>
+                            {account.accountName}
+                          </Text>
+                        </View>
+                        <Text style={styles.separator}>-</Text>
+
+                        <Text style={styles.accountNumber}>
+                          {account.accountNumber}
+                        </Text>
+                      </View>
+
+                      <View style={styles.accountActions}>
+                        {selectedAccount?.id === account.id && (
+                          <Ionicons
+                            name="checkmark"
+                            size={24}
+                            color="#4A9DFF"
+                          />
+                        )}
+                        <TouchableOpacity
+                          style={styles.menuButton}
+                          onPress={(e) => showMenu(account.id, e)}
+                        >
+                          <Ionicons
+                            name="ellipsis-vertical"
+                            size={20}
+                            color="#757B85"
+                          />
+                        </TouchableOpacity>
+                      </View>
                     </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              ))
+                  );
+                })}
+              </>
             )}
           </ScrollView>
 
@@ -145,26 +188,28 @@ export default function SavedBankAccounts() {
             animationType="none"
             onRequestClose={hideMenu}
           >
-            <TouchableOpacity 
-              style={styles.modalOverlay} 
-              activeOpacity={1} 
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              activeOpacity={1}
               onPress={hideMenu}
             >
-              <Animated.View 
+              <Animated.View
                 style={[
                   styles.deleteMenu,
                   {
                     top: menuPosition.y,
                     left: menuPosition.x,
                     transform: [{ scale: scaleAnim }],
-                  }
+                  },
                 ]}
               >
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.deleteMenuItem}
                   onPress={() => {
                     if (menuVisible) {
-                      const account = savedAccounts.find(acc => acc.id === menuVisible);
+                      const account = savedAccounts.find(
+                        (acc) => acc.id === menuVisible
+                      );
                       if (account) {
                         handleDeletePress(account.id, account.accountNumber);
                       }
@@ -258,38 +303,34 @@ const styles = StyleSheet.create({
   },
   selectedAccountCard: {
     borderColor: "#4A9DFF",
-
   },
   accountInfo: {
     flex: 1,
-    flexDirection: 'row',
-
+    flexDirection: "row",
   },
   bankName: {
     color: "#E2E6F0",
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 4,
-
-},
+  },
   accountNumber: {
     color: "#E2E6F0",
     fontSize: 16,
     fontWeight: "700",
     marginBottom: 4,
-
   },
   accountName: {
     color: "#B0BACB",
     fontSize: 14,
-//  textTransform: "uppercase",
-  },  
+    //  textTransform: "uppercase",
+  },
 
   separator: {
     color: "#757B85",
-    marginHorizontal: 2, 
+    marginHorizontal: 2,
     fontSize: 16,
-    fontWeight: '300',
+    fontWeight: "300",
   },
 
   accountActions: {
@@ -302,14 +343,14 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   deleteMenu: {
-    position: 'absolute',
-    backgroundColor: '#1C1C1C',
+    position: "absolute",
+    backgroundColor: "#1C1C1C",
     borderRadius: 8,
     padding: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -322,16 +363,16 @@ const styles = StyleSheet.create({
     minWidth: 100,
   },
   deleteMenuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 8,
     paddingHorizontal: 12,
     gap: 8,
   },
   deleteMenuText: {
-    color: '#FF3B30',
+    color: "#FF3B30",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   buttonContainer: {
     padding: 20,

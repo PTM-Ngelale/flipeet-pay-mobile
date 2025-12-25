@@ -53,10 +53,19 @@ const BuyComponent = () => {
         return;
       }
 
+      const currency = savedCurrency || "NGN";
+
+      // Only NGN is supported by the backend currently
+      if (currency !== "NGN") {
+        console.warn(`Currency ${currency} not yet supported by backend`);
+        setExchangeRate(null);
+        setLoadingRate(false);
+        return;
+      }
+
       try {
         setLoadingRate(true);
         const asset = selectedToken?.symbol || "USDC";
-        const currency = savedCurrency || "NGN";
         const amount = 1;
         const provider = "bread";
 

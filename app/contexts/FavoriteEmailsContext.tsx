@@ -5,6 +5,8 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
 
 export interface FavoriteEmail {
   id: string;
@@ -17,15 +19,17 @@ export interface FavoriteEmail {
 interface FavoriteEmailsContextType {
   favoriteEmails: FavoriteEmail[];
   recentEmails: FavoriteEmail[];
-  addFavoriteEmail: (email: string) => void;
-  removeFavoriteEmail: (emailId: string) => void;
+  addFavoriteEmail: (email: string) => Promise<void>;
+  removeFavoriteEmail: (emailId: string) => Promise<void>;
   isEmailFavorite: (email: string) => boolean;
   markEmailAsUsed: (email: string) => void;
   getEmailById: (emailId: string) => FavoriteEmail | undefined;
-  toggleFavorite: (emailId: string) => void;
+  toggleFavorite: (emailId: string) => Promise<void>;
   selectedEmailFromFavorite: string | null;
   setSelectedEmailFromFavorite: (email: string | null) => void;
   clearSelectedEmailFromFavorite: () => void;
+  loading: boolean;
+  refreshFavorites: () => Promise<void>;
 }
 
 const FavoriteEmailsContext = createContext<
@@ -40,10 +44,63 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
   const [selectedEmailFromFavorite, setSelectedEmailFromFavorite] = useState<
     string | null
   >(null);
+  const [loading, setLoading] = useState(false);
+  const token = useSelector((state: RootState) => state.auth.token);
+
+  // Fetch favorites from backend on mount
+  useEffect(() => {
+    if (token) {
+      fetchFavorites();
+    }
+  }, [token]);
 
   useEffect(() => {
     updateRecentEmails();
   }, [favoriteEmails]);
+
+  const fetchFavorites = async () => {
+    if (!token) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(
+        "https://api.pay.flipeet.io/api/v1/transaction/favorites?featureType=email&page=1&limit=100",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Fetched favorite emails:", data);
+
+        // Map backend data to local format
+        const emails = (data.data?.favorites || data.data || []).map(
+          (item: any) => ({
+            id: item.id || item._id,
+            email: item.email || item.value,
+            dateAdded:
+              item.createdAt || item.dateAdded || new Date().toISOString(),
+            lastUsed:
+              item.lastUsed || item.updatedAt || new Date().toISOString(),
+            isFavorite: true,
+          })
+        );
+
+        setFavoriteEmails(emails);
+      } else {
+        console.error("Failed to fetch favorite emails");
+      }
+    } catch (error) {
+      console.error("Error fetching favorite emails:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const updateRecentEmails = () => {
     const sortedByRecent = [...favoriteEmails]
@@ -56,43 +113,69 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
     setRecentEmails(sortedByRecent);
   };
 
-  const generateId = () => {
-    return Date.now().toString() + Math.random().toString(36).substr(2, 9);
-  };
+  const addFavoriteEmail = async (email: string) => {
+    if (!token) return;
 
-  const addFavoriteEmail = (email: string) => {
-    const existingEmail = favoriteEmails.find((fav) => fav.email === email);
-
-    if (!existingEmail) {
-      const newFavorite: FavoriteEmail = {
-        id: generateId(),
-        email: email.trim(),
-        dateAdded: new Date().toISOString(),
-        lastUsed: new Date().toISOString(),
-        isFavorite: true,
-      };
-      const updatedEmails = [...favoriteEmails, newFavorite];
-      setFavoriteEmails(updatedEmails);
-    } else {
-      const updatedEmails = favoriteEmails.map((fav) =>
-        fav.email === email
-          ? { ...fav, isFavorite: true, lastUsed: new Date().toISOString() }
-          : fav
+    try {
+      const response = await fetch(
+        "https://api.pay.flipeet.io/api/v1/transaction/favorites",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            featureType: "email",
+            email: email.trim(),
+          }),
+        }
       );
-      setFavoriteEmails(updatedEmails);
+
+      if (response.ok) {
+        await fetchFavorites(); // Refresh the list
+      } else {
+        console.error("Failed to add favorite email");
+      }
+    } catch (error) {
+      console.error("Error adding favorite email:", error);
     }
   };
 
-  const removeFavoriteEmail = (emailId: string) => {
-    const updatedEmails = favoriteEmails.filter((fav) => fav.id !== emailId);
-    setFavoriteEmails(updatedEmails);
+  const removeFavoriteEmail = async (emailId: string) => {
+    if (!token) return;
+
+    try {
+      const response = await fetch(
+        `https://api.pay.flipeet.io/api/v1/transaction/favorites/${emailId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        await fetchFavorites(); // Refresh the list
+      } else {
+        console.error("Failed to remove favorite email");
+      }
+    } catch (error) {
+      console.error("Error removing favorite email:", error);
+    }
   };
 
-  const toggleFavorite = (emailId: string) => {
-    const updatedEmails = favoriteEmails.map((fav) =>
-      fav.id === emailId ? { ...fav, isFavorite: !fav.isFavorite } : fav
-    );
-    setFavoriteEmails(updatedEmails);
+  const toggleFavorite = async (emailId: string) => {
+    const email = favoriteEmails.find((e) => e.id === emailId);
+    if (!email) return;
+
+    if (email.isFavorite) {
+      await removeFavoriteEmail(emailId);
+    } else {
+      await addFavoriteEmail(email.email);
+    }
   };
 
   const isEmailFavorite = (email: string) => {
@@ -115,6 +198,10 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
     setSelectedEmailFromFavorite(null);
   };
 
+  const refreshFavorites = async () => {
+    await fetchFavorites();
+  };
+
   const favoriteOnlyEmails = favoriteEmails.filter((email) => email.isFavorite);
 
   const value: FavoriteEmailsContextType = {
@@ -129,6 +216,8 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
     selectedEmailFromFavorite,
     setSelectedEmailFromFavorite,
     clearSelectedEmailFromFavorite,
+    loading,
+    refreshFavorites,
   };
 
   return (

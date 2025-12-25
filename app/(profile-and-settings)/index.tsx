@@ -31,6 +31,8 @@ const SettingsAndProfile = () => {
 
   const handleLogout = () => {
     dispatch(logout());
+    // Note: Not clearing bank account state to keep accounts after logout
+    // dispatch(clearBankAccountState());
     router.replace("/login");
   };
 

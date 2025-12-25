@@ -5,6 +5,8 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
 
 export interface FavoriteWallet {
   id: string;
@@ -17,15 +19,17 @@ export interface FavoriteWallet {
 interface FavoriteWalletsContextType {
   favoriteWallets: FavoriteWallet[];
   recentWallets: FavoriteWallet[];
-  addFavoriteWallet: (walletAddress: string) => void;
-  removeFavoriteWallet: (walletId: string) => void;
+  addFavoriteWallet: (walletAddress: string) => Promise<void>;
+  removeFavoriteWallet: (walletId: string) => Promise<void>;
   isWalletFavorite: (walletAddress: string) => boolean;
   markWalletAsUsed: (walletAddress: string) => void;
   getWalletById: (walletId: string) => FavoriteWallet | undefined;
-  toggleFavorite: (walletId: string) => void;
+  toggleFavorite: (walletId: string) => Promise<void>;
   selectedWalletFromFavorite: string | null;
   setSelectedWalletFromFavorite: (walletAddress: string | null) => void;
   clearSelectedWalletFromFavorite: () => void;
+  loading: boolean;
+  refreshFavorites: () => Promise<void>;
 }
 
 const FavoriteWalletsContext = createContext<
@@ -40,10 +44,63 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
   const [selectedWalletFromFavorite, setSelectedWalletFromFavorite] = useState<
     string | null
   >(null);
+  const [loading, setLoading] = useState(false);
+  const token = useSelector((state: RootState) => state.auth.token);
+
+  // Fetch favorites from backend on mount
+  useEffect(() => {
+    if (token) {
+      fetchFavorites();
+    }
+  }, [token]);
 
   useEffect(() => {
     updateRecentWallets();
   }, [favoriteWallets]);
+
+  const fetchFavorites = async () => {
+    if (!token) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(
+        "https://api.pay.flipeet.io/api/v1/transaction/favorites?featureType=wallet_address&page=1&limit=100",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Fetched favorite wallets:", data);
+
+        // Map backend data to local format
+        const wallets = (data.data?.favorites || data.data || []).map(
+          (item: any) => ({
+            id: item.id || item._id,
+            walletAddress: item.walletAddress || item.address || item.value,
+            dateAdded:
+              item.createdAt || item.dateAdded || new Date().toISOString(),
+            lastUsed:
+              item.lastUsed || item.updatedAt || new Date().toISOString(),
+            isFavorite: true,
+          })
+        );
+
+        setFavoriteWallets(wallets);
+      } else {
+        console.error("Failed to fetch favorite wallets");
+      }
+    } catch (error) {
+      console.error("Error fetching favorite wallets:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const updateRecentWallets = () => {
     const sortedByRecent = [...favoriteWallets]
@@ -56,45 +113,69 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
     setRecentWallets(sortedByRecent);
   };
 
-  const generateId = () => {
-    return Date.now().toString() + Math.random().toString(36).substr(2, 9);
-  };
+  const addFavoriteWallet = async (walletAddress: string) => {
+    if (!token) return;
 
-  const addFavoriteWallet = (walletAddress: string) => {
-    const existingWallet = favoriteWallets.find(
-      (fav) => fav.walletAddress === walletAddress
-    );
-
-    if (!existingWallet) {
-      const newFavorite: FavoriteWallet = {
-        id: generateId(),
-        walletAddress: walletAddress.trim(),
-        dateAdded: new Date().toISOString(),
-        lastUsed: new Date().toISOString(),
-        isFavorite: true,
-      };
-      const updatedWallets = [...favoriteWallets, newFavorite];
-      setFavoriteWallets(updatedWallets);
-    } else {
-      const updatedWallets = favoriteWallets.map((fav) =>
-        fav.walletAddress === walletAddress
-          ? { ...fav, isFavorite: true, lastUsed: new Date().toISOString() }
-          : fav
+    try {
+      const response = await fetch(
+        "https://api.pay.flipeet.io/api/v1/transaction/favorites",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            featureType: "wallet_address",
+            walletAddress: walletAddress.trim(),
+          }),
+        }
       );
-      setFavoriteWallets(updatedWallets);
+
+      if (response.ok) {
+        await fetchFavorites(); // Refresh the list
+      } else {
+        console.error("Failed to add favorite wallet");
+      }
+    } catch (error) {
+      console.error("Error adding favorite wallet:", error);
     }
   };
 
-  const removeFavoriteWallet = (walletId: string) => {
-    const updatedWallets = favoriteWallets.filter((fav) => fav.id !== walletId);
-    setFavoriteWallets(updatedWallets);
+  const removeFavoriteWallet = async (walletId: string) => {
+    if (!token) return;
+
+    try {
+      const response = await fetch(
+        `https://api.pay.flipeet.io/api/v1/transaction/favorites/${walletId}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        await fetchFavorites(); // Refresh the list
+      } else {
+        console.error("Failed to remove favorite wallet");
+      }
+    } catch (error) {
+      console.error("Error removing favorite wallet:", error);
+    }
   };
 
-  const toggleFavorite = (walletId: string) => {
-    const updatedWallets = favoriteWallets.map((fav) =>
-      fav.id === walletId ? { ...fav, isFavorite: !fav.isFavorite } : fav
-    );
-    setFavoriteWallets(updatedWallets);
+  const toggleFavorite = async (walletId: string) => {
+    const wallet = favoriteWallets.find((w) => w.id === walletId);
+    if (!wallet) return;
+
+    if (wallet.isFavorite) {
+      await removeFavoriteWallet(walletId);
+    } else {
+      await addFavoriteWallet(wallet.walletAddress);
+    }
   };
 
   const isWalletFavorite = (walletAddress: string) => {
@@ -121,6 +202,10 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
     setSelectedWalletFromFavorite(null);
   };
 
+  const refreshFavorites = async () => {
+    await fetchFavorites();
+  };
+
   const favoriteOnlyWallets = favoriteWallets.filter(
     (wallet) => wallet.isFavorite
   );
@@ -137,6 +222,8 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
     selectedWalletFromFavorite,
     setSelectedWalletFromFavorite,
     clearSelectedWalletFromFavorite,
+    loading,
+    refreshFavorites,
   };
 
   return (

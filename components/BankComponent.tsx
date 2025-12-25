@@ -44,8 +44,12 @@ const BankComponent = () => {
   const balances = useSelector((state: RootState) => state.auth.balances);
   const token = useSelector((state: RootState) => state.auth.token);
   const banks = useSelector((state: RootState) => state.bankAccount.banks);
-  const banksLoading = useSelector((state: RootState) => state.bankAccount.banksLoading);
-  const verifying = useSelector((state: RootState) => state.bankAccount.verifying);
+  const banksLoading = useSelector(
+    (state: RootState) => state.bankAccount.banksLoading
+  );
+  const verifying = useSelector(
+    (state: RootState) => state.bankAccount.verifying
+  );
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [loadingRate, setLoadingRate] = useState<boolean>(false);
   const {
@@ -198,10 +202,19 @@ const BankComponent = () => {
         return;
       }
 
+      const currency = savedCurrency || "NGN";
+
+      // Only NGN is supported by the backend currently
+      if (currency !== "NGN") {
+        console.warn(`Currency ${currency} not yet supported by backend`);
+        setExchangeRate(null);
+        setLoadingRate(false);
+        return;
+      }
+
       try {
         setLoadingRate(true);
         const asset = selectedToken?.symbol || "USDC";
-        const currency = savedCurrency || "NGN";
         const amount = 1;
         const provider = "bread";
 
@@ -455,36 +468,38 @@ const BankComponent = () => {
                         </View>
                       ) : filteredBanks.length > 0 ? (
                         filteredBanks.map((bank) => (
-                        <TouchableOpacity
-                          key={bank.id}
-                          style={[
-                            styles.bankOption,
-                            selectedBank?.id === bank.id &&
-                              styles.selectedBankOption,
-                          ]}
-                          onPress={() => handleBankSelect(bank)}
-                        >
-                          <Text
+                          <TouchableOpacity
+                            key={bank.id}
                             style={[
-                              styles.bankOptionText,
+                              styles.bankOption,
                               selectedBank?.id === bank.id &&
-                                styles.selectedBankOptionText,
+                                styles.selectedBankOption,
                             ]}
+                            onPress={() => handleBankSelect(bank)}
                           >
-                            {bank.name}
-                          </Text>
-                          {selectedBank?.id === bank.id && (
-                            <Ionicons
-                              name="checkmark"
-                              size={16}
-                              color="#34D058"
-                            />
-                          )}
-                        </TouchableOpacity>
+                            <Text
+                              style={[
+                                styles.bankOptionText,
+                                selectedBank?.id === bank.id &&
+                                  styles.selectedBankOptionText,
+                              ]}
+                            >
+                              {bank.name}
+                            </Text>
+                            {selectedBank?.id === bank.id && (
+                              <Ionicons
+                                name="checkmark"
+                                size={16}
+                                color="#34D058"
+                              />
+                            )}
+                          </TouchableOpacity>
                         ))
                       ) : (
                         <View style={{ padding: 20, alignItems: "center" }}>
-                          <Text style={{ color: "#757B85" }}>No banks found</Text>
+                          <Text style={{ color: "#757B85" }}>
+                            No banks found
+                          </Text>
                         </View>
                       )}
                     </ScrollView>
@@ -532,7 +547,9 @@ const BankComponent = () => {
                 {verifying && (
                   <View style={styles.accountNameContainer}>
                     <ActivityIndicator size="small" color="#4A9DFF" />
-                    <Text style={styles.accountNameText}>Verifying account...</Text>
+                    <Text style={styles.accountNameText}>
+                      Verifying account...
+                    </Text>
                   </View>
                 )}
 
@@ -549,18 +566,21 @@ const BankComponent = () => {
                 )}
 
                 {/* Validation Error */}
-                {!verifying && selectedBank && accountNumber.length === 10 && !accountName && (
-                  <View style={styles.accountErrorContainer}>
-                    <Ionicons
-                      name="information-circle"
-                      size={16}
-                      color="#EF4444"
-                    />
-                    <Text style={styles.accountErrorText}>
-                      Could not verify account. Please check account number.
-                    </Text>
-                  </View>
-                )}
+                {!verifying &&
+                  selectedBank &&
+                  accountNumber.length === 10 &&
+                  !accountName && (
+                    <View style={styles.accountErrorContainer}>
+                      <Ionicons
+                        name="information-circle"
+                        size={16}
+                        color="#EF4444"
+                      />
+                      <Text style={styles.accountErrorText}>
+                        Could not verify account. Please check account number.
+                      </Text>
+                    </View>
+                  )}
               </View>
 
               <View

@@ -350,6 +350,8 @@ const authSlice = createSlice({
       state.transactions = [];
       // Clear AsyncStorage
       AsyncStorage.multiRemove(["auth_token", "auth_user", "auth_email"]);
+      
+      // Note: Bank account state will be cleared by a separate dispatch
     },
   },
   extraReducers: (builder: any) => {

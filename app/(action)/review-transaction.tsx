@@ -47,6 +47,60 @@ export default function ReviewTransactionScreen() {
     setProcessing(true);
 
     try {
+      // Handle buy transactions differently - use payment initialization
+      if (recipientType === "buy") {
+        const reference = `txn_${Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`;
+
+        const initPayload = {
+          amount: parseFloat(payAmount as string),
+          currency: payCurrency, // Fiat currency (NGN, KES, etc.)
+          email: user?.email || "",
+          memo: `Buy ${receiveAmount} ${receiveCurrency}`,
+          reference,
+          redirectUrl: "flipeet://payment/callback", // Deep link for mobile
+          theme: "dark",
+        };
+
+        console.log("Initializing payment:", initPayload);
+
+        const response = await fetch(
+          "https://api.pay.flipeet.io/api/v1/transaction/initialize",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(initPayload),
+          }
+        );
+
+        const data = await response.json();
+        console.log("Payment initialization response:", data);
+
+        if (response.ok && data.data?.paymentUrl) {
+          // Navigate to WebView to complete payment
+          router.push({
+            pathname: "/(action)/payment-webview",
+            params: {
+              paymentUrl: data.data.paymentUrl,
+              reference,
+              amount: receiveAmount,
+              currency: receiveCurrency,
+            },
+          });
+        } else {
+          Alert.alert(
+            "Payment Error",
+            data.message || "Failed to initialize payment. Please try again."
+          );
+        }
+        setProcessing(false);
+        return;
+      }
+
       // Prepare transaction payload based on recipient type
       let endpoint = "";
       let payload: any = {
