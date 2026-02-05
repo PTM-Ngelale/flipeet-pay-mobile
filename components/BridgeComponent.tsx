@@ -1,3 +1,4 @@
+import { apiRequest } from "@/app/constants/api";
 import { useToken } from "@/app/contexts/TokenContext";
 import { RootState } from "@/app/store";
 import ExchangeIcon from "@/assets/images/exchange-icon.svg";
@@ -33,15 +34,36 @@ const BridgeComponent = () => {
 
   const [exchangeRate, setExchangeRate] = useState<number>(1.0);
   const [loadingRate, setLoadingRate] = useState<boolean>(false);
+  const [pairSupported, setPairSupported] = useState<boolean>(true);
+  const [pairError, setPairError] = useState<string | null>(null);
+  const [minAmount, setMinAmount] = useState<number | null>(null);
+  const [maxAmount, setMaxAmount] = useState<number | null>(null);
+  const [checkingPair, setCheckingPair] = useState<boolean>(false);
   const dailyLimit = 5000;
   const usedLimit = 0;
 
-  // Get user balance for selected tokens
+  // Get user balance for selected tokens (case-insensitive)
   const getTokenBalance = (symbol: string, network: string) => {
     if (!balances || !Array.isArray(balances)) return 0;
-    const balance = balances.find(
-      (b: any) => b.token === symbol && b.network === network
-    );
+    const normalizeNetwork = (value: string) => {
+      const normalized = (value || "").toLowerCase().replace(/\s+/g, "-");
+      if (
+        normalized === "bnb-chain" ||
+        normalized === "bnb" ||
+        normalized === "bsc"
+      ) {
+        return "bnb-smart-chain";
+      }
+      return normalized;
+    };
+
+    const targetSymbol = (symbol || "").toLowerCase();
+    const targetNetwork = normalizeNetwork(network || "");
+    const balance = balances.find((b: any) => {
+      const bSymbol = (b.token || b.asset || "").toLowerCase();
+      const bNetwork = normalizeNetwork(b.network || "");
+      return bSymbol === targetSymbol && bNetwork === targetNetwork;
+    });
     return balance?.balance || 0;
   };
 
@@ -57,12 +79,14 @@ const BridgeComponent = () => {
     const fetchSwapRate = async () => {
       try {
         setLoadingRate(true);
-        const fromAsset = fromToken.symbol;
-        const toAsset = toToken.symbol;
+        const fromAsset = (fromToken.symbol || "").toLowerCase();
+        const toAsset = (toToken.symbol || "").toLowerCase();
         const amount = 1;
 
         // Using bridge/swap rate endpoint
-        const url = `https://api.pay.flipeet.io/api/v1/transactions/bridge/quote?fromAsset=${fromAsset}&toAsset=${toAsset}&amount=${amount}`;
+        const url = `https://api.pay.flipeet.io/api/v1/transaction/bridge/quote?fromAsset=${encodeURIComponent(
+          fromAsset,
+        )}&toAsset=${encodeURIComponent(toAsset)}&amount=${amount}`;
 
         const response = await fetch(url, {
           method: "GET",
@@ -74,12 +98,27 @@ const BridgeComponent = () => {
 
         if (response.ok) {
           const data = await response.json();
-          // API should return rate or quote
-          const rate = data.data?.rate || data.data?.exchangeRate || 1.0;
-          setExchangeRate(rate);
-          console.log("Swap rate fetched:", rate);
+          const rawRate =
+            (typeof data?.data === "number" ? data.data : null) ??
+            data?.data?.rate ??
+            data?.rate ??
+            data?.data?.exchangeRate ??
+            data?.exchangeRate ??
+            data?.data?.value ??
+            data?.value ??
+            1.0;
+          const parsedRate = Number.isFinite(Number(rawRate))
+            ? Number(rawRate)
+            : 1.0;
+          setExchangeRate(parsedRate);
+          console.log("Swap rate fetched:", parsedRate);
         } else {
-          console.log("Failed to fetch swap rate, using default 1.0");
+          const raw = await response.text();
+          console.log("Failed to fetch swap rate, using default 1.0", {
+            status: response.status,
+            statusText: response.statusText,
+            body: raw,
+          });
           setExchangeRate(1.0);
         }
       } catch (error) {
@@ -113,7 +152,7 @@ const BridgeComponent = () => {
 
     if (numericValue && !isNaN(numericValue)) {
       const calculatedPay = (parseFloat(numericValue) / exchangeRate).toFixed(
-        2
+        2,
       );
       setPayAmount(calculatedPay);
     } else {
@@ -139,6 +178,27 @@ const BridgeComponent = () => {
 
   const handleBridge = () => {
     if (payAmount && receiveAmount) {
+      const amountValue = parseFloat(payAmount);
+
+      if (Number.isFinite(amountValue) && minAmount != null) {
+        if (amountValue < minAmount) {
+          Alert.alert(
+            "Amount too small",
+            `Minimum bridge amount is ${minAmount} ${fromToken.symbol}.`,
+          );
+          return;
+        }
+      }
+
+      if (!pairSupported) {
+        Alert.alert(
+          "Unsupported pair",
+          pairError ||
+            "This token/network pair is not supported for bridge. Please choose a different combination.",
+        );
+        return;
+      }
+
       // Navigate to review bridge transaction page with parameters
       router.push({
         pathname: "/(action)/review-bridge",
@@ -155,8 +215,86 @@ const BridgeComponent = () => {
     }
   };
 
+  const normalizeNetwork = (value: string) => {
+    const normalized = (value || "").toLowerCase().replace(/\s+/g, "-");
+    if (
+      normalized === "bnb-chain" ||
+      normalized === "bnb-smart-chain" ||
+      normalized === "bnb" ||
+      normalized === "bsc"
+    ) {
+      return "bnb-smart-chain";
+    }
+    return normalized;
+  };
+
   const isBridgeDisabled =
-    !payAmount || !receiveAmount || parseFloat(payAmount) === 0;
+    !payAmount ||
+    !receiveAmount ||
+    parseFloat(payAmount) === 0 ||
+    !pairSupported ||
+    (minAmount != null && parseFloat(payAmount) < minAmount) ||
+    (maxAmount != null && parseFloat(payAmount) > maxAmount);
+
+  useEffect(() => {
+    const checkPairSupport = async () => {
+      if (!token || !fromToken?.symbol || !toToken?.symbol) {
+        setPairSupported(true);
+        setPairError(null);
+        setMinAmount(null);
+        setMaxAmount(null);
+        return;
+      }
+
+      try {
+        setCheckingPair(true);
+        const amountValue = parseFloat(payAmount || "1");
+        const amount =
+          Number.isFinite(amountValue) && amountValue > 0 ? amountValue : 1;
+        const payload = {
+          amount,
+          fromAsset: (fromToken.symbol || "").toLowerCase(),
+          toAsset: (toToken.symbol || "").toLowerCase(),
+          fromNetwork: normalizeNetwork(fromToken.network),
+          toNetwork: normalizeNetwork(toToken.network),
+        };
+
+        const data = await apiRequest(`/transaction/bridge/quota`, {
+          method: "POST",
+          body: payload,
+          token,
+        });
+
+        setPairSupported(true);
+        setPairError(null);
+        const quota = data?.data || data;
+        const min = Number.isFinite(Number(quota?.minAmount))
+          ? Number(quota.minAmount)
+          : null;
+        const max = Number.isFinite(Number(quota?.maxAmount))
+          ? Number(quota.maxAmount)
+          : null;
+        setMinAmount(min);
+        setMaxAmount(max);
+      } catch (error: any) {
+        setPairSupported(false);
+        setPairError(error?.message || "Pair not supported");
+        setMinAmount(null);
+        setMaxAmount(null);
+      } finally {
+        setCheckingPair(false);
+      }
+    };
+
+    checkPairSupport();
+  }, [
+    token,
+    fromToken.symbol,
+    fromToken.network,
+    toToken.symbol,
+    toToken.network,
+    payAmount,
+  ]);
 
   const receiveCurrencies = [
     { id: "ETH", name: "ETH", network: "Ethereum" },
@@ -344,16 +482,18 @@ const BridgeComponent = () => {
           <TouchableOpacity
             style={[
               styles.bridgeButton,
-              isBridgeDisabled
+              isBridgeDisabled || checkingPair
                 ? styles.bridgeButtonDisabled
                 : styles.bridgeButtonActive,
             ]}
             onPress={handleBridge}
-            disabled={isBridgeDisabled}
+            disabled={isBridgeDisabled || checkingPair}
           >
-            <Text style={[styles.bridgeButtonText, isBridgeDisabled]}>
-              Swap
-            </Text>
+            {checkingPair ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.bridgeButtonText}>Swap</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>

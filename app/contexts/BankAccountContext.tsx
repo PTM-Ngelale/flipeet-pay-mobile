@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../store";
 import {
   BankAccount,
+  clearSelectedAccount,
   deleteBankAccount,
   fetchSavedBankAccounts,
   saveBankAccount,
@@ -16,7 +17,7 @@ interface BankAccountContextType {
   loading: boolean;
   error: string | null;
   addBankAccount: (
-    account: Omit<BankAccount, "id" | "createdAt">
+    account: Omit<BankAccount, "id" | "createdAt">,
   ) => Promise<void>;
   removeBankAccount: (accountId: string) => Promise<void>;
   setSelectedAccount: (account: BankAccount | null) => void;
@@ -24,7 +25,7 @@ interface BankAccountContextType {
 }
 
 const BankAccountContext = createContext<BankAccountContextType | undefined>(
-  undefined
+  undefined,
 );
 
 export const BankAccountProvider: React.FC<{ children: ReactNode }> = ({
@@ -32,32 +33,37 @@ export const BankAccountProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const { savedAccounts, selectedAccount, loading, error } = useSelector(
-    (state: RootState) => state.bankAccount
+    (state: RootState) => state.bankAccount,
   );
-  const { token } = useSelector((state: RootState) => state.auth);
+  const { token, user } = useSelector((state: RootState) => state.auth);
 
   console.log("[BankAccountContext] savedAccounts:", savedAccounts);
   console.log(
     "[BankAccountContext] savedAccounts.length:",
-    savedAccounts.length
+    savedAccounts.length,
   );
 
-  // Load saved bank accounts on mount (only if we don't have local accounts)
+  // Load saved bank accounts when token or user changes
   useEffect(() => {
-    if (token && savedAccounts.length === 0) {
+    if (token && user?.id) {
+      // Clear selected account when user changes to prevent carrying over from previous user
+      dispatch(clearSelectedAccount());
       dispatch(fetchSavedBankAccounts());
     }
-  }, [token, dispatch, savedAccounts.length]);
+  }, [token, user?.id, dispatch]);
 
-  // Auto-select the first account if none is selected and accounts exist
+  // Auto-select the first account after accounts are loaded for the current user
   useEffect(() => {
-    if (savedAccounts.length > 0 && !selectedAccount) {
+    if (savedAccounts.length > 0 && !selectedAccount && user?.id) {
       dispatch(setSelectedAccountAction(savedAccounts[0]));
+    } else if (savedAccounts.length === 0 && selectedAccount) {
+      // Clear selection if no accounts available
+      dispatch(clearSelectedAccount());
     }
-  }, [savedAccounts, selectedAccount, dispatch]);
+  }, [savedAccounts, selectedAccount, user?.id, dispatch]);
 
   const addBankAccount = async (
-    account: Omit<BankAccount, "id" | "createdAt">
+    account: Omit<BankAccount, "id" | "createdAt">,
   ) => {
     await dispatch(saveBankAccount(account)).unwrap();
   };

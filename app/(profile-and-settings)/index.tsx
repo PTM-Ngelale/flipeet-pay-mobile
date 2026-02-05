@@ -31,8 +31,6 @@ const SettingsAndProfile = () => {
 
   const handleLogout = () => {
     dispatch(logout());
-    // Temporarily not clearing bank accounts until backend persistence is fixed
-    // dispatch(clearBankAccountState());
 
     // Reset navigation stack to prevent swipe back to authenticated screens
     router.dismissAll();

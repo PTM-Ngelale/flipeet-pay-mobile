@@ -7,7 +7,7 @@ export default function SuccessScreen() {
   const router = useRouter();
 
   const handleClose = () => {
-    router.push("/");
+    router.replace("/home");
   };
 
   return (

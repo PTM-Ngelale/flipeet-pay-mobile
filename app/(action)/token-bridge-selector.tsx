@@ -1,7 +1,7 @@
 // app/(action)/token-selector.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   StyleSheet,
@@ -11,86 +11,141 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 // import { useBridgeToken } from "../contexts/TokenContext";
+import { useSelector } from "react-redux";
 import { useBridgeToken } from "../contexts/BridgeTokenContext";
+import type { RootState } from "../store";
 
-import Arbitrum from "@/assets/images/networks/arbitrum.svg";
 import Base from "@/assets/images/networks/base.svg";
 import Bnb from "@/assets/images/networks/bnb.svg";
-import Link from "@/assets/images/networks/link.svg";
-import Polygon from "@/assets/images/networks/polygon.svg";
 import Solana from "@/assets/images/networks/solana.svg";
 
 import USDC from "@/assets/images/tokens/usdc.svg";
 import USDT from "@/assets/images/tokens/usdt.svg";
 
-// Networks data with icons
-const networks = [
-  {
-    id: "solana",
-    name: "Solana",
-    icon: Solana,
-  },
-  {
-    id: "base",
-    name: "Base",
-    icon: Base,
-  },
-  {
-    id: "arbitrum",
-    name: "Arbitrum",
-    icon: Arbitrum,
-  },
-  {
-    id: "bnb",
-    name: "BNB Chain",
+const networkIconMap: Record<
+  string,
+  { id: string; name: string; icon: React.ComponentType<any> }
+> = {
+  solana: { id: "solana", name: "Solana", icon: Solana },
+  base: { id: "base", name: "Base", icon: Base },
+  "bnb-smart-chain": {
+    id: "bnb-smart-chain",
+    name: "BNB Smart Chain",
     icon: Bnb,
   },
-  {
-    id: "link",
-    name: "Link",
-    icon: Link,
-  },
-  {
-    id: "polygon",
-    name: "Polygon",
-    icon: Polygon,
-  },
-];
-
-// Generate tokens for all networks
-const generateTokensForAllNetworks = () => {
-  const tokens = [];
-
-  for (const network of networks) {
-    tokens.push(
-      {
-        symbol: "USDC",
-        name: "USD Coin",
-        balance: "0.00678",
-        network: network.id,
-        icon: USDC,
-      },
-      {
-        symbol: "USDT",
-        name: "Tether",
-        balance: "0.00000",
-        network: network.id,
-        icon: USDT,
-      }
-    );
-  }
-
-  return tokens;
 };
 
-// Tokens data with icons - now includes all networks
-const tokens = generateTokensForAllNetworks();
+const tokenIconMap: Record<
+  string,
+  { symbol: string; name: string; icon: React.ComponentType<any> }
+> = {
+  usdc: { symbol: "USDC", name: "USD Coin", icon: USDC },
+  usdt: { symbol: "USDT", name: "Tether", icon: USDT },
+};
 
 export default function TokenSelector() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [selectedNetwork, setSelectedNetwork] = useState("solana");
   const { fromToken, toToken, setFromToken, setToToken } = useBridgeToken();
+  const balances = useSelector((state: RootState) => state.auth.balances);
+
+  const normalizeNetworkId = (networkName: string) => {
+    const normalized = (networkName || "").toLowerCase().replace(/\s+/g, "-");
+    if (
+      normalized === "bnb-chain" ||
+      normalized === "bnb" ||
+      normalized === "bsc"
+    ) {
+      return "bnb-smart-chain";
+    }
+    return normalized;
+  };
+
+  const networks = useMemo(() => {
+    if (balances && Array.isArray(balances) && balances.length > 0) {
+      const unique = new Set<string>();
+      balances.forEach((b: any) => {
+        if (b?.network) unique.add(normalizeNetworkId(b.network));
+      });
+
+      const dynamic = Array.from(unique)
+        .map((id) => networkIconMap[id])
+        .filter(Boolean);
+
+      return dynamic.length > 0
+        ? dynamic
+        : [
+            networkIconMap.solana,
+            networkIconMap.base,
+            networkIconMap["bnb-smart-chain"],
+          ];
+    }
+
+    return [
+      networkIconMap.solana,
+      networkIconMap.base,
+      networkIconMap["bnb-smart-chain"],
+    ];
+  }, [balances]);
+
+  const tokens = useMemo(() => {
+    if (balances && Array.isArray(balances) && balances.length > 0) {
+      const unique = new Map<string, any>();
+      balances.forEach((b: any) => {
+        const symbol = (b.asset || b.token || "").toLowerCase();
+        const network = normalizeNetworkId(b.network || "");
+        const tokenMeta = tokenIconMap[symbol];
+        const networkMeta = networkIconMap[network];
+        if (!tokenMeta || !networkMeta) return;
+
+        const key = `${tokenMeta.symbol}-${network}`;
+        if (!unique.has(key)) {
+          unique.set(key, {
+            symbol: tokenMeta.symbol,
+            name: tokenMeta.name,
+            balance: String(b.balance ?? "0"),
+            network: networkMeta.id,
+            icon: tokenMeta.icon,
+          });
+        }
+      });
+      return Array.from(unique.values());
+    }
+
+    return Object.values(networkIconMap).flatMap((network) => [
+      {
+        symbol: "USDC",
+        name: "USD Coin",
+        balance: "0",
+        network: network.id,
+        icon: USDC,
+      },
+      {
+        symbol: "USDT",
+        name: "Tether",
+        balance: "0",
+        network: network.id,
+        icon: USDT,
+      },
+    ]);
+  }, [balances]);
+
+  useEffect(() => {
+    const currentNetwork = normalizeNetworkId(
+      (isFromToken ? fromToken.network : toToken.network) || "solana",
+    );
+    setSelectedNetwork(currentNetwork);
+  }, [fromToken.network, toToken.network, isFromToken]);
+
+  useEffect(() => {
+    if (
+      !networks.find((n) => n.id === selectedNetwork) &&
+      networks.length > 0
+    ) {
+      setSelectedNetwork(networks[0].id);
+    }
+  }, [networks, selectedNetwork]);
 
   // Get selection type from route params
   const selectionType = params.selectionType as string;
@@ -98,7 +153,7 @@ export default function TokenSelector() {
 
   // Filter tokens based on selected network
   const filteredTokens = tokens.filter(
-    (token) => token.network === selectedNetwork
+    (token) => token.network === selectedNetwork,
   );
 
   const handleTokenSelect = (token: any) => {
@@ -171,6 +226,12 @@ export default function TokenSelector() {
           </View>
         </View>
         <View style={styles.tokenRight}>
+          <Text style={styles.tokenBalance}>
+            {Number.isFinite(Number(item.balance))
+              ? Number(item.balance).toFixed(6)
+              : "0.000000"}{" "}
+            {item.symbol}
+          </Text>
           {isSelected && (
             <Ionicons name="checkmark" size={20} color="#4A9DFF" />
           )}

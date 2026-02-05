@@ -38,8 +38,8 @@ export default function LoginScreen() {
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     try {
-      // Open Google OAuth in web browser - works immediately without mobile config
-      const redirectUrl = "com.flipeet.pay:/oauth2redirect";
+      // Use Expo-hosted redirect URL for better compatibility
+      const redirectUrl = "https://auth.expo.io/@PTM-Ngelale/flipeet-pay";
       const clientId =
         "289967638710-tjaaoepq7d43hkukdnt4r7acnv09raop.apps.googleusercontent.com";
 
@@ -53,7 +53,7 @@ export default function LoginScreen() {
 
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
-        redirectUrl
+        redirectUrl,
       );
 
       if (result.type === "success") {
@@ -69,7 +69,7 @@ export default function LoginScreen() {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ token: accessToken }),
-            }
+            },
           );
 
           const data = await response.json();
@@ -91,7 +91,7 @@ export default function LoginScreen() {
       Alert.alert(
         "Authentication Failed",
         error?.message || "Failed to sign in with Google. Please try again.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
       );
     } finally {
       setIsGoogleLoading(false);

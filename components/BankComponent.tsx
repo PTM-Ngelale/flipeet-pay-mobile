@@ -45,10 +45,10 @@ const BankComponent = () => {
   const token = useSelector((state: RootState) => state.auth.token);
   const banks = useSelector((state: RootState) => state.bankAccount.banks);
   const banksLoading = useSelector(
-    (state: RootState) => state.bankAccount.banksLoading
+    (state: RootState) => state.bankAccount.banksLoading,
   );
   const verifying = useSelector(
-    (state: RootState) => state.bankAccount.verifying
+    (state: RootState) => state.bankAccount.verifying,
   );
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [loadingRate, setLoadingRate] = useState<boolean>(false);
@@ -81,18 +81,34 @@ const BankComponent = () => {
                 text: "Retry",
                 onPress: () => dispatch(fetchBanks()),
               },
-            ]
+            ],
           );
         });
     }
   }, [token, dispatch, banks.length, banksLoading]);
 
-  // Get balance for Solana tokens only
+  // Get balance for selected token/network (case-insensitive)
   const getTokenBalance = (symbol: string) => {
     if (!balances || !Array.isArray(balances)) return 0;
-    const balance = balances.find(
-      (b: any) => b.token === symbol && b.network === "Solana"
-    );
+    const normalizeNetwork = (value: string) => {
+      const normalized = (value || "").toLowerCase().replace(/\s+/g, "-");
+      if (
+        normalized === "bnb-chain" ||
+        normalized === "bnb" ||
+        normalized === "bsc"
+      ) {
+        return "bnb-smart-chain";
+      }
+      return normalized;
+    };
+
+    const network = normalizeNetwork(selectedToken?.network || "solana");
+    const tokenSymbol = (symbol || "").toLowerCase();
+    const balance = balances.find((b: any) => {
+      const bNetwork = normalizeNetwork(b.network || "");
+      const bToken = (b.token || b.asset || "").toLowerCase();
+      return bNetwork === network && bToken === tokenSymbol;
+    });
     return balance?.balance || 0;
   };
 
@@ -138,7 +154,7 @@ const BankComponent = () => {
               bankCode: selectedBank.code,
               bankName: selectedBank.name,
               currency: "NGN",
-            })
+            }),
           ).unwrap();
 
           if (result.accountName) {
@@ -162,16 +178,27 @@ const BankComponent = () => {
     setAccountNumber(numericValue);
   };
 
-  const handleFavoriteToggle = (value: boolean) => {
-    setIsFavorite(value);
+  const handleFavoriteToggle = async (value: boolean) => {
     if (value && accountNumber && selectedBank) {
-      addFavoriteBank(accountNumber, selectedBank.name);
+      // Request to add to favorites
+      await addFavoriteBank(accountNumber, selectedBank.name);
+      // The context handles optimistic UI and reverts on failure
+      // Update local state based on context after a short delay to allow context update
+      setTimeout(() => {
+        setIsFavorite(isBankFavorite(accountNumber));
+      }, 100);
     } else if (!value && accountNumber) {
       const favoriteBank = favoriteBanks.find(
-        (fav) => fav.accountNumber === accountNumber
+        (fav) => fav.accountNumber === accountNumber,
       );
       if (favoriteBank) {
-        removeFavoriteBank(favoriteBank.id);
+        // Request to remove from favorites
+        await removeFavoriteBank(favoriteBank.id);
+        // The context handles optimistic UI and reverts on failure
+        // Update local state based on context after a short delay to allow context update
+        setTimeout(() => {
+          setIsFavorite(isBankFavorite(accountNumber));
+        }, 100);
       }
     }
   };
@@ -191,7 +218,7 @@ const BankComponent = () => {
   };
 
   const filteredBanks = banks.filter((bank) =>
-    bank.name.toLowerCase().includes(bankSearchQuery.toLowerCase())
+    bank.name.toLowerCase().includes(bankSearchQuery.toLowerCase()),
   );
 
   // Fetch exchange rate from API
@@ -214,11 +241,13 @@ const BankComponent = () => {
 
       try {
         setLoadingRate(true);
-        const asset = selectedToken?.symbol || "USDC";
+        const asset = (selectedToken?.symbol || "USDC").toLowerCase();
         const amount = 1;
         const provider = "bread";
 
-        const url = `https://api.pay.flipeet.io/api/v1/ramp/rate?amount=${amount}&asset=${asset}&currency=${currency}&provider=${provider}`;
+        const url = `https://api.pay.flipeet.io/api/v1/ramp/rate?amount=${amount}&asset=${encodeURIComponent(asset)}&currency=${encodeURIComponent(
+          currency,
+        )}&provider=${encodeURIComponent(provider)}`;
 
         const response = await fetch(url, {
           method: "GET",
@@ -230,14 +259,40 @@ const BankComponent = () => {
 
         if (response.ok) {
           const data = await response.json();
-          const rate = data.data?.rate;
-          setExchangeRate(rate);
-          console.log("Exchange rate fetched:", rate);
+          console.log("Exchange rate response:", data);
+          const rawRate =
+            (typeof data?.data === "number" ? data.data : null) ??
+            data?.data?.rate ??
+            data?.rate ??
+            data?.data?.exchangeRate ??
+            data?.exchangeRate ??
+            data?.data?.value ??
+            data?.value ??
+            null;
+          const normalizedRate =
+            typeof rawRate === "string" ? rawRate.replace(/,/g, "") : rawRate;
+          const parsedRate =
+            normalizedRate !== null && normalizedRate !== undefined
+              ? parseFloat(normalizedRate.toString())
+              : NaN;
+          if (Number.isFinite(parsedRate)) {
+            setExchangeRate(parsedRate);
+          } else {
+            setExchangeRate(null);
+          }
+          console.log("Exchange rate fetched:", parsedRate);
         } else {
-          console.log("Failed to fetch exchange rate");
+          const raw = await response.text();
+          console.log("Failed to fetch exchange rate:", {
+            status: response.status,
+            statusText: response.statusText,
+            body: raw,
+          });
+          setExchangeRate(null);
         }
       } catch (error) {
         console.error("Error fetching exchange rate:", error);
+        setExchangeRate(null);
       } finally {
         setLoadingRate(false);
       }
@@ -250,7 +305,11 @@ const BankComponent = () => {
     const numericValue = text.replace(/[^0-9.]/g, "");
     setPayAmount(numericValue);
 
-    if (numericValue && !isNaN(parseFloat(numericValue))) {
+    if (
+      numericValue &&
+      !isNaN(parseFloat(numericValue)) &&
+      Number.isFinite(exchangeRate)
+    ) {
       const calculatedReceive = (
         parseFloat(numericValue) * exchangeRate
       ).toFixed(2);
@@ -264,9 +323,13 @@ const BankComponent = () => {
     const numericValue = text.replace(/[^0-9.]/g, "");
     setReceiveAmount(numericValue);
 
-    if (numericValue && !isNaN(parseFloat(numericValue))) {
+    if (
+      numericValue &&
+      !isNaN(parseFloat(numericValue)) &&
+      Number.isFinite(exchangeRate)
+    ) {
       const calculatedPay = (parseFloat(numericValue) / exchangeRate).toFixed(
-        6
+        6,
       );
       setPayAmount(calculatedPay);
     } else {
@@ -296,21 +359,36 @@ const BankComponent = () => {
   };
 
   const handleSwap = () => {
-    if (
-      payAmount &&
-      receiveAmount &&
-      selectedBank &&
-      accountNumber &&
-      accountName
-    ) {
+    if (!Number.isFinite(exchangeRate)) {
+      Alert.alert(
+        "Rate unavailable",
+        "Exchange rate is not available. Please try again shortly.",
+      );
+      return;
+    }
+
+    const amountNumber = parseFloat(payAmount || "0");
+
+    if (amountNumber > tokenBalance) {
+      Alert.alert(
+        "Insufficient Balance",
+        "You do not have enough balance to complete this transaction. Please reduce the amount or fund your wallet.",
+      );
+      return;
+    }
+
+    if (payAmount && selectedBank && accountNumber && accountName) {
+      const derivedReceiveAmount = Number.isFinite(exchangeRate)
+        ? (parseFloat(payAmount) * exchangeRate).toFixed(2)
+        : payAmount;
       router.push({
         pathname: "/(action)/review-transaction",
         params: {
           payAmount,
-          receiveAmount,
+          receiveAmount: receiveAmount || derivedReceiveAmount,
           payCurrency: selectedToken?.symbol || "USDC",
           receiveCurrency: savedCurrency || "NGN",
-          network: "Solana", // Only Solana supported
+          network: selectedToken?.network || "Solana",
           exchangeRate: exchangeRate ? exchangeRate.toString() : "0",
           recipient: `${accountName} - ${accountNumber}`,
           recipientType: "bank",
@@ -323,13 +401,18 @@ const BankComponent = () => {
     }
   };
 
+  const amountNumber = parseFloat(payAmount || "0");
+  const hasInsufficientBalance =
+    !isNaN(amountNumber) && amountNumber > tokenBalance;
+
   const isSwapDisabled =
     !payAmount ||
-    !receiveAmount ||
-    parseFloat(payAmount) === 0 ||
+    amountNumber === 0 ||
     !selectedBank ||
     !accountNumber ||
-    !accountName;
+    !accountName ||
+    hasInsufficientBalance ||
+    !Number.isFinite(exchangeRate);
 
   const getCurrencySymbol = () => {
     switch (savedCurrency) {

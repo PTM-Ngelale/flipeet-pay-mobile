@@ -31,25 +31,28 @@ const SellComponent = () => {
   const { selectedToken } = useToken();
   const token = useSelector((state: RootState) => state.auth.token);
   const balances = useSelector((state: RootState) => state.auth.balances);
+  const displayTokenSymbol = selectedToken?.symbol || "USDC";
+  const displayTokenNetwork = selectedToken?.network || "Solana";
 
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [loadingRate, setLoadingRate] = useState<boolean>(false);
   const dailyLimit = 1000;
   const usedLimit = 0;
 
-  // Get user balance for selected token
+  // Get user balance for selected token/network (case-insensitive)
   const getTokenBalance = (symbol: string, network: string) => {
     if (!balances || !Array.isArray(balances)) return 0;
-    const balance = balances.find(
-      (b: any) => b.token === symbol && b.network === network
-    );
+    const targetSymbol = (symbol || "").toLowerCase();
+    const targetNetwork = (network || "").toLowerCase();
+    const balance = balances.find((b: any) => {
+      const bSymbol = (b.token || b.asset || "").toLowerCase();
+      const bNetwork = (b.network || "").toLowerCase();
+      return bSymbol === targetSymbol && bNetwork === targetNetwork;
+    });
     return balance?.balance || 0;
   };
 
-  const tokenBalance = getTokenBalance(
-    selectedToken?.symbol || "USDC",
-    selectedToken?.network || "Solana"
-  );
+  const tokenBalance = getTokenBalance(displayTokenSymbol, displayTokenNetwork);
 
   // Fetch exchange rate from API
   useEffect(() => {
@@ -127,7 +130,7 @@ const SellComponent = () => {
 
     if (numericValue && !isNaN(parseFloat(numericValue)) && exchangeRate) {
       const calculatedPay = (parseFloat(numericValue) / exchangeRate).toFixed(
-        6
+        6,
       );
       setPayAmount(calculatedPay);
     } else {
@@ -267,12 +270,16 @@ const SellComponent = () => {
                 style={styles.tokenSelector}
                 onPress={() => router.push("/(action)/token-selector")}
               >
-                <View>{renderTokenIcon(selectedToken.icon)}</View>
                 <View>
-                  <Text style={styles.tokenName}>{selectedToken.symbol}</Text>
-                  <Text style={styles.tokenNetwork}>
-                    {selectedToken.network}
-                  </Text>
+                  {selectedToken?.icon ? (
+                    renderTokenIcon(selectedToken.icon)
+                  ) : (
+                    <Ionicons name="ellipse" size={24} color="#4A9DFF" />
+                  )}
+                </View>
+                <View>
+                  <Text style={styles.tokenName}>{displayTokenSymbol}</Text>
+                  <Text style={styles.tokenNetwork}>{displayTokenNetwork}</Text>
                 </View>
                 <View>
                   <Ionicons name="chevron-down" color={"#4A9DFF"} />
@@ -284,7 +291,7 @@ const SellComponent = () => {
                   style={{ width: 13, height: 13 }}
                 />
                 <Text style={styles.balanceText}>
-                  {tokenBalance.toFixed(6)} {selectedToken?.symbol || "USDC"}
+                  {tokenBalance.toFixed(6)} {displayTokenSymbol}
                 </Text>
               </View>
             </View>

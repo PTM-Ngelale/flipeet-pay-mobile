@@ -26,6 +26,7 @@ interface Activity {
   secondaryAmount?: string;
   icon: any;
   date: string;
+  time: string;
   amountColor: string;
 }
 
@@ -94,6 +95,11 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     marginTop: 4,
   },
+  activityDate: {
+    color: "#757B85",
+    fontSize: 12,
+    marginTop: 4,
+  },
   activityRight: {
     alignItems: "flex-end",
   },
@@ -136,12 +142,13 @@ export default function RecentActivity() {
 
   // Get transactions from Redux
   const transactions = useSelector(
-    (state: RootState) => state.auth.transactions
+    (state: RootState) => state.auth.transactions,
   );
   const transactionsLoading = useSelector(
-    (state: RootState) => state.auth.transactionsLoading
+    (state: RootState) => state.auth.transactionsLoading,
   );
   const token = useSelector((state: RootState) => state.auth.token);
+  const user = useSelector((state: RootState) => state.auth.user);
 
   // Fetch transactions on mount
   useEffect(() => {
@@ -158,17 +165,59 @@ export default function RecentActivity() {
   };
 
   // Helper function to format date
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      });
-    } catch {
-      return dateString;
+  const formatDate = (dateValue: string | number) => {
+    if (dateValue === null || dateValue === undefined) {
+      return "Unknown date";
     }
+
+    const numeric =
+      typeof dateValue === "number"
+        ? dateValue
+        : Number.isFinite(Number(dateValue))
+          ? Number(dateValue)
+          : null;
+
+    const date =
+      numeric !== null
+        ? new Date(numeric < 1e12 ? numeric * 1000 : numeric)
+        : new Date(dateValue);
+
+    if (Number.isNaN(date.getTime())) {
+      return "Unknown date";
+    }
+
+    return date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const formatTime = (dateValue: string | number) => {
+    if (dateValue === null || dateValue === undefined) {
+      return "";
+    }
+
+    const numeric =
+      typeof dateValue === "number"
+        ? dateValue
+        : Number.isFinite(Number(dateValue))
+          ? Number(dateValue)
+          : null;
+
+    const date =
+      numeric !== null
+        ? new Date(numeric < 1e12 ? numeric * 1000 : numeric)
+        : new Date(dateValue);
+
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    return date.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
   };
 
   // Helper function to shorten address
@@ -183,14 +232,53 @@ export default function RecentActivity() {
 
     return transactions.map((tx: any) => {
       const type = (tx.type || tx.transactionType || "transfer").toLowerCase();
+      const directionRaw = String(
+        tx.direction ||
+          tx.flow ||
+          tx.side ||
+          tx.entryType ||
+          tx.transactionDirection ||
+          "",
+      ).toLowerCase();
       const amount = parseFloat(tx.amount || 0);
+      const userId = user?.id || user?.userId || user?._id;
+      const userEmail = String(user?.email || "").toLowerCase();
+      const senderId =
+        tx.senderId || tx.fromUserId || tx.userId || tx.sender?.id;
+      const receiverId =
+        tx.receiverId || tx.toUserId || tx.recipientId || tx.receiver?.id;
+      const senderEmail = String(
+        tx.senderEmail || tx.fromEmail || tx.sender?.email || "",
+      ).toLowerCase();
+      const receiverEmail = String(
+        tx.receiverEmail ||
+          tx.toEmail ||
+          tx.recipientEmail ||
+          tx.receiver?.email ||
+          "",
+      ).toLowerCase();
       const asset = (
         tx.asset ||
         tx.currency ||
         tx.symbol ||
         "USDC"
       ).toUpperCase();
-      const date = formatDate(tx.createdAt || tx.timestamp || tx.date);
+      const rawDate =
+        tx.createdAt ||
+        tx.created_at ||
+        tx.timestamp ||
+        tx.timeStamp ||
+        tx.date ||
+        tx.updatedAt ||
+        tx.updated_at ||
+        tx.time ||
+        tx.processedAt ||
+        tx.completedAt ||
+        tx.created ||
+        tx?.metadata?.createdAt ||
+        tx?.meta?.createdAt;
+      const date = formatDate(rawDate);
+      const time = formatTime(rawDate);
 
       // Determine transaction type and format accordingly
       let title = "Transaction";
@@ -208,31 +296,75 @@ export default function RecentActivity() {
         if (tx.toAmount) {
           secondaryAmount = `+${tx.toAmount} ${toAsset}`;
         }
-      } else if (
-        type.includes("receive") ||
-        type.includes("credit") ||
-        amount > 0
-      ) {
-        title = "Received";
-        const from = tx.from || tx.sender || tx.fromAddress;
-        description = from ? `From ${shortenAddress(from)}` : "Received funds";
-        displayAmount = `+${amount} ${asset}`;
-        amountColor = "#34D058";
-      } else if (
-        type.includes("send") ||
-        type.includes("debit") ||
-        amount < 0
-      ) {
-        title = "Sent";
-        const to = tx.to || tx.recipient || tx.toAddress;
-        description = to ? `To ${shortenAddress(to)}` : "Sent funds";
-        displayAmount = `-${Math.abs(amount)} ${asset}`;
-      } else if (type.includes("sell") || type.includes("offramp")) {
-        title = "Sold";
-        description = `${asset} to ${tx.currency || "NGN"}`;
-        displayAmount = `-${amount} ${asset}`;
-        if (tx.fiatAmount) {
-          secondaryAmount = `+${tx.fiatAmount} ${tx.currency || "NGN"}`;
+      } else {
+        if (type.includes("sell") || type.includes("offramp")) {
+          title = "Sold";
+          description = `${asset} to ${tx.currency || "NGN"}`;
+          displayAmount = `-${Math.abs(amount)} ${asset}`;
+          if (tx.fiatAmount) {
+            secondaryAmount = `+${tx.fiatAmount} ${tx.currency || "NGN"}`;
+          }
+        } else {
+          const isOutgoingByType =
+            type.includes("send") ||
+            type.includes("withdrawal") ||
+            type.includes("debit") ||
+            type.includes("transfer_out");
+          const isIncomingByType =
+            type.includes("receive") ||
+            type.includes("deposit") ||
+            type.includes("credit") ||
+            type.includes("onramp") ||
+            type.includes("transfer_in");
+          const isOutgoingByDirection =
+            directionRaw.includes("out") ||
+            directionRaw.includes("debit") ||
+            directionRaw.includes("withdraw");
+          const isIncomingByDirection =
+            directionRaw.includes("in") ||
+            directionRaw.includes("credit") ||
+            directionRaw.includes("deposit");
+          const isOutgoingByUser =
+            (!!userId && !!senderId && String(senderId) === String(userId)) ||
+            (!!userEmail && !!senderEmail && senderEmail === userEmail);
+          const isIncomingByUser =
+            (!!userId &&
+              !!receiverId &&
+              String(receiverId) === String(userId)) ||
+            (!!userEmail && !!receiverEmail && receiverEmail === userEmail);
+
+          const isOutgoing =
+            isOutgoingByType || isOutgoingByDirection || isOutgoingByUser;
+          const isIncoming =
+            isIncomingByType || isIncomingByDirection || isIncomingByUser;
+
+          if (isOutgoing && !isIncoming) {
+            title = "Sent";
+            const to = tx.to || tx.recipient || tx.toAddress;
+            description = to ? `To ${shortenAddress(to)}` : "Sent funds";
+            displayAmount = `-${Math.abs(amount)} ${asset}`;
+          } else if (isIncoming && !isOutgoing) {
+            title = "Received";
+            const from = tx.from || tx.sender || tx.fromAddress;
+            description = from
+              ? `From ${shortenAddress(from)}`
+              : "Received funds";
+            displayAmount = `+${Math.abs(amount)} ${asset}`;
+            amountColor = "#34D058";
+          } else if (amount < 0) {
+            title = "Sent";
+            const to = tx.to || tx.recipient || tx.toAddress;
+            description = to ? `To ${shortenAddress(to)}` : "Sent funds";
+            displayAmount = `-${Math.abs(amount)} ${asset}`;
+          } else {
+            title = "Received";
+            const from = tx.from || tx.sender || tx.fromAddress;
+            description = from
+              ? `From ${shortenAddress(from)}`
+              : "Received funds";
+            displayAmount = `+${Math.abs(amount)} ${asset}`;
+            amountColor = "#34D058";
+          }
         }
       }
 
@@ -245,6 +377,7 @@ export default function RecentActivity() {
         secondaryAmount,
         icon: require("@/assets/images/bnb-chain.png"),
         date,
+        time,
         amountColor,
       };
     });
@@ -279,6 +412,7 @@ export default function RecentActivity() {
         <View style={styles.activityContent}>
           <Text style={styles.activityTitle}>{activity.title}</Text>
           <Text style={styles.activityDescription}>{activity.description}</Text>
+          <Text style={styles.activityDate}>{activity.time}</Text>
         </View>
       </View>
 

@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { apiGet, apiPost } from "../constants/api";
+import { apiGet, apiPost, normalizeAuthToken } from "../constants/api";
 
 type AuthState = {
   loading: boolean;
@@ -32,7 +32,7 @@ export const requestOtp = createAsyncThunk(
   "auth/requestOtp",
   async (
     { email, type }: { email: string; type: "signup" | "login" },
-    thunkAPI: any
+    thunkAPI: any,
   ) => {
     try {
       if (type === "signup") {
@@ -41,14 +41,14 @@ export const requestOtp = createAsyncThunk(
       } else {
         // GET /auth/otp/authenticator?email=...
         await apiGet(
-          `/auth/otp/authenticator?email=${encodeURIComponent(email)}`
+          `/auth/otp/authenticator?email=${encodeURIComponent(email)}`,
         );
       }
       return { email };
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Failed to request OTP");
     }
-  }
+  },
 );
 
 export const verifyOtp = createAsyncThunk(
@@ -60,22 +60,78 @@ export const verifyOtp = createAsyncThunk(
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "OTP verification failed");
     }
-  }
+  },
 );
 
 export const signIn = createAsyncThunk(
   "auth/signIn",
   async (
     { email, password }: { email: string; password: string },
-    thunkAPI: any
+    thunkAPI: any,
   ) => {
     try {
-      const data = await apiPost(`/auth/sign-in`, { email, password });
-      return data;
+      const response = await fetch(
+        "https://api.pay.flipeet.io/api/v1/auth/sign-in",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email, password }),
+        },
+      );
+
+      const raw = await response.text();
+      let data: any = { message: raw };
+      try {
+        data = JSON.parse(raw);
+      } catch {
+        // keep raw message
+      }
+
+      if (!response.ok) {
+        return thunkAPI.rejectWithValue(
+          data.message || "Sign in failed",
+        );
+      }
+
+      const headerTokenRaw =
+        response.headers.get("authorization") ||
+        response.headers.get("Authorization") ||
+        response.headers.get("x-access-token") ||
+        response.headers.get("x-auth-token") ||
+        response.headers.get("x-token");
+
+      const setCookieRaw =
+        response.headers.get("set-cookie") ||
+        response.headers.get("Set-Cookie");
+
+      const cookieTokenMatch = setCookieRaw
+        ? setCookieRaw.match(
+            /(accessToken|token|jwt)=([^;]+)/i,
+          )
+        : null;
+
+      const headerToken = headerTokenRaw
+        ? headerTokenRaw.replace(/^Bearer\s+/i, "").trim()
+        : null;
+
+      const cookieToken = cookieTokenMatch?.[2]?.trim() || null;
+      const tokenFromResponse = normalizeAuthToken(
+        headerToken || cookieToken || data,
+      );
+
+      if (!tokenFromResponse) {
+        return thunkAPI.rejectWithValue(
+          "Authentication token missing. Please contact support.",
+        );
+      }
+
+      return { ...data, headerToken: tokenFromResponse };
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Sign in failed");
     }
-  }
+  },
 );
 
 export const signUp = createAsyncThunk(
@@ -87,7 +143,7 @@ export const signUp = createAsyncThunk(
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Sign up failed");
     }
-  }
+  },
 );
 
 export const googleSignIn = createAsyncThunk(
@@ -99,7 +155,7 @@ export const googleSignIn = createAsyncThunk(
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Google sign in failed");
     }
-  }
+  },
 );
 
 export const fetchUserBalances = createAsyncThunk(
@@ -123,10 +179,10 @@ export const fetchUserBalances = createAsyncThunk(
       return data;
     } catch (err: any) {
       return thunkAPI.rejectWithValue(
-        err.message || "Failed to fetch balances"
+        err.message || "Failed to fetch balances",
       );
     }
-  }
+  },
 );
 
 export const fetchTransactions = createAsyncThunk(
@@ -144,16 +200,18 @@ export const fetchTransactions = createAsyncThunk(
         return thunkAPI.rejectWithValue("No user ID found");
       }
 
-      const userId = user.id || user.userId;
-      const { apiGetAuth } = await import("../constants/api");
-      const data = await apiGetAuth(`/user/${userId}/transactions`, token);
+      const { getTransactionStatements } = await import("../constants/api");
+      const data = await getTransactionStatements(
+        { type: "*", page: 1, limit: 50 },
+        token,
+      );
       return data;
     } catch (err: any) {
       return thunkAPI.rejectWithValue(
-        err.message || "Failed to fetch transactions"
+        err.message || "Failed to fetch transactions",
       );
     }
-  }
+  },
 );
 
 export const updateUsername = createAsyncThunk(
@@ -161,39 +219,26 @@ export const updateUsername = createAsyncThunk(
   async (username: string, thunkAPI: any) => {
     try {
       const state = thunkAPI.getState();
-      const { token, user } = state.auth;
+      const { token } = state.auth;
 
       if (!token) {
         return thunkAPI.rejectWithValue("No authentication token");
       }
 
-      const response = await fetch(
-        "https://api.pay.flipeet.io/api/v1/user/profile",
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ username }),
-        }
-      );
+      const { apiRequest } = await import("../constants/api");
+      await apiRequest("/user/profile", {
+        method: "PATCH",
+        body: { username },
+        token,
+      });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        return thunkAPI.rejectWithValue(
-          errorData.message || "Failed to update username"
-        );
-      }
-
-      const data = await response.json();
       return { username };
     } catch (err: any) {
       return thunkAPI.rejectWithValue(
-        err.message || "Failed to update username"
+        err.message || "Failed to update username",
       );
     }
-  }
+  },
 );
 
 export const fetchUserProfile = createAsyncThunk(
@@ -213,14 +258,14 @@ export const fetchUserProfile = createAsyncThunk(
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Failed to fetch profile");
     }
-  }
+  },
 );
 
 export const changePin = createAsyncThunk(
   "auth/changePin",
   async (
     { oldPin, newPin }: { oldPin: string; newPin: string },
-    thunkAPI: any
+    thunkAPI: any,
   ) => {
     try {
       const state = thunkAPI.getState();
@@ -239,13 +284,13 @@ export const changePin = createAsyncThunk(
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ oldPin, newPin }),
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json();
         return thunkAPI.rejectWithValue(
-          errorData.message || "Failed to change PIN"
+          errorData.message || "Failed to change PIN",
         );
       }
 
@@ -254,7 +299,7 @@ export const changePin = createAsyncThunk(
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Failed to change PIN");
     }
-  }
+  },
 );
 
 export const changeEmail = createAsyncThunk(
@@ -277,13 +322,13 @@ export const changeEmail = createAsyncThunk(
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({ email: newEmail }),
-        }
+        },
       );
 
       if (!response.ok) {
         const errorData = await response.json();
         return thunkAPI.rejectWithValue(
-          errorData.message || "Failed to change email"
+          errorData.message || "Failed to change email",
         );
       }
 
@@ -292,7 +337,7 @@ export const changeEmail = createAsyncThunk(
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Failed to change email");
     }
-  }
+  },
 );
 
 // Load authentication state from AsyncStorage
@@ -301,17 +346,28 @@ export const loadAuthState = createAsyncThunk(
   async (_, thunkAPI: any) => {
     try {
       console.log("Loading auth state from AsyncStorage...");
-      const token = await AsyncStorage.getItem("auth_token");
+      const { normalizeAuthToken } = await import("../constants/api");
+      const tokenRaw = await AsyncStorage.getItem("auth_token");
       const userJson = await AsyncStorage.getItem("auth_user");
       const email = await AsyncStorage.getItem("auth_email");
+
+      const token = normalizeAuthToken(tokenRaw);
 
       if (token && userJson) {
         const user = JSON.parse(userJson);
         console.log(
           "Auth state loaded successfully. Token:",
-          token.substring(0, 20) + "..."
+          token.substring(0, 20) + "...",
         );
+        if (tokenRaw && tokenRaw !== token) {
+          AsyncStorage.setItem("auth_token", token);
+        }
         return { token, user, email };
+      }
+
+      if (tokenRaw && !token) {
+        await AsyncStorage.multiRemove(["auth_token", "auth_user", "auth_email"]);
+        return thunkAPI.rejectWithValue("Invalid saved session. Please log in again.");
       }
 
       console.log("No saved auth state found");
@@ -320,7 +376,7 @@ export const loadAuthState = createAsyncThunk(
       console.error("Failed to load auth state:", err);
       return thunkAPI.rejectWithValue("Failed to load auth state");
     }
-  }
+  },
 );
 
 const authSlice = createSlice({
@@ -350,7 +406,7 @@ const authSlice = createSlice({
       state.transactions = [];
       // Clear AsyncStorage
       AsyncStorage.multiRemove(["auth_token", "auth_user", "auth_email"]);
-      
+
       // Note: Bank account state will be cleared by a separate dispatch
     },
   },
@@ -390,7 +446,7 @@ const authSlice = createSlice({
         const payload = action.payload || {};
         console.log(
           "signIn fulfilled payload:",
-          JSON.stringify(payload, null, 2)
+          JSON.stringify(payload, null, 2),
         );
 
         // Try to safely extract user and token from various response structures
@@ -399,19 +455,21 @@ const authSlice = createSlice({
           const credentials = data.credentials || {};
 
           state.user = payload.user || data.user || null;
-          state.token =
+          const rawToken =
+            payload.headerToken ||
             credentials.accessToken ||
             payload.accessToken ||
             payload.token ||
             data.accessToken ||
             data.token ||
             null;
+          state.token = normalizeAuthToken(rawToken);
 
           // Persist to AsyncStorage
           if (state.token) {
             console.log(
               "Saving token to AsyncStorage:",
-              state.token.substring(0, 20) + "..."
+              state.token.substring(0, 20) + "...",
             );
             AsyncStorage.setItem("auth_token", state.token);
           } else {
@@ -460,12 +518,13 @@ const authSlice = createSlice({
         const payload = action.payload || {};
         const data = payload.data || {};
         state.user = payload.user || data.user || state.user;
-        state.token =
+        const rawToken =
           payload.accessToken ||
           payload.token ||
           data.accessToken ||
           data.token ||
           null;
+        state.token = normalizeAuthToken(rawToken);
       })
       .addCase(signUp.rejected, (state: any, action: any) => {
         state.loading = false;
@@ -501,30 +560,72 @@ const authSlice = createSlice({
       .addCase(fetchUserBalances.fulfilled, (state: any, action: any) => {
         state.balancesLoading = false;
         const payload = action.payload || {};
-        console.log("Balances API response:", JSON.stringify(payload, null, 2));
+        console.log("[fetchUserBalances] Raw API response:", payload);
 
-        // Handle nested structure: { balances: { network: { token: amount } } }
-        if (payload.balances && typeof payload.balances === "object") {
-          // Flatten nested structure into array
+        const balancesPayload =
+          payload.balances || (payload.data && payload.data.balances);
+
+        // Handle nested structure: { balances: { network: { token: amount | { amount, usdValue } } } }
+        if (balancesPayload && typeof balancesPayload === "object") {
           const flatBalances: any[] = [];
-          const networks = payload.balances;
+          const networks = balancesPayload;
 
           Object.keys(networks).forEach((network) => {
             const tokens = networks[network];
             Object.keys(tokens).forEach((token) => {
-              const balance = tokens[token];
-              // Only include tokens with balance > 0 or always include for display
+              const tokenData = tokens[token];
+
+              // Handle both formats:
+              // 1. Simple number: { token: 100 }
+              // 2. Object: { token: { amount: 100, usdValue: 50 } }
+              let balance = 0;
+              let usdValue = 0;
+
+              if (typeof tokenData === "number") {
+                balance = parseFloat(tokenData.toString());
+                // For stablecoins (USDC, USDT), assume 1:1
+                const tokenSymbol = token.toUpperCase();
+                if (tokenSymbol === "USDC" || tokenSymbol === "USDT") {
+                  usdValue = balance;
+                } else {
+                  // For other tokens, we'd need price data from backend
+                  usdValue = balance;
+                }
+              } else if (typeof tokenData === "object" && tokenData !== null) {
+                balance = parseFloat(
+                  (tokenData.amount || tokenData.balance || 0).toString(),
+                );
+                usdValue = parseFloat(
+                  (
+                    tokenData.usdValue ||
+                    tokenData.usd_value ||
+                    tokenData.value_usd ||
+                    tokenData.priceInUsd ||
+                    balance
+                  ).toString(),
+                );
+              }
+
               flatBalances.push({
                 network: network,
                 asset: token.toUpperCase(),
                 balance: balance,
-                usdValue: balance, // Assuming 1:1 for stablecoins, can be improved
+                token: token,
+                usdValue: usdValue,
               });
+
+              console.log(
+                `[fetchUserBalances] ${token} on ${network}: balance=${balance}, usdValue=${usdValue}`,
+              );
             });
           });
 
           state.balances = flatBalances;
-          console.log("Flattened balances:", flatBalances);
+          console.log(
+            "[fetchUserBalances] Total balances:",
+            flatBalances.length,
+            "items",
+          );
         } else {
           state.balances = payload.data || payload || [];
         }

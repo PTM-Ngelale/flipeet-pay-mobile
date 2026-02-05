@@ -12,12 +12,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useBridgeToken } from "../contexts/BridgeTokenContext";
-import { RootState } from "../store";
+import { AppDispatch, RootState } from "../store";
+import { executeBridge } from "../store/transactionSlice";
 
 export default function ReviewBridgeScreen() {
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
   const params = useLocalSearchParams();
   const { fromToken, toToken } = useBridgeToken();
   const token = useSelector((state: RootState) => state.auth.token);
@@ -26,15 +28,26 @@ export default function ReviewBridgeScreen() {
   const {
     payAmount,
     receiveAmount,
-    payCurrency = "$",
-    receiveCurrency = "ETH",
-    fromNetwork = "USDC",
-    toNetwork = "USDT",
-    exchangeRate = "1.0062",
+    payCurrency,
+    receiveCurrency,
+    fromNetwork,
+    toNetwork,
+    exchangeRate,
   } = params;
 
   // Calculate total value in USDT (you can modify this logic as needed)
   const totalValue = (parseFloat(payAmount as string) || 0).toFixed(2);
+
+  const paySymbol = (payCurrency as string) || fromToken.symbol || "";
+  const receiveSymbol = (receiveCurrency as string) || toToken.symbol || "";
+
+  const iconMap: Record<string, React.ComponentType<any>> = {
+    USDC: USDCIcon,
+    USDT: USDTIcon,
+  };
+
+  const FromIcon = iconMap[paySymbol?.toUpperCase()] || null;
+  const ToIcon = iconMap[receiveSymbol?.toUpperCase()] || null;
 
   const handleConfirm = async () => {
     if (!token) {
@@ -46,54 +59,77 @@ export default function ReviewBridgeScreen() {
       setLoading(true);
 
       // Prepare bridge/swap transaction payload
+      const normalizeNetwork = (value: string) => {
+        const normalized = (value || "").toLowerCase().replace(/\s+/g, "-");
+        if (
+          normalized === "bnb-chain" ||
+          normalized === "bnb-smart-chain" ||
+          normalized === "bnb" ||
+          normalized === "bsc"
+        ) {
+          return "bnb-smart-chain";
+        }
+        return normalized;
+      };
+
       const payload = {
-        fromAsset: fromToken.symbol,
-        toAsset: toToken.symbol,
-        fromNetwork: fromToken.network.toLowerCase(),
-        toNetwork: toToken.network.toLowerCase(),
         amount: parseFloat(payAmount as string),
-        expectedOutput: parseFloat(receiveAmount as string),
+        fromAsset: (fromToken.symbol as string).toLowerCase(), // API expects lowercase: "usdc", "usdt"
+        toAsset: (toToken.symbol as string).toLowerCase(), // API expects lowercase: "usdc", "usdt"
+        fromNetwork: normalizeNetwork(fromToken.network as string),
+        toNetwork: normalizeNetwork(toToken.network as string),
       };
 
       console.log("Executing bridge transaction:", payload);
 
-      const response = await fetch(
-        "https://api.pay.flipeet.io/api/v1/transactions/bridge",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        }
-      );
+      const result = await dispatch(executeBridge(payload));
 
-      const data = await response.json();
-      console.log("Bridge transaction response:", data);
+      console.log("Bridge transaction result:", result);
 
-      if (response.ok) {
+      if (executeBridge.fulfilled.match(result)) {
+        const data = result.payload as any;
+
         router.replace({
           pathname: "/(action)/success-screen",
           params: {
-            transactionId: data.data?.id || data.data?.transactionId || "N/A",
+            transactionId:
+              data?.id || data?.transactionId || data?.txRef || "N/A",
             amount: payAmount,
             currency: fromToken.symbol,
             type: "bridge",
           },
         });
       } else {
-        Alert.alert(
-          "Transaction Failed",
-          data.message ||
-            "Failed to execute bridge transaction. Please try again."
-        );
+        // Handle specific error cases with user-friendly messages
+        const errorMessage =
+          (result.payload as string) ||
+          "Failed to execute bridge transaction. Please try again.";
+
+        if (
+          errorMessage.toLowerCase().includes("daily trading limit") ||
+          errorMessage.toLowerCase().includes("limit exceeded")
+        ) {
+          Alert.alert(
+            "Daily Limit Reached",
+            "You've reached your daily trading limit. Please try again tomorrow or contact support if you need a higher limit.",
+          );
+        } else if (
+          errorMessage.toLowerCase().includes("insufficient") ||
+          errorMessage.toLowerCase().includes("balance")
+        ) {
+          Alert.alert(
+            "Insufficient Balance",
+            "You don't have enough balance to complete this bridge transaction. Please reduce the amount or fund your wallet.",
+          );
+        } else {
+          Alert.alert("Transaction Failed", errorMessage);
+        }
       }
     } catch (error: any) {
       console.error("Bridge transaction error:", error);
       Alert.alert(
         "Error",
-        error.message || "An error occurred. Please try again."
+        error.message || "An error occurred. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -118,8 +154,7 @@ export default function ReviewBridgeScreen() {
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Amount</Text>
               <Text style={styles.detailValue}>
-                ${payAmount}
-                {/* {payCurrency} */}
+                {payAmount} {paySymbol}
               </Text>
             </View>
 
@@ -127,11 +162,10 @@ export default function ReviewBridgeScreen() {
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>From</Text>
               <View style={styles.networkDetail}>
-                {/* <Text style={styles.detailValue}>{payCurrency}</Text> */}
-                <USDCIcon />
+                {FromIcon ? <FromIcon /> : null}
                 <Text style={styles.networkText}>
-                  {/* on  {fromNetwork} */}
-                  USDC
+                  {paySymbol}
+                  {fromNetwork ? ` on ${fromNetwork}` : ""}
                 </Text>
               </View>
             </View>
@@ -140,19 +174,22 @@ export default function ReviewBridgeScreen() {
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>To</Text>
               <View style={styles.networkDetail}>
-                {/* <Text style={styles.detailValue}>{receiveCurrency}</Text> */}
-                <USDTIcon />
+                {ToIcon ? <ToIcon /> : null}
                 <Text style={styles.networkText}>
-                  {/* on {toNetwork} */}
-                  USDT
+                  {receiveSymbol}
+                  {toNetwork ? ` on ${toNetwork}` : ""}
                 </Text>
               </View>
             </View>
 
             {/* Value (in USDT) */}
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Value (In USDT)</Text>
-              <Text style={styles.detailValue}>${totalValue}</Text>
+              <Text style={styles.detailLabel}>
+                Value {receiveSymbol ? `(In ${receiveSymbol})` : ""}
+              </Text>
+              <Text style={styles.detailValue}>
+                {receiveAmount || totalValue} {receiveSymbol}
+              </Text>
             </View>
           </View>
 

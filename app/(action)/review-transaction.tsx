@@ -10,15 +10,24 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
-import { useSelector } from "react-redux";
-import type { RootState } from "../store";
+import { useDispatch, useSelector } from "react-redux";
+import type { AppDispatch, RootState } from "../store";
+import {
+  initializePayment,
+  internalTransfer,
+  withdrawWallet,
+} from "../store/transactionSlice";
 
 export default function ReviewTransactionScreen() {
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
   const params = useLocalSearchParams();
   const [processing, setProcessing] = useState(false);
   const token = useSelector((state: RootState) => state.auth.token);
   const user = useSelector((state: RootState) => state.auth.user);
+  const transactionError = useSelector(
+    (state: RootState) => state.transaction.error,
+  );
 
   const {
     payAmount,
@@ -60,41 +69,39 @@ export default function ReviewTransactionScreen() {
           memo: `Buy ${receiveAmount} ${receiveCurrency}`,
           reference,
           redirectUrl: "flipeet://payment/callback", // Deep link for mobile
-          theme: "dark",
+          theme: "dark" as const,
         };
 
         console.log("Initializing payment:", initPayload);
 
-        const response = await fetch(
-          "https://api.pay.flipeet.io/api/v1/transaction/initialize",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify(initPayload),
+        const result = await dispatch(initializePayment(initPayload));
+
+        if (initializePayment.fulfilled.match(result)) {
+          const data = result.payload as any;
+          console.log("Payment initialization response:", data);
+
+          if (data.paymentUrl) {
+            // Navigate to WebView to complete payment
+            router.push({
+              pathname: "/(action)/payment-webview",
+              params: {
+                paymentUrl: data.paymentUrl,
+                reference,
+                amount: receiveAmount,
+                currency: receiveCurrency,
+              },
+            });
+          } else {
+            Alert.alert(
+              "Payment Error",
+              "Failed to get payment URL. Please try again.",
+            );
           }
-        );
-
-        const data = await response.json();
-        console.log("Payment initialization response:", data);
-
-        if (response.ok && data.data?.paymentUrl) {
-          // Navigate to WebView to complete payment
-          router.push({
-            pathname: "/(action)/payment-webview",
-            params: {
-              paymentUrl: data.data.paymentUrl,
-              reference,
-              amount: receiveAmount,
-              currency: receiveCurrency,
-            },
-          });
         } else {
           Alert.alert(
             "Payment Error",
-            data.message || "Failed to initialize payment. Please try again."
+            (result.payload as string) ||
+              "Failed to initialize payment. Please try again.",
           );
         }
         setProcessing(false);
@@ -102,70 +109,143 @@ export default function ReviewTransactionScreen() {
       }
 
       // Prepare transaction payload based on recipient type
-      let endpoint = "";
-      let payload: any = {
-        amount: parseFloat(payAmount as string),
-        asset: payCurrency,
-        network: (network as string).toLowerCase(),
+      let result: any;
+
+      const normalizeNetwork = (value: string) => {
+        const normalized = (value || "").toLowerCase().replace(/\s+/g, "-");
+        if (
+          normalized === "bnb-chain" ||
+          normalized === "bnb-smart-chain" ||
+          normalized === "bnb" ||
+          normalized === "bsc"
+        ) {
+          return "bnb-smart-chain";
+        }
+        return normalized;
       };
 
       if (recipientType === "wallet" && walletAddress) {
-        endpoint = "/transactions/send";
-        payload.recipientAddress = walletAddress;
+        const payload = {
+          amount: parseFloat(payAmount as string),
+          asset: (payCurrency as string).toLowerCase(), // API expects lowercase: "usdc", "usdt"
+          network: normalizeNetwork(network as string),
+          payoutAddress: walletAddress,
+          favorite: false,
+        };
+
+        console.log("Sending withdrawal transaction:", payload);
+        result = await dispatch(withdrawWallet(payload));
+
+        if (!withdrawWallet.fulfilled.match(result)) {
+          throw new Error(
+            (result.payload as string) || "Failed to process withdrawal",
+          );
+        }
       } else if (recipientType === "email" && recipient) {
-        endpoint = "/transactions/send-to-email";
-        payload.recipientEmail = recipient;
+        const payload = {
+          email: recipient,
+          amount: parseFloat(payAmount as string),
+          asset: (payCurrency as string).toLowerCase(), // API expects lowercase: "usdc", "usdt"
+          network: normalizeNetwork(network as string),
+          favorite: false,
+        };
+
+        console.log("Sending internal transfer transaction:", payload);
+        result = await dispatch(internalTransfer(payload));
+
+        if (!internalTransfer.fulfilled.match(result)) {
+          throw new Error(
+            (result.payload as string) || "Failed to process transfer",
+          );
+        }
       } else if (recipientType === "bank") {
-        endpoint = "/ramp/sell";
-        // For bank transfer/sell, include bank account details
+        // For bank transfers, still use direct fetch as this uses ramp endpoint
+        // This could be migrated to a separate thunk if needed
         const { bankName, bankCode, accountNumber, accountName } = params;
-        payload.currency = receiveCurrency; // Fiat currency
-        payload.bankAccount = {
-          bankName,
-          bankCode,
+
+        const payload = {
           accountNumber,
           accountName,
+          bankCode,
+          bankName,
+          amount: parseFloat(payAmount as string),
+          asset: (payCurrency as string).toLowerCase(),
+          rate: parseFloat(exchangeRate as string),
+          network: normalizeNetwork(network as string),
+          currency: receiveCurrency,
+          favorite: false,
+          provider: "bread",
         };
+
+        console.log("Sending bank transaction:", payload);
+
+        const response = await fetch(
+          "https://api.pay.flipeet.io/api/v1/ramp/send/initialize",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+          },
+        );
+
+        const data = await response.json();
+        console.log("Bank transaction response:", {
+          status: response.status,
+          ok: response.ok,
+          data,
+        });
+
+        if (!response.ok) {
+          const errorMessage =
+            data?.message ||
+            data?.error ||
+            response.statusText ||
+            "Failed to process bank transfer";
+          throw new Error(`[${response.status}] ${errorMessage}`);
+        }
+
+        result = { payload: data.data || data };
       }
 
-      console.log("Sending transaction:", payload);
-
-      const response = await fetch(
-        `https://api.pay.flipeet.io/api/v1${endpoint}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      const data = await response.json();
+      // Handle success
+      const data = result?.payload || result;
       console.log("Transaction response:", data);
 
-      if (response.ok) {
-        router.replace({
-          pathname: "/(action)/success-screen",
-          params: {
-            transactionId: data.data?.id || data.data?.transactionId || "N/A",
-            amount: payAmount,
-            currency: payCurrency,
-          },
-        });
-      } else {
-        Alert.alert(
-          "Transaction Failed",
-          data.message || "Failed to process transaction. Please try again."
-        );
-      }
+      router.replace({
+        pathname: "/(action)/success-screen",
+        params: {
+          transactionId:
+            data?.id || data?.transactionId || data?.txRef || "N/A",
+          amount: payAmount,
+          currency: payCurrency,
+        },
+      });
     } catch (error: any) {
       console.error("Transaction error:", error);
-      Alert.alert(
-        "Error",
-        "Failed to send transaction. Please check your connection and try again."
-      );
+      const errorMessage = error.message || "Failed to process transaction";
+
+      if (
+        errorMessage.toLowerCase().includes("daily trading limit") ||
+        errorMessage.toLowerCase().includes("limit exceeded")
+      ) {
+        Alert.alert(
+          "Daily Limit Reached",
+          "You've reached your daily trading limit. Please try again tomorrow or contact support.",
+        );
+      } else if (
+        errorMessage.toLowerCase().includes("insufficient") ||
+        errorMessage.toLowerCase().includes("balance")
+      ) {
+        Alert.alert(
+          "Insufficient Balance",
+          "You don't have enough balance to complete this transaction. Please reduce the amount or fund your wallet.",
+        );
+      } else {
+        Alert.alert("Transaction Failed", errorMessage);
+      }
     } finally {
       setProcessing(false);
     }

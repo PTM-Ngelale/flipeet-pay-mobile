@@ -10,6 +10,7 @@ import { BankAccountProvider } from "../app/contexts/BankAccountContext";
 import { BridgeTokenProvider } from "../app/contexts/BridgeTokenContext";
 import { CurrencyProvider } from "../app/contexts/CurrencySelectorContext";
 import { TokenProvider } from "../app/contexts/TokenContext";
+import { AuthInitializer } from "./contexts/AuthInitializer";
 import { FavoriteBanksProvider } from "./contexts/FavoriteBanksContext";
 import { FavoriteEmailsProvider } from "./contexts/FavoriteEmailsContext";
 import { FavoriteWalletsProvider } from "./contexts/FavoriteWalletsContext";
@@ -40,6 +41,7 @@ export default function RootLayout() {
 
   return (
     <ReduxProvider store={store}>
+      <AuthInitializer />
       <BankAccountProvider>
         <CurrencyProvider>
           <TokenProvider>

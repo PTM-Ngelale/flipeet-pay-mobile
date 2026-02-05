@@ -1,7 +1,7 @@
 // app/(action)/token-selector.tsx
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   StyleSheet,
@@ -10,89 +10,161 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
 import { useToken } from "../contexts/TokenContext";
+import type { RootState } from "../store";
 
-import Arbitrum from "@/assets/images/networks/arbitrum.svg";
 import Base from "@/assets/images/networks/base.svg";
 import Bnb from "@/assets/images/networks/bnb.svg";
-import Link from "@/assets/images/networks/link.svg";
-import Polygon from "@/assets/images/networks/polygon.svg";
 import Solana from "@/assets/images/networks/solana.svg";
 
 import USDC from "@/assets/images/tokens/usdc.svg";
 import USDT from "@/assets/images/tokens/usdt.svg";
 
-// Networks data with icons
-const networks = [
-  {
-    id: "solana",
-    name: "Solana",
-    icon: Solana,
-  },
-  {
-    id: "base",
-    name: "Base",
-    icon: Base,
-  },
-  {
-    id: "arbitrum",
-    name: "Arbitrum",
-    icon: Arbitrum,
-  },
-  {
-    id: "bnb",
-    name: "BNB Chain",
+const networkIconMap: Record<
+  string,
+  { id: string; name: string; icon: React.ComponentType<any> }
+> = {
+  solana: { id: "solana", name: "Solana", icon: Solana },
+  base: { id: "base", name: "Base", icon: Base },
+  "bnb-smart-chain": {
+    id: "bnb-smart-chain",
+    name: "BNB Smart Chain",
     icon: Bnb,
   },
-  {
-    id: "link",
-    name: "Link",
-    icon: Link,
-  },
-  {
-    id: "polygon",
-    name: "Polygon",
-    icon: Polygon,
-  },
-];
+};
 
-// Generate tokens for all networks
-const generateTokensForAllNetworks = () => {
-  const tokens = [];
+const tokenIconMap: Record<
+  string,
+  { symbol: string; name: string; icon: React.ComponentType<any> }
+> = {
+  usdc: { symbol: "USDC", name: "USD Coin", icon: USDC },
+  usdt: { symbol: "USDT", name: "Tether", icon: USDT },
+};
 
-  for (const network of networks) {
-    tokens.push(
+export default function TokenSelector() {
+  const router = useRouter();
+  const [selectedNetwork, setSelectedNetwork] = useState("solana");
+  const { selectedToken, setSelectedToken } = useToken();
+  const balances = useSelector((state: RootState) => state.auth.balances);
+
+  const normalizeNetworkId = (networkName: string) => {
+    const normalized = (networkName || "").toLowerCase().replace(/\s+/g, "-");
+    if (
+      normalized === "bnb-chain" ||
+      normalized === "bnb" ||
+      normalized === "bsc"
+    ) {
+      return "bnb-smart-chain";
+    }
+    return normalized;
+  };
+
+  const networks = useMemo(() => {
+    if (balances && Array.isArray(balances) && balances.length > 0) {
+      const unique = new Set<string>();
+      balances.forEach((b: any) => {
+        if (b?.network) unique.add(normalizeNetworkId(b.network));
+      });
+
+      const dynamic = Array.from(unique)
+        .map((id) => networkIconMap[id])
+        .filter(Boolean);
+
+      return dynamic.length > 0
+        ? dynamic
+        : [
+            networkIconMap.solana,
+            networkIconMap.base,
+            networkIconMap["bnb-smart-chain"],
+          ];
+    }
+
+    return [
+      networkIconMap.solana,
+      networkIconMap.base,
+      networkIconMap["bnb-smart-chain"],
+    ];
+  }, [balances]);
+
+  const tokens = useMemo(() => {
+    if (balances && Array.isArray(balances) && balances.length > 0) {
+      const unique = new Map<string, any>();
+      balances.forEach((b: any) => {
+        const symbol = (b.asset || b.token || "").toLowerCase();
+        const network = normalizeNetworkId(b.network || "");
+        const tokenMeta = tokenIconMap[symbol];
+        const networkMeta = networkIconMap[network];
+        if (!tokenMeta || !networkMeta) return;
+
+        const key = `${tokenMeta.symbol}-${network}`;
+        if (!unique.has(key)) {
+          unique.set(key, {
+            symbol: tokenMeta.symbol,
+            name: tokenMeta.name,
+            balance: String(b.balance ?? "0"),
+            network: networkMeta.id,
+            icon: tokenMeta.icon,
+          });
+        }
+      });
+      return Array.from(unique.values());
+    }
+
+    return Object.values(networkIconMap).flatMap((network) => [
       {
         symbol: "USDC",
         name: "USD Coin",
-        balance: "0.00678",
+        balance: "0",
         network: network.id,
         icon: USDC,
       },
       {
         symbol: "USDT",
         name: "Tether",
-        balance: "0.00000",
+        balance: "0",
         network: network.id,
         icon: USDT,
-      }
-    );
-  }
+      },
+    ]);
+  }, [balances]);
 
-  return tokens;
-};
+  const getTokenBalance = (symbol: string, networkName: string) => {
+    if (!balances || !Array.isArray(balances)) return 0;
 
-// Tokens data with icons - now includes all networks
-const tokens = generateTokensForAllNetworks();
+    const normalizeNetwork = (value: string) => normalizeNetworkId(value);
 
-export default function TokenSelector() {
-  const router = useRouter();
-  // Only Solana is supported for Send operations
-  const [selectedNetwork, setSelectedNetwork] = useState("solana");
-  const { selectedToken, setSelectedToken } = useToken();
+    const match = balances.find((b: any) => {
+      const asset = (b.asset || b.token || "").toUpperCase();
+      const network = String(b.network || "");
+      return (
+        asset === symbol.toUpperCase() &&
+        (network === networkName ||
+          normalizeNetwork(network) === normalizeNetwork(networkName))
+      );
+    });
 
-  // Filter tokens based on selected network (Solana only for now)
-  const filteredTokens = tokens.filter((token) => token.network === "solana");
+    return match?.balance || 0;
+  };
+
+  useEffect(() => {
+    if (selectedToken?.network) {
+      setSelectedNetwork(normalizeNetworkId(selectedToken.network));
+    }
+  }, [selectedToken?.network]);
+
+  useEffect(() => {
+    if (
+      !networks.find((n) => n.id === selectedNetwork) &&
+      networks.length > 0
+    ) {
+      setSelectedNetwork(networks[0].id);
+    }
+  }, [networks, selectedNetwork]);
+
+  const filteredTokens = tokens.filter(
+    (token) => token.network === selectedNetwork,
+  );
 
   const handleTokenSelect = (token: any) => {
     const network = networks.find((net) => net.id === token.network);
@@ -134,6 +206,10 @@ export default function TokenSelector() {
   );
 
   const renderTokenItem = ({ item }: { item: any }) => {
+    const networkName =
+      networks.find((net) => net.id === item.network)?.name || item.network;
+    const balance = getTokenBalance(item.symbol, networkName);
+
     // Check if this token is currently selected
     const isSelected =
       selectedToken &&
@@ -154,6 +230,10 @@ export default function TokenSelector() {
           </View>
         </View>
         <View style={styles.tokenRight}>
+          <Text style={styles.tokenBalance}>
+            {balance.toFixed ? balance.toFixed(6) : String(balance)}{" "}
+            {item.symbol}
+          </Text>
           {isSelected && (
             <Ionicons name="checkmark" size={20} color="#4A9DFF" />
           )}
@@ -189,8 +269,8 @@ export default function TokenSelector() {
               />
             </View>
 
-            {/* Networks List - Hidden as only Solana is supported */}
-            {/* <View style={styles.section}>
+            {/* Networks List */}
+            <View style={styles.section}>
               <Text style={styles.sectionTitle}>Available Networks</Text>
               <FlatList
                 data={networks}
@@ -198,14 +278,6 @@ export default function TokenSelector() {
                 keyExtractor={(item) => item.id}
                 renderItem={renderNetworkItem}
               />
-            </View> */}
-
-            {/* Info Banner */}
-            <View style={styles.infoBanner}>
-              <Ionicons name="information-circle" size={20} color="#4A9DFF" />
-              <Text style={styles.infoBannerText}>
-                Only Solana network is currently supported for Send transactions
-              </Text>
             </View>
           </>
         }

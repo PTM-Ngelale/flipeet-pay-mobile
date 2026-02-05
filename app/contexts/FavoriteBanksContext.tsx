@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
   createContext,
   ReactNode,
@@ -5,6 +6,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { Alert, Platform, ToastAndroid } from "react-native";
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
 
@@ -28,7 +30,7 @@ interface FavoriteBanksContextType {
   toggleFavorite: (bankId: string) => Promise<void>;
   selectedBankFromFavorite: { accountNumber: string; bankName: string } | null;
   setSelectedBankFromFavorite: (
-    bank: { accountNumber: string; bankName: string } | null
+    bank: { accountNumber: string; bankName: string } | null,
   ) => void;
   clearSelectedBankFromFavorite: () => void;
   loading: boolean;
@@ -74,8 +76,33 @@ export const FavoriteBanksProvider: React.FC<{ children: ReactNode }> = ({
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const token = useSelector((state: RootState) => state.auth.token);
+  const STORAGE_KEY = "flipeet_favorite_banks_v1";
 
-  // Fetch favorites from backend on mount
+  const showToast = (message: string) => {
+    if (Platform.OS === "android") {
+      ToastAndroid.show(message, ToastAndroid.SHORT);
+    } else {
+      Alert.alert(message);
+    }
+  };
+
+  // Load cached favorites from local storage, then fetch from backend when token available
+  useEffect(() => {
+    const loadFromStorage = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as FavoriteBank[];
+          setFavoriteBanks(parsed || []);
+        }
+      } catch (err) {
+        console.error("Failed to load favorite banks from storage:", err);
+      }
+    };
+
+    loadFromStorage();
+  }, []);
+
   useEffect(() => {
     if (token) {
       fetchFavorites();
@@ -99,7 +126,7 @@ export const FavoriteBanksProvider: React.FC<{ children: ReactNode }> = ({
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (response.ok) {
@@ -117,10 +144,15 @@ export const FavoriteBanksProvider: React.FC<{ children: ReactNode }> = ({
             lastUsed:
               item.lastUsed || item.updatedAt || new Date().toISOString(),
             isFavorite: true,
-          })
+          }),
         );
 
         setFavoriteBanks(banks);
+        try {
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(banks));
+        } catch (err) {
+          console.error("Failed to save favorites to storage:", err);
+        }
       } else {
         console.error("Failed to fetch favorite banks");
       }
@@ -136,7 +168,7 @@ export const FavoriteBanksProvider: React.FC<{ children: ReactNode }> = ({
       .filter((bank) => bank.lastUsed)
       .sort(
         (a, b) =>
-          new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime()
+          new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime(),
       )
       .slice(0, 10);
     setRecentBanks(sortedByRecent);
@@ -144,9 +176,28 @@ export const FavoriteBanksProvider: React.FC<{ children: ReactNode }> = ({
 
   const addFavoriteBank = async (
     accountNumber: string,
-    bankName: string = "Selected Bank"
+    bankName: string = "Selected Bank",
   ) => {
     if (!token) return;
+    // Optimistic UI update: add locally first, persist, then call backend
+    const localId = `local-${Date.now()}`;
+    const newBank: FavoriteBank = {
+      id: localId,
+      accountNumber: accountNumber.trim(),
+      bankName,
+      dateAdded: new Date().toISOString(),
+      lastUsed: new Date().toISOString(),
+      isFavorite: true,
+    };
+
+    const previous = favoriteBanks;
+    const updated = [newBank, ...previous];
+    setFavoriteBanks(updated);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch (err) {
+      console.error("Failed to save favorites to storage:", err);
+    }
 
     try {
       const response = await fetch(
@@ -162,21 +213,45 @@ export const FavoriteBanksProvider: React.FC<{ children: ReactNode }> = ({
             accountNumber: accountNumber.trim(),
             bankName,
           }),
-        }
+        },
       );
 
       if (response.ok) {
-        await fetchFavorites(); // Refresh the list
+        // Refresh from backend (server is source of truth)
+        await fetchFavorites();
       } else {
         console.error("Failed to add favorite bank");
+        showToast("Failed to add favorite");
+        // revert optimistic update
+        setFavoriteBanks(previous);
+        try {
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
+        } catch (err) {
+          console.error("Failed to save favorites to storage:", err);
+        }
       }
     } catch (error) {
       console.error("Error adding favorite bank:", error);
+      setFavoriteBanks(previous);
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
+      } catch (err) {
+        console.error("Failed to save favorites to storage:", err);
+      }
     }
   };
 
   const removeFavoriteBank = async (bankId: string) => {
     if (!token) return;
+    // Optimistic UI update: remove locally first
+    const previous = favoriteBanks;
+    const updated = previous.filter((b) => b.id !== bankId);
+    setFavoriteBanks(updated);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch (err) {
+      console.error("Failed to save favorites to storage:", err);
+    }
 
     try {
       const response = await fetch(
@@ -187,16 +262,31 @@ export const FavoriteBanksProvider: React.FC<{ children: ReactNode }> = ({
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (response.ok) {
-        await fetchFavorites(); // Refresh the list
+        await fetchFavorites(); // Sync with backend
       } else {
         console.error("Failed to remove favorite bank");
+        showToast("Failed to remove favorite");
+        // revert optimistic update
+        setFavoriteBanks(previous);
+        try {
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
+        } catch (err) {
+          console.error("Failed to save favorites to storage:", err);
+        }
       }
     } catch (error) {
       console.error("Error removing favorite bank:", error);
+      setFavoriteBanks(previous);
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
+      } catch (err) {
+        console.error("Failed to save favorites to storage:", err);
+      }
+      showToast("Failed to add favorite");
     }
   };
 
@@ -213,7 +303,7 @@ export const FavoriteBanksProvider: React.FC<{ children: ReactNode }> = ({
 
   const isBankFavorite = (accountNumber: string) => {
     const foundBank = favoriteBanks.find(
-      (fav) => fav.accountNumber === accountNumber
+      (fav) => fav.accountNumber === accountNumber,
     );
     return foundBank ? foundBank.isFavorite : false;
   };
@@ -222,9 +312,14 @@ export const FavoriteBanksProvider: React.FC<{ children: ReactNode }> = ({
     const updatedBanks = favoriteBanks.map((fav) =>
       fav.accountNumber === accountNumber
         ? { ...fav, lastUsed: new Date().toISOString() }
-        : fav
+        : fav,
     );
     setFavoriteBanks(updatedBanks);
+    try {
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedBanks));
+    } catch (err) {
+      console.error("Failed to save favorites to storage:", err);
+    }
   };
 
   const getBankById = (bankId: string) => {
@@ -268,7 +363,7 @@ export const useFavoriteBanks = () => {
   const context = useContext(FavoriteBanksContext);
   if (context === undefined) {
     throw new Error(
-      "useFavoriteBanks must be used within a FavoriteBanksProvider"
+      "useFavoriteBanks must be used within a FavoriteBanksProvider",
     );
   }
   return context;

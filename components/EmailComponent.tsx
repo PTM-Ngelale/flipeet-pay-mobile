@@ -1,11 +1,13 @@
+import { verifyPinAvailability } from "@/app/constants/api";
 import { useFavoriteEmails } from "@/app/contexts/FavoriteEmailsContext";
 import { useToken } from "@/app/contexts/TokenContext";
 import { RootState } from "@/app/store";
 import StarIcon from "@/assets/images/star-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -36,12 +38,21 @@ const EmailComponent = () => {
     clearSelectedEmailFromFavorite,
   } = useFavoriteEmails();
 
-  // Get balance for Solana tokens only
+  const [registrationStatus, setRegistrationStatus] = useState<
+    "unknown" | "checking" | "registered" | "unregistered"
+  >("unknown");
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Get balance for selected token/network (case-insensitive)
   const getTokenBalance = (symbol: string) => {
     if (!balances || !Array.isArray(balances)) return 0;
-    const balance = balances.find(
-      (b: any) => b.token === symbol && b.network === "Solana"
-    );
+    const network = (selectedToken?.network || "solana").toLowerCase();
+    const tokenSymbol = (symbol || "").toLowerCase();
+    const balance = balances.find((b: any) => {
+      const bNetwork = (b.network || "").toLowerCase();
+      const bToken = (b.token || b.asset || "").toLowerCase();
+      return bNetwork === network && bToken === tokenSymbol;
+    });
     return balance?.balance || 0;
   };
 
@@ -68,15 +79,61 @@ const EmailComponent = () => {
     setEmail(text);
   };
 
-  const handleFavoriteToggle = (value: boolean) => {
-    setIsFavorite(value);
+  // Debounced registration check
+  useEffect(() => {
+    // reset state when email empty
+    if (!email) {
+      setRegistrationStatus("unknown");
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+      return;
+    }
+
+    // basic email validation
+    const isValidEmail = /\S+@\S+\.\S+/.test(email);
+    if (!isValidEmail) {
+      setRegistrationStatus("unregistered");
+      return;
+    }
+
+    setRegistrationStatus("checking");
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        await verifyPinAvailability(email);
+        setRegistrationStatus("registered");
+      } catch (err) {
+        setRegistrationStatus("unregistered");
+      }
+    }, 600);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [email]);
+
+  const handleFavoriteToggle = async (value: boolean) => {
     if (value && email) {
-      addFavoriteEmail(email);
+      // Request to add to favorites
+      await addFavoriteEmail(email);
+      // The context handles optimistic UI and reverts on failure
+      // Update local state based on context after a short delay to allow context update
+      setTimeout(() => {
+        setIsFavorite(isEmailFavorite(email));
+      }, 100);
     } else if (!value && email) {
-      // Find and remove the email from favorites
+      // Request to remove from favorites
       const favoriteEmail = favoriteEmails.find((fav) => fav.email === email);
       if (favoriteEmail) {
-        removeFavoriteEmail(favoriteEmail.id);
+        await removeFavoriteEmail(favoriteEmail.id);
+        // The context handles optimistic UI and reverts on failure
+        // Update local state based on context after a short delay to allow context update
+        setTimeout(() => {
+          setIsFavorite(isEmailFavorite(email));
+        }, 100);
       }
     }
   };
@@ -110,7 +167,21 @@ const EmailComponent = () => {
   };
 
   const handleSwap = () => {
-    if (payAmount && email) {
+    const proceed = async () => {
+      if (!payAmount || !email) return;
+
+      try {
+        // Try lightweight registration check. If API responds OK, assume registered.
+        await verifyPinAvailability(email);
+      } catch (err) {
+        // If check fails, inform user and abort
+        Alert.alert(
+          "Unregistered Email",
+          "The email you entered is not registered on Flipeet Pay. Please invite the user or use bank transfer.",
+        );
+        return;
+      }
+
       // Navigate to review transaction page with parameters
       router.push({
         pathname: "/(action)/review-transaction",
@@ -119,12 +190,14 @@ const EmailComponent = () => {
           receiveAmount: payAmount,
           payCurrency: selectedToken?.symbol || "USDC",
           receiveCurrency: selectedToken?.symbol || "USDC",
-          network: "Solana", // Only Solana supported
+          network: selectedToken?.network || "Solana",
           recipient: email,
           recipientType: "email",
         },
       });
-    }
+    };
+
+    void proceed();
   };
 
   const isSwapDisabled =
@@ -174,6 +247,22 @@ const EmailComponent = () => {
                 autoCapitalize="none"
                 autoCorrect={false}
               />
+              {/* Inline registration status */}
+              {registrationStatus === "checking" && (
+                <Text style={{ color: "#B0BACB", marginTop: 8 }}>
+                  Checking registration...
+                </Text>
+              )}
+              {registrationStatus === "registered" && (
+                <Text style={{ color: "#34D058", marginTop: 8 }}>
+                  Registered user
+                </Text>
+              )}
+              {registrationStatus === "unregistered" && (
+                <Text style={{ color: "#EF4444", marginTop: 8 }}>
+                  Email not registered
+                </Text>
+              )}
               <View style={styles.favoriteToggle}>
                 <Text style={styles.favoriteToggleText}>
                   {isFavorite ? "Remove from favorite" : "Add to favorite"}

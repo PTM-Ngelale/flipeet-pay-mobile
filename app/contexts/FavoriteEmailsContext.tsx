@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, {
   createContext,
   ReactNode,
@@ -5,6 +6,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
+import { Alert, Platform, ToastAndroid } from "react-native";
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
 
@@ -46,8 +48,30 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
   >(null);
   const [loading, setLoading] = useState(false);
   const token = useSelector((state: RootState) => state.auth.token);
+  const STORAGE_KEY = "flipeet_favorite_emails_v1";
 
-  // Fetch favorites from backend on mount
+  const showToast = (message: string) => {
+    if (Platform.OS === "android") {
+      ToastAndroid.show(message, ToastAndroid.SHORT);
+    } else {
+      Alert.alert(message);
+    }
+  };
+
+  // Load from storage then fetch from backend on mount
+  useEffect(() => {
+    const loadFromStorage = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) setFavoriteEmails(JSON.parse(raw));
+      } catch (err) {
+        console.error("Failed to load favorite emails from storage:", err);
+      }
+    };
+
+    loadFromStorage();
+  }, []);
+
   useEffect(() => {
     if (token) {
       fetchFavorites();
@@ -71,7 +95,7 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (response.ok) {
@@ -88,7 +112,7 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
             lastUsed:
               item.lastUsed || item.updatedAt || new Date().toISOString(),
             isFavorite: true,
-          })
+          }),
         );
 
         setFavoriteEmails(emails);
@@ -107,7 +131,7 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
       .filter((email) => email.lastUsed)
       .sort(
         (a, b) =>
-          new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime()
+          new Date(b.lastUsed).getTime() - new Date(a.lastUsed).getTime(),
       )
       .slice(0, 10);
     setRecentEmails(sortedByRecent);
@@ -115,6 +139,24 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
 
   const addFavoriteEmail = async (email: string) => {
     if (!token) return;
+    // Optimistic update
+    const localId = `local-email-${Date.now()}`;
+    const newEmail: FavoriteEmail = {
+      id: localId,
+      email: email.trim(),
+      dateAdded: new Date().toISOString(),
+      lastUsed: new Date().toISOString(),
+      isFavorite: true,
+    };
+
+    const previous = favoriteEmails;
+    const updated = [newEmail, ...previous];
+    setFavoriteEmails(updated);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch (err) {
+      console.error("Failed to save favorite emails to storage:", err);
+    }
 
     try {
       const response = await fetch(
@@ -129,21 +171,40 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
             featureType: "email",
             email: email.trim(),
           }),
-        }
+        },
       );
 
       if (response.ok) {
         await fetchFavorites(); // Refresh the list
       } else {
         console.error("Failed to add favorite email");
+        showToast("Failed to add favorite");
+        setFavoriteEmails(previous);
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
       }
     } catch (error) {
       console.error("Error adding favorite email:", error);
+      showToast("Failed to add favorite");
+      setFavoriteEmails(previous);
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
+      } catch (err) {
+        console.error("Failed to save favorite emails to storage:", err);
+      }
     }
   };
 
   const removeFavoriteEmail = async (emailId: string) => {
     if (!token) return;
+    // Optimistic remove
+    const previous = favoriteEmails;
+    const updated = previous.filter((e) => e.id !== emailId);
+    setFavoriteEmails(updated);
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    } catch (err) {
+      console.error("Failed to save favorite emails to storage:", err);
+    }
 
     try {
       const response = await fetch(
@@ -154,16 +215,26 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       if (response.ok) {
         await fetchFavorites(); // Refresh the list
       } else {
         console.error("Failed to remove favorite email");
+        showToast("Failed to remove favorite");
+        setFavoriteEmails(previous);
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
       }
     } catch (error) {
       console.error("Error removing favorite email:", error);
+      showToast("Failed to remove favorite");
+      setFavoriteEmails(previous);
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
+      } catch (err) {
+        console.error("Failed to save favorite emails to storage:", err);
+      }
     }
   };
 
@@ -185,7 +256,9 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
 
   const markEmailAsUsed = (email: string) => {
     const updatedEmails = favoriteEmails.map((fav) =>
-      fav.email === email ? { ...fav, lastUsed: new Date().toISOString() } : fav
+      fav.email === email
+        ? { ...fav, lastUsed: new Date().toISOString() }
+        : fav,
     );
     setFavoriteEmails(updatedEmails);
   };
@@ -231,7 +304,7 @@ export const useFavoriteEmails = () => {
   const context = useContext(FavoriteEmailsContext);
   if (context === undefined) {
     throw new Error(
-      "useFavoriteEmails must be used within a FavoriteEmailsProvider"
+      "useFavoriteEmails must be used within a FavoriteEmailsProvider",
     );
   }
   return context;

@@ -1,3 +1,6 @@
+import { useToken } from "@/app/contexts/TokenContext";
+import { AppDispatch, RootState } from "@/app/store";
+import { fundWallet } from "@/app/store/transactionSlice";
 import BaseIcon from "@/assets/images/base-icon.svg";
 import BinanceIcon from "@/assets/images/binance-icon.svg";
 import QrCodeIcon from "@/assets/images/qr-code-icon.svg";
@@ -9,6 +12,8 @@ import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,13 +21,18 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch, useSelector } from "react-redux";
 
-const SOLANA_WALLET_ADDRESS = "EvzzbaWaL1etAdDr3ss742d35Cc6634C053292517ev2";
-const BASE_WALLET_ADDRESS = "0x2878WaL1etAdDr3ss742d35Cc6634C0532925A2698";
-const BINANCE_WALLET_ADDRESS =
-  "0x28781nanceWaL1etAdDr3ss742d35Cc6634C0532925A2698";
-const USER_EMAIL = "preciousngelale@gmail.com";
-const USERNAME = "@ptm.ng";
+// Supported networks with their icons
+const NETWORK_CONFIG: {
+  [key: string]: { icon: React.ComponentType<any>; displayName: string };
+} = {
+  Solana: { icon: SolanaIcon, displayName: "Solana" },
+  Base: { icon: BaseIcon, displayName: "Base" },
+  Binance: { icon: BinanceIcon, displayName: "Binance" },
+};
+
+const SUPPORTED_NETWORKS = ["Solana", "Base", "Binance"];
 
 const CustomDropdown = ({
   title,
@@ -120,10 +130,18 @@ const CustomDropdownItem = ({
 
 export default function ReceiveScreen() {
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
+  const { selectedToken } = useToken();
   const [expandedDropdowns, setExpandedDropdowns] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
+  const [walletAddresses, setWalletAddresses] = useState<{
+    [key: string]: string;
+  }>({});
+  const [loadingNetwork, setLoadingNetwork] = useState<string | null>(null);
+  const token = useSelector((state: RootState) => state.auth.token);
+  const user = useSelector((state: RootState) => state.auth.user);
 
   // Memoized functions
   const toggleDropdown = useCallback((dropdownName: string) => {
@@ -137,6 +155,76 @@ export default function ReceiveScreen() {
       return newSet;
     });
   }, []);
+
+  // Fetch wallet address for a network
+  const fetchWalletAddress = useCallback(
+    async (network: string) => {
+      if (!token) {
+        Alert.alert("Error", "Please log in to view wallet addresses");
+        return;
+      }
+
+      const normalizeNetwork = (value: string) => {
+        const normalized = (value || "").toLowerCase().replace(/\s+/g, "-");
+        if (
+          normalized === "binance" ||
+          normalized === "bnb" ||
+          normalized === "bsc" ||
+          normalized === "bnb-chain" ||
+          normalized === "bnb-smart-chain"
+        ) {
+          return "bnb-smart-chain";
+        }
+        return normalized;
+      };
+
+      // Check if already cached
+      if (walletAddresses[network]) return;
+
+      try {
+        setLoadingNetwork(network);
+        const result = await dispatch(
+          fundWallet({ network: normalizeNetwork(network) }),
+        );
+
+        if (fundWallet.fulfilled.match(result)) {
+          const data = result.payload as any;
+          setWalletAddresses((prev) => ({
+            ...prev,
+            [network]: data.walletAddress || data.address || "N/A",
+          }));
+        } else {
+          Alert.alert(
+            "Error",
+            "Failed to load wallet address. Please try again.",
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching wallet address:", error);
+        Alert.alert("Error", "Failed to load wallet address");
+      } finally {
+        setLoadingNetwork(null);
+      }
+    },
+    [dispatch, token, walletAddresses],
+  );
+
+  // Load wallet addresses when dropdown expands
+  const handleWalletDropdownToggle = useCallback(
+    (dropdownName: string) => {
+      toggleDropdown(dropdownName);
+
+      // Fetch addresses for all supported networks when wallet dropdown opens
+      if (dropdownName === "wallet" && !expandedDropdowns.has("wallet")) {
+        SUPPORTED_NETWORKS.forEach((network) => {
+          if (!walletAddresses[network]) {
+            fetchWalletAddress(network);
+          }
+        });
+      }
+    },
+    [toggleDropdown, expandedDropdowns, walletAddresses, fetchWalletAddress],
+  );
 
   const truncateAddress = useCallback((address: string, type?: string) => {
     if (address.length <= 16) return address;
@@ -173,13 +261,13 @@ export default function ReceiveScreen() {
 
   // Navigate to QR page
   const showQRCode = useCallback(
-    (data: string) => {
+    (data: string, network?: string) => {
       router.push({
         pathname: "/qr-screen",
-        params: { qrData: data },
+        params: { qrData: data, network },
       });
     },
-    [router]
+    [router],
   );
 
   return (
@@ -205,41 +293,43 @@ export default function ReceiveScreen() {
               title="Receive to Wallet Address"
               icon={<WalletIcon />}
               isExpanded={expandedDropdowns.has("wallet")}
-              onToggle={() => toggleDropdown("wallet")}
+              onToggle={() => handleWalletDropdownToggle("wallet")}
             >
-              <CustomDropdownItem
-                icon={<SolanaIcon />}
-                title="Solana"
-                subtitle={truncateAddress(SOLANA_WALLET_ADDRESS)}
-                itemId="solana"
-                data={SOLANA_WALLET_ADDRESS}
-                showQR={true}
-                copiedItem={copiedItem}
-                onCopy={copyToClipboard}
-                onShowQR={showQRCode}
-              />
-              <CustomDropdownItem
-                icon={<BaseIcon />}
-                title="Base"
-                subtitle={truncateAddress(BASE_WALLET_ADDRESS, "base")}
-                itemId="base"
-                data={BASE_WALLET_ADDRESS}
-                showQR={true}
-                copiedItem={copiedItem}
-                onCopy={copyToClipboard}
-                onShowQR={showQRCode}
-              />
-              <CustomDropdownItem
-                icon={<BinanceIcon />}
-                title="Binance"
-                subtitle={truncateAddress(BINANCE_WALLET_ADDRESS, "binance")}
-                itemId="binance"
-                data={BINANCE_WALLET_ADDRESS}
-                showQR={true}
-                copiedItem={copiedItem}
-                onCopy={copyToClipboard}
-                onShowQR={showQRCode}
-              />
+              {loadingNetwork ? (
+                <View
+                  style={{
+                    padding: 20,
+                    justifyContent: "center",
+                    alignItems: "center",
+                  }}
+                >
+                  <ActivityIndicator size="large" color="#4A9DFF" />
+                  <Text style={{ color: "#B0BACB", marginTop: 12 }}>
+                    Loading wallet addresses...
+                  </Text>
+                </View>
+              ) : (
+                SUPPORTED_NETWORKS.map((network) => {
+                  const NetworkIcon =
+                    NETWORK_CONFIG[network]?.icon || SolanaIcon;
+                  const address = walletAddresses[network] || "N/A";
+
+                  return (
+                    <CustomDropdownItem
+                      key={network}
+                      icon={<NetworkIcon />}
+                      title={network}
+                      subtitle={truncateAddress(address, network.toLowerCase())}
+                      itemId={network.toLowerCase()}
+                      data={address}
+                      showQR={address !== "N/A"}
+                      copiedItem={copiedItem}
+                      onCopy={copyToClipboard}
+                      onShowQR={(value) => showQRCode(value, network)}
+                    />
+                  );
+                })
+              )}
             </CustomDropdown>
 
             {/* Flipeet User Dropdown */}
@@ -251,18 +341,18 @@ export default function ReceiveScreen() {
             >
               <CustomDropdownItem
                 title="Email"
-                subtitle={truncateEmail(USER_EMAIL)}
+                subtitle={truncateEmail(user?.email || "your@email.com")}
                 itemId="email"
-                data={USER_EMAIL}
+                data={user?.email || ""}
                 copiedItem={copiedItem}
                 onCopy={copyToClipboard}
                 onShowQR={showQRCode}
               />
               <CustomDropdownItem
                 title="Username"
-                subtitle={USERNAME}
+                subtitle={user?.username || "@username"}
                 itemId="username"
-                data={USERNAME}
+                data={user?.username || ""}
                 copiedItem={copiedItem}
                 onCopy={copyToClipboard}
                 onShowQR={showQRCode}

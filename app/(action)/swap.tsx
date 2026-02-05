@@ -5,7 +5,6 @@ import HistoryIcon from "@/assets/images/history-icon.svg";
 import SellHighlighted from "@/assets/images/sell-highlight.svg";
 import SellIcon from "@/assets/images/sell-icon.svg";
 import BridgeComponent from "@/components/BridgeComponent";
-import BuyComponent from "@/components/BuyComponent";
 import SellComponent from "@/components/SellComponent";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
@@ -29,6 +28,7 @@ export default function SwapScreen() {
       label: "Buy",
       icon: BuyIcon,
       highlightedIcon: BridgeHighlighted,
+      disabled: true,
     },
     {
       id: "Sell",
@@ -47,7 +47,11 @@ export default function SwapScreen() {
   const renderContent = () => {
     switch (activeTab) {
       case "Buy":
-        return <BuyComponent />;
+        return (
+          <View style={styles.disabledContent}>
+            <Text style={styles.disabledText}>Buy is temporarily disabled</Text>
+          </View>
+        );
       case "Sell":
         return <SellComponent />;
       case "Bridge":
@@ -85,14 +89,17 @@ export default function SwapScreen() {
                   style={[
                     styles.toggleItem,
                     activeTab === item.id && styles.activeToggleItem,
+                    item.disabled && styles.disabledToggleItem,
                   ]}
-                  onPress={() => setActiveTab(item.id)}
+                  onPress={() => !item.disabled && setActiveTab(item.id)}
+                  disabled={item.disabled}
                 >
                   <IconComponent width={20} height={20} />
                   <Text
                     style={[
                       styles.toggleText,
                       activeTab === item.id && styles.activeToggleText,
+                      item.disabled && styles.disabledToggleText,
                     ]}
                   >
                     {item.label}
@@ -152,6 +159,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
+  disabledToggleItem: {
+    opacity: 0.4,
+  },
   activeToggleItem: {
     backgroundColor: "#2A2A2A",
   },
@@ -159,8 +169,20 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#757B85",
   },
+  disabledToggleText: {
+    color: "#757B85",
+  },
   activeToggleText: {
     color: "#E2E6F0",
+  },
+  disabledContent: {
+    padding: 24,
+    alignItems: "center",
+  },
+  disabledText: {
+    color: "#757B85",
+    fontSize: 16,
+    textAlign: "center",
   },
   contentContainer: {
     marginTop: 16,

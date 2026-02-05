@@ -36,8 +36,8 @@ export default function SignUpScreen() {
 
   const handleGoogleSignUp = async () => {
     try {
-      // Open Google OAuth in web browser
-      const redirectUrl = "com.flipeet.pay:/oauth2redirect";
+      // Use Expo-hosted redirect URL for better compatibility
+      const redirectUrl = "https://auth.expo.io/@PTM-Ngelale/flipeet-pay";
       const clientId =
         "289967638710-tjaaoepq7d43hkukdnt4r7acnv09raop.apps.googleusercontent.com";
 
@@ -51,7 +51,7 @@ export default function SignUpScreen() {
 
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
-        redirectUrl
+        redirectUrl,
       );
 
       if (result.type === "success") {
@@ -65,7 +65,7 @@ export default function SignUpScreen() {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ token: accessToken }),
-            }
+            },
           );
 
           const data = await response.json();
@@ -85,7 +85,7 @@ export default function SignUpScreen() {
       Alert.alert(
         "Authentication Failed",
         error?.message || "Failed to sign up with Google. Please try again.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
       );
     }
   };

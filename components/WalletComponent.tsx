@@ -4,11 +4,14 @@ import { RootState } from "@/app/store";
 import ScanIcon from "@/assets/images/scan-icon.svg";
 import StarIcon from "@/assets/images/star-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -26,6 +29,9 @@ const WalletComponent = () => {
   const [receiveAmount, setReceiveAmount] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
   const [isFavorite, setIsFavorite] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
   const { selectedToken } = useToken();
   const balances = useSelector((state: RootState) => state.auth.balances);
   const {
@@ -37,12 +43,16 @@ const WalletComponent = () => {
     clearSelectedWalletFromFavorite,
   } = useFavoriteWallets();
 
-  // Get balance for Solana tokens only
+  // Get balance for selected token/network (case-insensitive)
   const getTokenBalance = (symbol: string) => {
     if (!balances || !Array.isArray(balances)) return 0;
-    const balance = balances.find(
-      (b: any) => b.token === symbol && b.network === "Solana"
-    );
+    const targetSymbol = (symbol || "").toLowerCase();
+    const targetNetwork = (selectedToken?.network || "Solana").toLowerCase();
+    const balance = balances.find((b: any) => {
+      const bSymbol = (b.token || b.asset || "").toLowerCase();
+      const bNetwork = (b.network || "").toLowerCase();
+      return bSymbol === targetSymbol && bNetwork === targetNetwork;
+    });
     return balance?.balance || 0;
   };
 
@@ -69,17 +79,56 @@ const WalletComponent = () => {
     setWalletAddress(text);
   };
 
-  const handleFavoriteToggle = (value: boolean) => {
-    setIsFavorite(value);
+  const handleOpenScanner = async () => {
+    const result = await requestPermission();
+    const granted = result?.granted;
+    if (!granted) {
+      Alert.alert(
+        "Camera permission required",
+        "Enable camera access to scan a wallet QR code.",
+      );
+      return;
+    }
+    setIsScanning(false);
+    setShowScanner(true);
+  };
+
+  const handleCloseScanner = () => {
+    setShowScanner(false);
+  };
+
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
+    if (isScanning) return;
+    setIsScanning(true);
+    if (typeof data === "string") {
+      setWalletAddress(data.trim());
+    }
+    setShowScanner(false);
+    setTimeout(() => setIsScanning(false), 300);
+  };
+
+  const handleFavoriteToggle = async (value: boolean) => {
     if (value && walletAddress) {
-      addFavoriteWallet(walletAddress);
+      // Request to add to favorites
+      await addFavoriteWallet(walletAddress);
+      // The context handles optimistic UI and reverts on failure
+      // Update local state based on context after a short delay to allow context update
+      setTimeout(() => {
+        setIsFavorite(isWalletFavorite(walletAddress));
+      }, 100);
     } else if (!value && walletAddress) {
       // Find and remove the wallet from favorites
       const favoriteWallet = favoriteWallets.find(
-        (fav) => fav.walletAddress === walletAddress
+        (fav) => fav.walletAddress === walletAddress,
       );
       if (favoriteWallet) {
-        removeFavoriteWallet(favoriteWallet.id);
+        // Request to remove from favorites
+        await removeFavoriteWallet(favoriteWallet.id);
+        // The context handles optimistic UI and reverts on failure
+        // Update local state based on context after a short delay to allow context update
+        setTimeout(() => {
+          setIsFavorite(isWalletFavorite(walletAddress));
+        }, 100);
       }
     }
   };
@@ -121,7 +170,7 @@ const WalletComponent = () => {
           receiveAmount: payAmount, // Same amount for crypto-to-crypto
           payCurrency: selectedToken?.symbol || "USDC",
           receiveCurrency: selectedToken?.symbol || "USDC",
-          network: "Solana", // Only Solana supported
+          network: selectedToken?.network || "Solana",
           walletAddress,
           recipientType: "wallet",
         },
@@ -186,6 +235,7 @@ const WalletComponent = () => {
                 />
                 <TouchableOpacity
                   style={{ position: "absolute", top: "10%", right: 3 }}
+                  onPress={handleOpenScanner}
                 >
                   <ScanIcon />
                 </TouchableOpacity>
@@ -302,6 +352,30 @@ const WalletComponent = () => {
             <Text style={[styles.swapButtonText]}>Send</Text>
           </TouchableOpacity>
         </View>
+
+        <Modal
+          visible={showScanner}
+          animationType="slide"
+          onRequestClose={handleCloseScanner}
+        >
+          <View style={styles.scannerContainer}>
+            <CameraView
+              onBarcodeScanned={showScanner ? handleBarCodeScanned : undefined}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <View style={styles.scannerTopBar}>
+              <TouchableOpacity onPress={handleCloseScanner}>
+                <Ionicons name="close" size={28} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Text style={styles.scannerTitle}>Scan wallet QR</Text>
+              <View style={{ width: 28 }} />
+            </View>
+            <View style={styles.scannerFrame} />
+            <Text style={styles.scannerHint}>
+              Align the QR code within the frame
+            </Text>
+          </View>
+        </Modal>
       </View>
     </KeyboardAvoidingView>
   );
@@ -349,6 +423,40 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     color: "#fff",
+  },
+  scannerContainer: {
+    flex: 1,
+    backgroundColor: "black",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  scannerTopBar: {
+    position: "absolute",
+    top: 40,
+    left: 20,
+    right: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  scannerTitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  scannerFrame: {
+    width: 240,
+    height: 240,
+    borderWidth: 2,
+    borderColor: "#4A9DFF",
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
+  scannerHint: {
+    position: "absolute",
+    bottom: 80,
+    color: "#E2E6F0",
+    fontSize: 14,
   },
 
   amountControls: {

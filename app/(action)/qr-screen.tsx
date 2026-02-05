@@ -1,15 +1,17 @@
-import QrCode from "@/assets/images/qr-code.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import QRCode from "react-native-qrcode-svg";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 export default function QRScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const qrData = params.qrData as string;
+  const qrData = (params.qrData as string) || "";
+  const networkParam = (params.network as string) || "Solana";
+  const networkName = networkParam || "Solana";
   const [copied, setCopied] = useState(false);
 
   const truncateAddress = useCallback((address: string) => {
@@ -23,6 +25,19 @@ export default function QRScreen() {
     setTimeout(() => setCopied(false), 2000);
   }, [qrData]);
 
+  const handleShare = useCallback(async () => {
+    if (!qrData) {
+      return;
+    }
+    try {
+      await Share.share({
+        message: qrData,
+      });
+    } catch (error) {
+      console.error("Failed to share address:", error);
+    }
+  }, [qrData]);
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container}>
@@ -31,7 +46,7 @@ export default function QRScreen() {
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Your Solana Address</Text>
+          <Text style={styles.headerTitle}>Your {networkName} Address</Text>
           <View style={{ opacity: 0 }}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </View>
@@ -43,17 +58,16 @@ export default function QRScreen() {
             <View style={styles.infoBanner}>
               <Ionicons name="information-circle" size={14} color="#FFD369" />
               <Text style={styles.infoText}>
-                Use this address to receive tokens on Solana
+                Use this address to receive tokens on {networkName}
               </Text>
             </View>
 
             <View style={styles.qrImageContainer}>
-              {/* <Image
-                source={require("@/assets/images/qrcode.png")}
-                style={styles.qrImage}
-                resizeMode="contain"
-              /> */}
-              <QrCode />
+              {qrData ? (
+                <QRCode value={qrData} size={280} />
+              ) : (
+                <Ionicons name="alert-circle" size={48} color="#757B85" />
+              )}
             </View>
 
             <View style={styles.addressContainer}>
@@ -75,7 +89,11 @@ export default function QRScreen() {
             </View>
 
             {/* Action Button */}
-            <TouchableOpacity style={styles.shareButton}>
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={handleShare}
+              disabled={!qrData}
+            >
               <Text style={styles.shareButtonText}>Share</Text>
             </TouchableOpacity>
           </View>

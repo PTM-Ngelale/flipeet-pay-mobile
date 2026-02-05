@@ -57,7 +57,6 @@ const COLORS = {
 };
 
 // Constants
-const TOTAL_BALANCE_USD = 9.0;
 const LOSS_AMOUNT = 0.3;
 const LOSS_PERCENTAGE = -3;
 
@@ -87,7 +86,7 @@ export default function WalletHomeScreen() {
   // Get balances from Redux
   const balances = useSelector((state: RootState) => state.auth.balances);
   const balancesLoading = useSelector(
-    (state: RootState) => state.auth.balancesLoading
+    (state: RootState) => state.auth.balancesLoading,
   );
   const token = useSelector((state: RootState) => state.auth.token);
 
@@ -97,27 +96,6 @@ export default function WalletHomeScreen() {
       dispatch(fetchUserBalances());
     }
   }, [dispatch, token]);
-
-  // Calculate total balance in USD from API response
-  const totalBalanceUSD = useMemo(() => {
-    if (!balances || !Array.isArray(balances) || balances.length === 0)
-      return 0;
-
-    return balances.reduce((total, balance) => {
-      // Try different property names for USD value
-      const usdValue =
-        balance.usdValue || balance.usdBalance || balance.balanceUSD || 0;
-      return total + parseFloat(usdValue.toString());
-    }, 0);
-  }, [balances]);
-
-  // Pull to refresh handler
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await dispatch(fetchUserBalances());
-    setRefreshing(false);
-  };
-
   // Map API balances to assets with proper icons
   const assets = useMemo<Asset[]>(() => {
     if (!balances || !Array.isArray(balances) || balances.length === 0) {
@@ -156,7 +134,7 @@ export default function WalletHomeScreen() {
       ).toUpperCase();
       const amount = parseFloat(balance.balance || balance.amount || 0);
       const usdValue = parseFloat(
-        balance.usdValue || balance.usdBalance || balance.balanceUSD || amount
+        balance.usdValue || balance.usdBalance || balance.balanceUSD || amount,
       );
       const network = balance.network || "unknown";
 
@@ -192,6 +170,30 @@ export default function WalletHomeScreen() {
     });
   }, [balances]);
 
+  // Calculate total balance in USD from grouped assets
+  const totalBalanceUSD = useMemo(() => {
+    if (!assets || assets.length === 0) {
+      console.log("[totalBalanceUSD] No assets found");
+      return 0;
+    }
+
+    const total = assets.reduce((sum, asset) => {
+      const assetUsdValue = asset.usdValue || 0;
+      console.log(`[totalBalanceUSD] ${asset.name}: usdValue=${assetUsdValue}`);
+      return sum + assetUsdValue;
+    }, 0);
+
+    console.log("[totalBalanceUSD] Final total from assets:", total);
+    return total;
+  }, [assets]);
+
+  // Pull to refresh handler
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await dispatch(fetchUserBalances());
+    setRefreshing(false);
+  };
+
   const actionButtons = useMemo<ActionButton[]>(
     () => [
       {
@@ -215,13 +217,19 @@ export default function WalletHomeScreen() {
         route: "/services",
       },
     ],
-    []
+    [],
   );
 
   // Helper functions
   const formatCurrency = (value: number) => value.toFixed(2);
+  const roundUp = (value: number, decimals: number) => {
+    const safeValue = Number.isFinite(value) ? value : 0;
+    const factor = Math.pow(10, decimals);
+    return Math.ceil(safeValue * factor) / factor;
+  };
   const formatBalance = (balance: number, symbol: string) =>
-    `${balance} ${symbol.toUpperCase()}`;
+    `${roundUp(balance, 6).toFixed(6)} ${symbol.toUpperCase()}`;
+  const formatTokenValue = (value: number) => roundUp(value, 2).toFixed(2);
 
   // Toggle balance visibility
   const toggleBalanceVisibility = () => {
@@ -383,7 +391,9 @@ export default function WalletHomeScreen() {
               },
             ]}
           >
-            {isBalanceVisible ? `$${asset.usdValue}` : "******"}
+            {isBalanceVisible
+              ? `$${formatTokenValue(asset.usdValue)}`
+              : "******"}
           </Text>
           <Text
             style={[
@@ -395,9 +405,10 @@ export default function WalletHomeScreen() {
             ]}
           >
             {isBalanceVisible
-              ? `${asset.gain >= 0 ? "+" : "-"}$${Math.abs(
-                  asset.gain
-                ).toLocaleString()}`
+              ? `${asset.gain >= 0 ? "+" : "-"}$${roundUp(
+                  Math.abs(asset.gain),
+                  2,
+                ).toFixed(2)}`
               : "******"}
           </Text>
         </View>
