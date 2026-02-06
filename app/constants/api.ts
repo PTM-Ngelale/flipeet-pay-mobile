@@ -10,6 +10,55 @@ interface RequestOptions {
   headers?: Record<string, string>;
 }
 
+function findTokenValue(value: any): string | null {
+  if (!value || typeof value !== "object") return null;
+
+  const directKeys = ["accessToken", "token", "jwt", "idToken"];
+  for (const key of directKeys) {
+    if (typeof value[key] === "string" && value[key].trim()) {
+      return value[key].trim();
+    }
+  }
+
+  const nestedKeys = ["data", "credentials", "session", "auth"];
+  for (const key of nestedKeys) {
+    if (value[key]) {
+      const nested = findTokenValue(value[key]);
+      if (nested) return nested;
+    }
+  }
+
+  return null;
+}
+
+export function normalizeAuthToken(token?: unknown): string | null {
+  if (!token) return null;
+
+  if (typeof token === "object") {
+    const extracted = findTokenValue(token);
+    return extracted || null;
+  }
+
+  let raw = String(token).trim();
+  if (!raw || raw === "[object Object]") return null;
+
+  if (raw.toLowerCase().startsWith("bearer ")) {
+    raw = raw.slice(7).trim();
+  }
+
+  if (raw.startsWith("{") || raw.startsWith("[")) {
+    try {
+      const parsed = JSON.parse(raw);
+      const extracted = findTokenValue(parsed);
+      if (extracted) return extracted;
+    } catch {
+      // ignore parse errors and fall back to raw
+    }
+  }
+
+  return raw;
+}
+
 async function handleResponse(res: Response) {
   if (!res.ok) {
     const errorText = await res.text();
@@ -36,8 +85,9 @@ export async function apiRequest(path: string, options: RequestOptions = {}) {
     ...headers,
   };
 
-  if (token) {
-    finalHeaders.Authorization = `Bearer ${token}`;
+  const normalizedToken = normalizeAuthToken(token);
+  if (normalizedToken) {
+    finalHeaders.Authorization = `Bearer ${normalizedToken}`;
   }
 
   const res = await fetch(`${API_BASE_URL}${path}`, {

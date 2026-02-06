@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "flipeetpay",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
       "supportsTablet": true
     },
@@ -60,7 +60,7 @@
     },
     "owner": "flipeet-pay",
     "runtimeVersion": {
-      "policy": "appVersion"
+      "policy": "sdkVersion"
     },
     "updates": {
       "url": "https://u.expo.dev/ffbf714e-1d6c-4ffe-be48-6c60fe911003"
