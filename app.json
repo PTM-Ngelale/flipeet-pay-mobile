@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/flipeet-logo.png",
-    "resizeMode": "contain",
+
     "backgroundColor": "#121212",
     "splash": {
       "image": "./assets/images/flipeet-logo.png",

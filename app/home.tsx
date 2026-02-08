@@ -288,7 +288,7 @@ export default function WalletHomeScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.lossSection}>
+      {/* <View style={styles.lossSection}>
         <Text
           style={[
             styles.lossAmount,
@@ -323,7 +323,7 @@ export default function WalletHomeScreen() {
         ) : (
           ""
         )}
-      </View>
+      </View> */}
     </View>
   );
 
