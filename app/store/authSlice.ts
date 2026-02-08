@@ -90,9 +90,7 @@ export const signIn = createAsyncThunk(
       }
 
       if (!response.ok) {
-        return thunkAPI.rejectWithValue(
-          data.message || "Sign in failed",
-        );
+        return thunkAPI.rejectWithValue(data.message || "Sign in failed");
       }
 
       const headerTokenRaw =
@@ -107,9 +105,7 @@ export const signIn = createAsyncThunk(
         response.headers.get("Set-Cookie");
 
       const cookieTokenMatch = setCookieRaw
-        ? setCookieRaw.match(
-            /(accessToken|token|jwt)=([^;]+)/i,
-          )
+        ? setCookieRaw.match(/(accessToken|token|jwt)=([^;]+)/i)
         : null;
 
       const headerToken = headerTokenRaw
@@ -148,9 +144,25 @@ export const signUp = createAsyncThunk(
 
 export const googleSignIn = createAsyncThunk(
   "auth/googleSignIn",
-  async ({ token }: { token: string }, thunkAPI: any) => {
+  async (
+    payload: {
+      token?: string;
+      idToken?: string;
+      provider?: string;
+      redirectUri?: string;
+    },
+    thunkAPI: any,
+  ) => {
     try {
-      const data = await apiPost(`/auth/oauth/validate`, { token });
+      const { token, idToken, provider, redirectUri } = payload || {};
+      const body = token
+        ? { token }
+        : {
+            idToken,
+            provider,
+            redirectUri,
+          };
+      const data = await apiPost(`/auth/oauth/validate`, body);
       return data;
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Google sign in failed");
@@ -366,8 +378,14 @@ export const loadAuthState = createAsyncThunk(
       }
 
       if (tokenRaw && !token) {
-        await AsyncStorage.multiRemove(["auth_token", "auth_user", "auth_email"]);
-        return thunkAPI.rejectWithValue("Invalid saved session. Please log in again.");
+        await AsyncStorage.multiRemove([
+          "auth_token",
+          "auth_user",
+          "auth_email",
+        ]);
+        return thunkAPI.rejectWithValue(
+          "Invalid saved session. Please log in again.",
+        );
       }
 
       console.log("No saved auth state found");

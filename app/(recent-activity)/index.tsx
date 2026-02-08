@@ -399,10 +399,7 @@ export default function RecentActivity() {
 
   // Reusable Activity Item Component
   const ActivityItem = ({ activity }: { activity: Activity }) => (
-    <TouchableOpacity
-      style={styles.activityItem}
-      onPress={() => router.push(`/activities-details?id=${activity.id}`)}
-    >
+    <TouchableOpacity style={styles.activityItem} onPress={() => {}} disabled>
       <View style={styles.activityLeft}>
         <Image
           source={activity.icon}

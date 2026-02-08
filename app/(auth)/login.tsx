@@ -1,5 +1,8 @@
 import GoogleLogo from "@/assets/images/google-logo.svg";
 import { Ionicons } from "@expo/vector-icons";
+import * as AuthSession from "expo-auth-session";
+import * as Google from "expo-auth-session/providers/google";
+import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useState } from "react";
@@ -35,57 +38,41 @@ export default function LoginScreen() {
   const router = useRouter();
   const dispatch = useDispatch<any>();
 
+  const useProxy = Constants.appOwnership === "expo";
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: "flipeetpay",
+    path: "oauth/redirect",
+    useProxy,
+  });
+  const clientId =
+    "289967638710-tjaaoepq7d43hkukdnt4r7acnv09raop.apps.googleusercontent.com";
+
+  const [request, , promptAsync] = Google.useAuthRequest({
+    clientId,
+    redirectUri,
+    responseType: "code",
+    scopes: ["profile", "email", "openid"],
+  });
+
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     try {
-      // Use Expo-hosted redirect URL for better compatibility
-      const redirectUrl = "https://auth.expo.io/@PTM-Ngelale/flipeet-pay";
-      const clientId =
-        "289967638710-tjaaoepq7d43hkukdnt4r7acnv09raop.apps.googleusercontent.com";
+      const result = await promptAsync({ useProxy });
+      if (result.type !== "success") return;
 
-      const authUrl =
-        `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${clientId}&` +
-        `redirect_uri=${encodeURIComponent(redirectUrl)}&` +
-        `response_type=token&` +
-        `scope=profile email&` +
-        `include_granted_scopes=true`;
-
-      const result = await WebBrowser.openAuthSessionAsync(
-        authUrl,
-        redirectUrl,
-      );
-
-      if (result.type === "success") {
-        // Extract the access token from URL hash
-        const url = result.url;
-        const accessToken = url.match(/access_token=([^&]+)/)?.[1];
-
-        if (accessToken) {
-          // Send Google token to your backend for validation
-          const response = await fetch(
-            "https://api.pay.flipeet.io/api/v1/auth/oauth/validate",
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ token: accessToken }),
-            },
-          );
-
-          const data = await response.json();
-
-          if (response.ok && data.data?.credentials?.accessToken) {
-            // Use the token from backend
-            const token = data.data.credentials.accessToken;
-
-            // Dispatch to Redux
-            await dispatch(googleSignIn({ token })).unwrap();
-            router.replace("/home");
-          } else {
-            throw new Error(data.message || "Failed to authenticate");
-          }
-        }
+      const authCode = result.params?.code;
+      if (!authCode) {
+        throw new Error("Authorization code not returned by Google");
       }
+
+      await dispatch(
+        googleSignIn({
+          idToken: authCode,
+          provider: "google",
+          redirectUri,
+        }),
+      ).unwrap();
+      router.replace("/home");
     } catch (error: any) {
       console.error("Google sign-in failed:", error);
       Alert.alert(
@@ -146,7 +133,7 @@ export default function LoginScreen() {
             <TouchableOpacity
               style={styles.googleButton}
               onPress={handleGoogleLogin}
-              disabled={isGoogleLoading}
+              disabled={isGoogleLoading || !request}
             >
               {isGoogleLoading ? (
                 <ActivityIndicator size="small" color="#000000" />

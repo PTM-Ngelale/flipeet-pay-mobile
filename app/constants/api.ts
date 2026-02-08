@@ -147,7 +147,7 @@ export async function mobilePinSignIn(payload: { email: string; pin: number }) {
 
 export async function verifyPinAvailability(email: string) {
   return apiGet(
-    `/auth/mobile/verify-pin-availablility?email=${encodeURIComponent(email)}`
+    `/auth/mobile/verify-pin-availablility?email=${encodeURIComponent(email)}`,
   );
 }
 
@@ -156,13 +156,13 @@ export async function verifyPinAvailability(email: string) {
 export async function requestEmailChangeOtp(email: string, token: string) {
   return apiRequest(
     `/user/email/otp/request?email=${encodeURIComponent(email)}`,
-    { method: "GET", token }
+    { method: "GET", token },
   );
 }
 
 export async function verifyEmailChangeOtp(
   payload: { email: string; code: string },
-  token: string
+  token: string,
 ) {
   return apiRequest(`/user/email/otp/verify`, {
     method: "PATCH",
@@ -173,7 +173,7 @@ export async function verifyEmailChangeOtp(
 
 export async function updatePassword(
   payload: { password: string; repeatPassword: string },
-  token: string
+  token: string,
 ) {
   return apiRequest(`/user/password/update`, {
     method: "PATCH",
@@ -184,7 +184,7 @@ export async function updatePassword(
 
 export async function resetPassword(
   payload: { password: string; repeatPassword: string },
-  token: string
+  token: string,
 ) {
   return apiRequest(`/user/password/reset`, {
     method: "PATCH",
@@ -195,7 +195,7 @@ export async function resetPassword(
 
 export async function confirmPasswordReset(
   payload: { code: string },
-  token: string
+  token: string,
 ) {
   return apiRequest(`/user/password/reset-confirmation`, {
     method: "PATCH",
@@ -207,13 +207,13 @@ export async function confirmPasswordReset(
 export async function requestPinChangeOtp(email: string, token: string) {
   return apiRequest(
     `/user/mobile/pin/otp/request?email=${encodeURIComponent(email)}`,
-    { method: "GET", token }
+    { method: "GET", token },
   );
 }
 
 export async function verifyPinChangeOtp(
   payload: { pin: number; code: string },
-  token: string
+  token: string,
 ) {
   return apiRequest(`/user/mobile/pin/otp/verify`, {
     method: "PATCH",
@@ -250,7 +250,7 @@ export interface TransactionFilterQuery {
 
 export async function filterTransactions(
   query: TransactionFilterQuery,
-  token: string
+  token: string,
 ) {
   const params = new URLSearchParams();
   params.append("merchantUUID", query.merchantUUID);
@@ -284,7 +284,7 @@ export interface TransactionStatementsQuery {
 
 export async function getTransactionStatements(
   query: TransactionStatementsQuery,
-  token: string
+  token: string,
 ) {
   const params = new URLSearchParams();
   params.append("type", query.type);
@@ -318,7 +318,7 @@ export async function getTransactionChartData(
       | "NGN"
       | "USD";
   },
-  token: string
+  token: string,
 ) {
   const params = new URLSearchParams();
   params.append("merchantUUID", query.merchantUUID);
@@ -444,7 +444,7 @@ export async function executeBridge(payload: {
 
 export async function getRampCurrencies(
   params: { provider?: string },
-  token: string
+  token: string,
 ) {
   const search = new URLSearchParams();
   if (params.provider) search.append("provider", params.provider);
@@ -453,7 +453,7 @@ export async function getRampCurrencies(
     {
       method: "GET",
       token,
-    }
+    },
   );
 }
 
@@ -464,7 +464,7 @@ export async function getRampRate(
     currency: string;
     provider: string;
   },
-  token: string
+  token: string,
 ) {
   const params = new URLSearchParams();
   params.append("amount", String(query.amount));
@@ -483,7 +483,7 @@ export async function getRampBanks(
     currencyCode: string;
     provider?: string;
   },
-  token: string
+  token: string,
 ) {
   const params = new URLSearchParams();
   params.append("currencyCode", query.currencyCode);
@@ -501,7 +501,7 @@ export async function getLocalAccounts(
     provider?: string;
     sendFeature?: boolean;
   },
-  token: string
+  token: string,
 ) {
   const params = new URLSearchParams();
   if (query.currency) params.append("currency", query.currency);
@@ -523,7 +523,7 @@ export async function verifyLocalAccount(
     currency: string;
     provider: string;
   },
-  token: string
+  token: string,
 ) {
   return apiRequest(`/ramp/local/verify-account`, {
     method: "POST",
@@ -541,7 +541,7 @@ export async function addLocalAccount(
     currency: string;
     provider: string;
   },
-  token: string
+  token: string,
 ) {
   return apiRequest(`/ramp/local/add-account`, {
     method: "POST",
@@ -559,7 +559,7 @@ export async function deleteLocalAccount(id: string, token: string) {
 
 export async function getRampWallets(
   query: { provider: string; page: number; walletId?: string },
-  token: string
+  token: string,
 ) {
   const params = new URLSearchParams();
   params.append("provider", query.provider);
@@ -580,7 +580,7 @@ export async function getOffRampQuota(
     network: string;
     provider: string;
   },
-  token: string
+  token: string,
 ) {
   return apiRequest(`/ramp/off/quota`, {
     method: "POST",
@@ -598,7 +598,7 @@ export async function initializeOffRamp(
     network: string;
     provider: string;
   },
-  token: string
+  token: string,
 ) {
   return apiRequest(`/ramp/off/initialize`, {
     method: "POST",
@@ -621,7 +621,7 @@ export async function initializeSendOrder(
     favorite: boolean;
     provider: string;
   },
-  token: string
+  token: string,
 ) {
   return apiRequest(`/ramp/send/initialize`, {
     method: "POST",
@@ -634,7 +634,7 @@ export async function initializeSendOrder(
 
 export async function filterWebhooks(
   query: { page: number; limit: number; status: "*" | "successful" | "failed" },
-  token: string
+  token: string,
 ) {
   const params = new URLSearchParams();
   params.append("page", String(query.page));

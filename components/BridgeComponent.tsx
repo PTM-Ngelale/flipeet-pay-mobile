@@ -26,6 +26,7 @@ const BridgeComponent = () => {
   const [receiveAmount, setReceiveAmount] = useState("");
   const [showPayDropdown, setShowPayDropdown] = useState(false);
   const [showReceiveDropdown, setShowReceiveDropdown] = useState(false);
+  const [paySectionHeight, setPaySectionHeight] = useState(0);
   const [selectedReceiveCurrency, setSelectedReceiveCurrency] = useState("ETH");
   const { selectedToken } = useToken();
   const { fromToken, toToken, setFromToken, setToToken } = useBridgeToken();
@@ -324,6 +325,10 @@ const BridgeComponent = () => {
     return <IconComponent width={30} height={30} />;
   };
 
+  const exchangeIconTop = paySectionHeight
+    ? Math.max(paySectionHeight - 18, 0)
+    : 140;
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -345,121 +350,118 @@ const BridgeComponent = () => {
         </View>
       </View>
       <View style={styles.content}>
-        {/* From Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionRow}>
-            <View style={styles.sectionLeft}>
-              <Text style={styles.sectionLabel}>From</Text>
-              <View style={styles.amountInputContainer}>
-                <TextInput
-                  style={styles.amountInput}
-                  placeholder="0.00"
-                  placeholderTextColor="#FFFFFF"
-                  value={payAmount}
-                  onChangeText={handlePayAmountChange}
-                  keyboardType="numeric"
-                />
-              </View>
-              <Text style={styles.usdEquivalent}>
-                ${payAmount ? (parseFloat(payAmount) * 1).toFixed(2) : "0.00"}
-              </Text>
-            </View>
-            <View style={styles.sectionRight}>
-              <View>
-                <TouchableOpacity
-                  style={styles.tokenSelector}
-                  onPress={handleFromTokenSelect}
-                >
-                  <View>
-                    {fromToken.icon
-                      ? renderTokenIcon(fromToken.icon)
-                      : // <View style={styles.tokenIconPlaceholder}>
-                        //   <Text style={styles.tokenIconText}>
-                        //     {fromToken.symbol.charAt(0)}
-                        //   </Text>
-                        // </View>
-                        ""}
-                  </View>
-                  <View>
-                    <Text style={styles.tokenName}>{fromToken.symbol}</Text>
-                    <Text style={styles.tokenNetwork}>{fromToken.network}</Text>
-                  </View>
-                  <View>
-                    <Ionicons name="chevron-down" color={"#4A9DFF"} />
-                  </View>
-                </TouchableOpacity>
-                <View style={styles.balanceContainer}>
-                  <Image
-                    source={require("@/assets/images/wallet-icon.png")}
-                    style={{ width: 13, height: 13 }}
+        <View style={styles.exchangeStack}>
+          {/* From Section */}
+          <View
+            style={styles.section}
+            onLayout={(event) =>
+              setPaySectionHeight(event.nativeEvent.layout.height)
+            }
+          >
+            <View style={styles.sectionRow}>
+              <View style={styles.sectionLeft}>
+                <Text style={styles.sectionLabel}>From</Text>
+                <View style={styles.amountInputContainer}>
+                  <TextInput
+                    style={styles.amountInput}
+                    placeholder="0.00"
+                    placeholderTextColor="#FFFFFF"
+                    value={payAmount}
+                    onChangeText={handlePayAmountChange}
+                    keyboardType="numeric"
                   />
-                  <Text style={styles.balanceText}>
-                    {fromBalance.toFixed(6)} {fromToken.symbol}
-                  </Text>
+                </View>
+                <Text style={styles.usdEquivalent}>
+                  ${payAmount ? (parseFloat(payAmount) * 1).toFixed(2) : "0.00"}
+                </Text>
+              </View>
+              <View style={styles.sectionRight}>
+                <View>
+                  <TouchableOpacity
+                    style={styles.tokenSelector}
+                    onPress={handleFromTokenSelect}
+                  >
+                    <View>
+                      {fromToken.icon ? renderTokenIcon(fromToken.icon) : ""}
+                    </View>
+                    <View>
+                      <Text style={styles.tokenName}>{fromToken.symbol}</Text>
+                      <Text style={styles.tokenNetwork}>
+                        {fromToken.network}
+                      </Text>
+                    </View>
+                    <View>
+                      <Ionicons name="chevron-down" color={"#4A9DFF"} />
+                    </View>
+                  </TouchableOpacity>
+                  <View style={styles.balanceContainer}>
+                    <Image
+                      source={require("@/assets/images/wallet-icon.png")}
+                      style={{ width: 13, height: 13 }}
+                    />
+                    <Text style={styles.balanceText}>
+                      {fromBalance.toFixed(6)} {fromToken.symbol}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
           </View>
-        </View>
 
-        <View style={styles.exchangeIconContainer}>
-          <ExchangeIcon />
-        </View>
+          <View
+            style={[styles.exchangeIconContainer, { top: exchangeIconTop }]}
+          >
+            <ExchangeIcon />
+          </View>
 
-        {/* To Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionRow}>
-            <View style={styles.sectionLeft}>
-              <Text style={styles.sectionLabel}>To</Text>
-              <View style={styles.amountInputContainer}>
-                <TextInput
-                  style={styles.amountInput}
-                  placeholder="0.00"
-                  placeholderTextColor="#E2E6F0"
-                  value={receiveAmount}
-                  onChangeText={handleReceiveAmountChange}
-                  keyboardType="numeric"
-                />
-              </View>
-              <Text style={styles.usdEquivalent}>
-                $
-                {receiveAmount
-                  ? (parseFloat(receiveAmount) * 1).toFixed(2)
-                  : "0.00"}
-              </Text>
-            </View>
-            <View style={styles.sectionRight}>
-              <View>
-                <TouchableOpacity
-                  style={styles.tokenSelector}
-                  onPress={handleToTokenSelect}
-                >
-                  <View>
-                    {toToken.icon
-                      ? renderTokenIcon(toToken.icon)
-                      : // <View style={styles.tokenIconPlaceholder}>
-                        //   <Text style={styles.tokenIconText}>
-                        //     {toToken.symbol.charAt(0)}
-                        //   </Text>
-                        // </View>
-                        ""}
-                  </View>
-                  <View>
-                    <Text style={styles.tokenName}>{toToken.symbol}</Text>
-                    <Text style={styles.tokenNetwork}>{toToken.network}</Text>
-                  </View>
-                  <View>
-                    <Ionicons name="chevron-down" color={"#4A9DFF"} />
-                  </View>
-                </TouchableOpacity>
-                <View style={styles.balanceContainer}>
-                  <Image
-                    source={require("@/assets/images/wallet-icon.png")}
-                    style={{ width: 13, height: 13 }}
+          {/* To Section */}
+          <View style={[styles.section, styles.receiveSection]}>
+            <View style={styles.sectionRow}>
+              <View style={styles.sectionLeft}>
+                <Text style={styles.sectionLabel}>To</Text>
+                <View style={styles.amountInputContainer}>
+                  <TextInput
+                    style={styles.amountInput}
+                    placeholder="0.00"
+                    placeholderTextColor="#E2E6F0"
+                    value={receiveAmount}
+                    onChangeText={handleReceiveAmountChange}
+                    keyboardType="numeric"
                   />
-                  <Text style={styles.balanceText}>
-                    {toBalance.toFixed(6)} {toToken.symbol}
-                  </Text>
+                </View>
+                <Text style={styles.usdEquivalent}>
+                  $
+                  {receiveAmount
+                    ? (parseFloat(receiveAmount) * 1).toFixed(2)
+                    : "0.00"}
+                </Text>
+              </View>
+              <View style={styles.sectionRight}>
+                <View>
+                  <TouchableOpacity
+                    style={styles.tokenSelector}
+                    onPress={handleToTokenSelect}
+                  >
+                    <View>
+                      {toToken.icon ? renderTokenIcon(toToken.icon) : ""}
+                    </View>
+                    <View>
+                      <Text style={styles.tokenName}>{toToken.symbol}</Text>
+                      <Text style={styles.tokenNetwork}>{toToken.network}</Text>
+                    </View>
+                    <View>
+                      <Ionicons name="chevron-down" color={"#4A9DFF"} />
+                    </View>
+                  </TouchableOpacity>
+                  <View style={styles.balanceContainer}>
+                    <Image
+                      source={require("@/assets/images/wallet-icon.png")}
+                      style={{ width: 13, height: 13 }}
+                    />
+                    <Text style={styles.balanceText}>
+                      {toBalance.toFixed(6)} {toToken.symbol}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -529,6 +531,9 @@ const styles = StyleSheet.create({
     gap: 16,
     position: "relative",
     flex: 1,
+  },
+  exchangeStack: {
+    position: "relative",
   },
   section: {
     padding: 16,
@@ -601,7 +606,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 10,
     position: "absolute",
-    top: "22%",
+    left: 0,
+    right: 0,
+  },
+  receiveSection: {
+    marginTop: 16,
   },
   exchangeRateContainer: {
     flexDirection: "row",

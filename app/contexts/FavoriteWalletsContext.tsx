@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { Alert, Platform, ToastAndroid } from "react-native";
 import { useSelector } from "react-redux";
-import { apiRequest, normalizeAuthToken } from "../constants/api";
+import { apiRequest } from "../constants/api";
 import { RootState } from "../store";
 
 export interface FavoriteWallet {
@@ -49,7 +49,6 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
   >(null);
   const [loading, setLoading] = useState(false);
   const token = useSelector((state: RootState) => state.auth.token);
-  const normalizedToken = normalizeAuthToken(token);
   const STORAGE_KEY = "flipeet_favorite_wallets_v1";
   const WALLET_FEATURE_TYPES = ["wallet_address", "wallet"];
 
@@ -76,17 +75,17 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   useEffect(() => {
-    if (normalizedToken) {
+    if (token) {
       fetchFavorites();
     }
-  }, [normalizedToken]);
+  }, [token]);
 
   useEffect(() => {
     updateRecentWallets();
   }, [favoriteWallets]);
 
   const fetchFavorites = async () => {
-    if (!normalizedToken) return;
+    if (!token) return;
 
     try {
       setLoading(true);
@@ -98,7 +97,7 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
             `/transaction/favorites?featureType=${encodeURIComponent(
               featureType,
             )}&page=1&limit=100`,
-            { method: "GET", token: normalizedToken },
+            { method: "GET", token },
           );
           console.log("Fetched favorite wallets:", data);
 
@@ -146,7 +145,7 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const addFavoriteWallet = async (walletAddress: string) => {
-    if (!normalizedToken) return;
+    if (!token) return;
     // Optimistic update
     const localId = `local-wallet-${Date.now()}`;
     const newWallet: FavoriteWallet = {
@@ -172,7 +171,7 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
         try {
           await apiRequest(`/transaction/favorites`, {
             method: "POST",
-            token: normalizedToken,
+            token,
             body: {
               featureType,
               walletAddress: walletAddress.trim(),
@@ -202,7 +201,7 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const removeFavoriteWallet = async (walletId: string) => {
-    if (!normalizedToken) return;
+    if (!token) return;
     // Optimistic remove
     const previous = favoriteWallets;
     const updated = previous.filter((w) => w.id !== walletId);
@@ -220,7 +219,7 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${normalizedToken}`,
+            Authorization: `Bearer ${token}`,
           },
         },
       );

@@ -222,9 +222,9 @@ const WalletComponent = () => {
                   <Ionicons name="chevron-down" color="#4A9DFF" />
                 </TouchableOpacity>
               </View>
-              <View style={{ position: "relative" }}>
+              <View style={styles.walletInputWrapper}>
                 <TextInput
-                  style={styles.emailInput}
+                  style={[styles.emailInput, styles.walletInput]}
                   placeholder="Enter wallet address"
                   placeholderTextColor="#757B85"
                   value={walletAddress}
@@ -234,7 +234,7 @@ const WalletComponent = () => {
                   autoCorrect={false}
                 />
                 <TouchableOpacity
-                  style={{ position: "absolute", top: "10%", right: 3 }}
+                  style={styles.scanButton}
                   onPress={handleOpenScanner}
                 >
                   <ScanIcon />
@@ -557,5 +557,21 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 3,
+  },
+  walletInputWrapper: {
+    position: "relative",
+  },
+  walletInput: {
+    paddingRight: 48,
+  },
+  scanButton: {
+    position: "absolute",
+    right: 12,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 2,
+    elevation: 2,
   },
 });

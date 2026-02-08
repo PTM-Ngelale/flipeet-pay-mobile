@@ -1,5 +1,4 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { normalizeAuthToken } from "../constants/api";
 
 // Types
 export interface PaymentInitPayload {
@@ -155,9 +154,8 @@ export const initializePayment = createAsyncThunk(
     try {
       const state = thunkAPI.getState();
       const { token } = state.auth;
-      const normalizedToken = normalizeAuthToken(token);
 
-      if (!normalizedToken) {
+      if (!token) {
         return thunkAPI.rejectWithValue("Not authenticated");
       }
 
@@ -170,7 +168,7 @@ export const initializePayment = createAsyncThunk(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${normalizedToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
         },
@@ -210,9 +208,8 @@ export const processPayment = createAsyncThunk(
     try {
       const state = thunkAPI.getState();
       const { token } = state.auth;
-      const normalizedToken = normalizeAuthToken(token);
 
-      if (!normalizedToken) {
+      if (!token) {
         return thunkAPI.rejectWithValue("Not authenticated");
       }
 
@@ -225,7 +222,7 @@ export const processPayment = createAsyncThunk(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${normalizedToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
         },
@@ -265,9 +262,8 @@ export const fundWallet = createAsyncThunk(
     try {
       const state = thunkAPI.getState();
       const { token } = state.auth;
-      const normalizedToken = normalizeAuthToken(token);
 
-      if (!normalizedToken) {
+      if (!token) {
         return thunkAPI.rejectWithValue("Not authenticated");
       }
 
@@ -299,7 +295,7 @@ export const fundWallet = createAsyncThunk(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${normalizedToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(normalizedPayload),
         },
@@ -337,9 +333,8 @@ export const withdrawWallet = createAsyncThunk(
     try {
       const state = thunkAPI.getState();
       const { token } = state.auth;
-      const normalizedToken = normalizeAuthToken(token);
 
-      if (!normalizedToken) {
+      if (!token) {
         return thunkAPI.rejectWithValue("Not authenticated");
       }
 
@@ -361,7 +356,7 @@ export const withdrawWallet = createAsyncThunk(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${normalizedToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
         },
@@ -401,9 +396,8 @@ export const internalTransfer = createAsyncThunk(
     try {
       const state = thunkAPI.getState();
       const { token, user } = state.auth;
-      const normalizedToken = normalizeAuthToken(token);
 
-      if (!normalizedToken) {
+      if (!token) {
         return thunkAPI.rejectWithValue("Not authenticated");
       }
 
@@ -431,7 +425,7 @@ export const internalTransfer = createAsyncThunk(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${normalizedToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
         },
@@ -471,9 +465,8 @@ export const getBridgeQuota = createAsyncThunk(
     try {
       const state = thunkAPI.getState();
       const { token } = state.auth;
-      const normalizedToken = normalizeAuthToken(token);
 
-      if (!normalizedToken) {
+      if (!token) {
         return thunkAPI.rejectWithValue("Not authenticated");
       }
 
@@ -491,7 +484,7 @@ export const getBridgeQuota = createAsyncThunk(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${normalizedToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
         },
@@ -531,9 +524,8 @@ export const executeBridge = createAsyncThunk(
     try {
       const state = thunkAPI.getState();
       const { token } = state.auth;
-      const normalizedToken = normalizeAuthToken(token);
 
-      if (!normalizedToken) {
+      if (!token) {
         return thunkAPI.rejectWithValue("Not authenticated");
       }
 
@@ -572,7 +564,7 @@ export const executeBridge = createAsyncThunk(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${normalizedToken}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(normalizedPayload),
         },

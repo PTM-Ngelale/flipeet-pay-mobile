@@ -26,6 +26,7 @@ const SellComponent = () => {
   const [receiveAmount, setReceiveAmount] = useState("");
   const [showPayDropdown, setShowPayDropdown] = useState(false);
   const [showReceiveDropdown, setShowReceiveDropdown] = useState(false);
+  const [paySectionHeight, setPaySectionHeight] = useState(0);
   const { selectedAccount } = useBankAccount();
   const { savedCurrency } = useCurrency();
   const { selectedToken } = useToken();
@@ -227,6 +228,10 @@ const SellComponent = () => {
     return <IconComponent width={30} height={30} />;
   };
 
+  const exchangeIconTop = paySectionHeight
+    ? Math.max(paySectionHeight - 18, 0)
+    : 140;
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -248,113 +253,125 @@ const SellComponent = () => {
         </View>
       </View>
       <View style={styles.content}>
-        {/* Pay Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionRow}>
-            <View style={styles.sectionLeft}>
-              <Text style={styles.sectionLabel}>Pay</Text>
-              <View style={styles.amountInputContainer}>
-                <Text style={styles.currencySymbol}>$</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  placeholder="0.00"
-                  placeholderTextColor="#FFFFFF"
-                  value={payAmount}
-                  onChangeText={handlePayAmountChange}
-                  keyboardType="numeric"
-                />
+        <View style={styles.exchangeStack}>
+          {/* Pay Section */}
+          <View
+            style={styles.section}
+            onLayout={(event) =>
+              setPaySectionHeight(event.nativeEvent.layout.height)
+            }
+          >
+            <View style={styles.sectionRow}>
+              <View style={styles.sectionLeft}>
+                <Text style={styles.sectionLabel}>Pay</Text>
+                <View style={styles.amountInputContainer}>
+                  <Text style={styles.currencySymbol}>$</Text>
+                  <TextInput
+                    style={styles.amountInput}
+                    placeholder="0.00"
+                    placeholderTextColor="#FFFFFF"
+                    value={payAmount}
+                    onChangeText={handlePayAmountChange}
+                    keyboardType="numeric"
+                  />
+                </View>
               </View>
-            </View>
-            <View style={styles.sectionRight}>
-              <TouchableOpacity
-                style={styles.tokenSelector}
-                onPress={() => router.push("/(action)/token-selector")}
-              >
-                <View>
-                  {selectedToken?.icon ? (
-                    renderTokenIcon(selectedToken.icon)
-                  ) : (
-                    <Ionicons name="ellipse" size={24} color="#4A9DFF" />
-                  )}
+              <View style={styles.sectionRight}>
+                <TouchableOpacity
+                  style={styles.tokenSelector}
+                  onPress={() => router.push("/(action)/token-selector")}
+                >
+                  <View>
+                    {selectedToken?.icon ? (
+                      renderTokenIcon(selectedToken.icon)
+                    ) : (
+                      <Ionicons name="ellipse" size={24} color="#4A9DFF" />
+                    )}
+                  </View>
+                  <View>
+                    <Text style={styles.tokenName}>{displayTokenSymbol}</Text>
+                    <Text style={styles.tokenNetwork}>
+                      {displayTokenNetwork}
+                    </Text>
+                  </View>
+                  <View>
+                    <Ionicons name="chevron-down" color={"#4A9DFF"} />
+                  </View>
+                </TouchableOpacity>
+                <View style={styles.balanceContainer}>
+                  <Image
+                    source={require("@/assets/images/wallet-icon.png")}
+                    style={{ width: 13, height: 13 }}
+                  />
+                  <Text style={styles.balanceText}>
+                    {tokenBalance.toFixed(6)} {displayTokenSymbol}
+                  </Text>
                 </View>
-                <View>
-                  <Text style={styles.tokenName}>{displayTokenSymbol}</Text>
-                  <Text style={styles.tokenNetwork}>{displayTokenNetwork}</Text>
-                </View>
-                <View>
-                  <Ionicons name="chevron-down" color={"#4A9DFF"} />
-                </View>
-              </TouchableOpacity>
-              <View style={styles.balanceContainer}>
-                <Image
-                  source={require("@/assets/images/wallet-icon.png")}
-                  style={{ width: 13, height: 13 }}
-                />
-                <Text style={styles.balanceText}>
-                  {tokenBalance.toFixed(6)} {displayTokenSymbol}
-                </Text>
               </View>
             </View>
           </View>
-        </View>
 
-        <View style={styles.exchangeIconContainer}>
-          <ExchangeIcon />
-        </View>
+          <View
+            style={[styles.exchangeIconContainer, { top: exchangeIconTop }]}
+          >
+            <ExchangeIcon />
+          </View>
 
-        {/* Receive Section */}
-
-        <View style={styles.section}>
-          <View style={styles.sectionRow}>
-            <View style={styles.sectionLeft}>
-              <Text style={styles.sectionLabel}>Receive</Text>
-              <View style={styles.amountInputContainer}>
-                <Text style={styles.currencySymbol}>{getCurrencySymbol()}</Text>
-                <TextInput
-                  style={styles.amountInput}
-                  placeholder="0.00"
-                  placeholderTextColor="#E2E6F0"
-                  value={receiveAmount}
-                  onChangeText={handleReceiveAmountChange}
-                  keyboardType="numeric"
-                />
+          {/* Receive Section */}
+          <View style={[styles.section, styles.receiveSection]}>
+            <View style={styles.sectionRow}>
+              <View style={styles.sectionLeft}>
+                <Text style={styles.sectionLabel}>Receive</Text>
+                <View style={styles.amountInputContainer}>
+                  <Text style={styles.currencySymbol}>
+                    {getCurrencySymbol()}
+                  </Text>
+                  <TextInput
+                    style={styles.amountInput}
+                    placeholder="0.00"
+                    placeholderTextColor="#E2E6F0"
+                    value={receiveAmount}
+                    onChangeText={handleReceiveAmountChange}
+                    keyboardType="numeric"
+                  />
+                </View>
               </View>
-            </View>
-            <View style={styles.sectionRight}>
-              {selectedAccount ? ( // Changed from savedAccount to selectedAccount
+              <View style={styles.sectionRight}>
+                {selectedAccount ? (
+                  <TouchableOpacity
+                    style={styles.savedAccountButton}
+                    onPress={() => router.push("/(action)/saved-bank-accounts")}
+                  >
+                    <View style={styles.accountInfo}>
+                      <Text style={styles.accountNumber}>
+                        {selectedAccount.accountNumber.slice(0, 7)}...
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-down" size={20} color="#4A9DFF" />
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.addBankButton}
+                    onPress={() => router.push("/(action)/add-bank-account")}
+                  >
+                    <Text style={styles.addBankText}>+ Add Bank Account</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
-                  style={styles.savedAccountButton}
-                  onPress={() => router.push("/(action)/saved-bank-accounts")}
+                  style={styles.currencySelector}
+                  onPress={() => router.push("/(action)/currency-selector")}
                 >
-                  <View style={styles.accountInfo}>
-                    <Text style={styles.accountNumber}>
-                      {selectedAccount.accountNumber.slice(0, 7)}...
+                  <View>{renderCurrencyIcon()}</View>
+                  <View>
+                    <Text style={styles.currencyName}>
+                      {savedCurrency || "NGN"}
                     </Text>
                   </View>
-                  <Ionicons name="chevron-down" size={20} color="#4A9DFF" />
+                  <View>
+                    <Ionicons name="chevron-down" color={"#4A9DFF"} />
+                  </View>
                 </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  style={styles.addBankButton}
-                  onPress={() => router.push("/(action)/add-bank-account")}
-                >
-                  <Text style={styles.addBankText}>+ Add Bank Account</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={styles.currencySelector}
-                onPress={() => router.push("/(action)/currency-selector")}
-              >
-                <View>{renderCurrencyIcon()}</View>
-                <View>
-                  <Text style={styles.currencyName}>
-                    {savedCurrency || "NGN"}
-                  </Text>
-                </View>
-                <View>
-                  <Ionicons name="chevron-down" color={"#4A9DFF"} />
-                </View>
-              </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
@@ -441,6 +458,9 @@ const styles = StyleSheet.create({
     position: "relative",
     flex: 1,
   },
+  exchangeStack: {
+    position: "relative",
+  },
   section: {
     padding: 16,
     backgroundColor: "#1C1C1C",
@@ -510,7 +530,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 10,
     position: "absolute",
-    top: "19%",
+    left: 0,
+    right: 0,
+  },
+  receiveSection: {
+    marginTop: 16,
   },
   addBankButton: {
     backgroundColor: "#2A2A2A",
