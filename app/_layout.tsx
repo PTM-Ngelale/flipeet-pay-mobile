@@ -79,6 +79,13 @@ export default function RootLayout() {
                           }}
                         />
                         <Stack.Screen
+                          name="(intro)"
+                          options={{
+                            headerShown: false,
+                            statusBarTranslucent: true,
+                          }}
+                        />
+                        <Stack.Screen
                           name="(auth)"
                           options={{
                             headerShown: false,

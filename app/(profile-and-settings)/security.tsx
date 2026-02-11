@@ -9,9 +9,15 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
 
 const SecurityAndPrivacy = () => {
   const router = useRouter();
+  const email = useSelector(
+    (state: RootState) =>
+      state.auth.user?.email || state.auth.email || "Not set",
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -37,9 +43,7 @@ const SecurityAndPrivacy = () => {
             <View style={styles.row}>
               <View style={styles.textContainer}>
                 <Text style={styles.label}>Email</Text>
-                <Text style={styles.description}>
-                  preciousngelale@gmail.com
-                </Text>
+                <Text style={styles.description}>{email}</Text>
               </View>
               <TouchableOpacity
                 style={{

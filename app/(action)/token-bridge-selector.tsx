@@ -1,5 +1,6 @@
 // app/(action)/token-selector.tsx
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -47,8 +48,11 @@ export default function TokenSelector() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [selectedNetwork, setSelectedNetwork] = useState("solana");
+  const [recentNetworkIds, setRecentNetworkIds] = useState<string[]>([]);
   const { fromToken, toToken, setFromToken, setToToken } = useBridgeToken();
   const balances = useSelector((state: RootState) => state.auth.balances);
+  const RECENT_NETWORKS_KEY = "flipeet_recent_networks_v1";
+  const MAX_RECENT_NETWORKS = 1;
 
   const normalizeNetworkId = (networkName: string) => {
     const normalized = (networkName || "").toLowerCase().replace(/\s+/g, "-");
@@ -88,6 +92,22 @@ export default function TokenSelector() {
       networkIconMap["bnb-smart-chain"],
     ];
   }, [balances]);
+
+  useEffect(() => {
+    const loadRecentNetworks = async () => {
+      try {
+        const raw = await AsyncStorage.getItem(RECENT_NETWORKS_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as string[];
+          setRecentNetworkIds((parsed || []).slice(0, MAX_RECENT_NETWORKS));
+        }
+      } catch (error) {
+        console.warn("Failed to load recent networks:", error);
+      }
+    };
+
+    loadRecentNetworks();
+  }, []);
 
   const tokens = useMemo(() => {
     if (balances && Array.isArray(balances) && balances.length > 0) {
@@ -183,27 +203,36 @@ export default function TokenSelector() {
     return <IconComponent width={40} height={40} />;
   };
 
-  const renderNetworkItem = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      style={[
-        styles.networkItem,
-        selectedNetwork === item.id && styles.selectedNetworkItem,
-      ]}
-      onPress={() => setSelectedNetwork(item.id)}
-    >
-      <View style={styles.networkLeft}>
-        {renderNetworkIcon(item.icon)}
-        <View style={styles.networkInfo}>
-          <Text style={styles.networkName}>{item.name}</Text>
+  const renderNetworkItem = ({ item }: { item: any }) => {
+    const isRecent = recentNetworkIds.includes(item.id);
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.networkItem,
+          selectedNetwork === item.id && styles.selectedNetworkItem,
+        ]}
+        onPress={() => setSelectedNetwork(item.id)}
+      >
+        <View style={styles.networkLeft}>
+          {renderNetworkIcon(item.icon)}
+          <View style={styles.networkInfo}>
+            <Text style={styles.networkName}>{item.name}</Text>
+          </View>
         </View>
-      </View>
-      <View style={styles.networkRight}>
-        {selectedNetwork === item.id && (
-          <Ionicons name="checkmark" size={20} color="#4A9DFF" />
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+        <View style={styles.networkRight}>
+          {isRecent && (
+            <View style={styles.recentTag}>
+              <Text style={styles.recentTagText}>Recently used</Text>
+            </View>
+          )}
+          {selectedNetwork === item.id && (
+            <Ionicons name="checkmark" size={20} color="#4A9DFF" />
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderTokenItem = ({ item }: { item: any }) => {
     // Check if this token is currently selected
@@ -347,6 +376,18 @@ const styles = StyleSheet.create({
   networkRight: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
+  },
+  recentTag: {
+    backgroundColor: "#16A34A",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+  },
+  recentTagText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "600",
   },
   tokenItem: {
     flexDirection: "row",

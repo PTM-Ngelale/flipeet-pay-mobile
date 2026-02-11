@@ -117,10 +117,10 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
 
         setFavoriteEmails(emails);
       } else {
-        console.error("Failed to fetch favorite emails");
+        console.warn("Failed to fetch favorite emails");
       }
     } catch (error) {
-      console.error("Error fetching favorite emails:", error);
+      console.warn("Error fetching favorite emails:", error);
     } finally {
       setLoading(false);
     }

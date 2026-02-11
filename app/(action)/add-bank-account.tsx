@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -30,10 +31,10 @@ export default function AddBankAccount() {
   const { addBankAccount } = useBankAccount();
   const banks = useSelector((state: RootState) => state.bankAccount.banks);
   const banksLoading = useSelector(
-    (state: RootState) => state.bankAccount.banksLoading
+    (state: RootState) => state.bankAccount.banksLoading,
   );
   const verifying = useSelector(
-    (state: RootState) => state.bankAccount.verifying
+    (state: RootState) => state.bankAccount.verifying,
   );
   const token = useSelector((state: RootState) => state.auth.token);
 
@@ -57,7 +58,7 @@ export default function AddBankAccount() {
                 text: "Retry",
                 onPress: () => dispatch(fetchBanks()),
               },
-            ]
+            ],
           );
         });
     }
@@ -65,7 +66,7 @@ export default function AddBankAccount() {
 
   // Filter banks based on search query
   const filteredBanks = banks.filter((bank) =>
-    bank.name.toLowerCase().includes(searchQuery.toLowerCase())
+    bank.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   // Function to handle bank selection
@@ -115,7 +116,7 @@ export default function AddBankAccount() {
           bankCode: bank.code,
           bankName: bank.name,
           currency: "NGN",
-        })
+        }),
       ).unwrap();
 
       if (result.accountName) {
@@ -168,6 +169,25 @@ export default function AddBankAccount() {
     }
   };
 
+  const renderBankLogo = (bank: any) => {
+    if (bank?.logoUrl) {
+      return (
+        <Image
+          source={{ uri: bank.logoUrl }}
+          style={styles.bankLogo}
+          resizeMode="contain"
+        />
+      );
+    }
+
+    const initial = (bank?.name || "?").trim().charAt(0).toUpperCase();
+    return (
+      <View style={styles.bankLogoFallback}>
+        <Text style={styles.bankLogoFallbackText}>{initial}</Text>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container}>
@@ -208,13 +228,18 @@ export default function AddBankAccount() {
                 style={styles.dropdown}
                 onPress={handleDropdownToggle}
               >
-                <Text
-                  style={
-                    selectedBank ? styles.dropdownText : styles.placeholderText
-                  }
-                >
-                  {selectedBank ? selectedBank.name : "Select a bank"}
-                </Text>
+                <View style={styles.dropdownRow}>
+                  {selectedBank ? renderBankLogo(selectedBank) : null}
+                  <Text
+                    style={
+                      selectedBank
+                        ? styles.dropdownText
+                        : styles.placeholderText
+                    }
+                  >
+                    {selectedBank ? selectedBank.name : "Select a bank"}
+                  </Text>
+                </View>
                 <Ionicons
                   name={showBankList ? "chevron-up" : "chevron-down"}
                   size={20}
@@ -297,6 +322,7 @@ export default function AddBankAccount() {
                           onPress={() => handleBankSelect(bank)}
                         >
                           <View style={styles.bankInfo}>
+                            {renderBankLogo(bank)}
                             <Text style={styles.bankName}>{bank.name}</Text>
                           </View>
                           {selectedBank?.id === bank.id && (
@@ -439,6 +465,11 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
   },
+  dropdownRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   placeholderText: {
     color: "#757B85",
     fontSize: 16,
@@ -481,11 +512,33 @@ const styles = StyleSheet.create({
   },
   bankInfo: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   bankName: {
     color: "#FFFFFF",
     fontSize: 16,
     marginBottom: 2,
+  },
+  bankLogo: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#111111",
+  },
+  bankLogoFallback: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#2A2A2A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bankLogoFallbackText: {
+    color: "#E2E6F0",
+    fontSize: 10,
+    fontWeight: "700",
   },
   noResults: {
     padding: 20,

@@ -1,8 +1,6 @@
 import { verifyPinAvailability } from "@/app/constants/api";
-import { useFavoriteEmails } from "@/app/contexts/FavoriteEmailsContext";
 import { useToken } from "@/app/contexts/TokenContext";
 import { RootState } from "@/app/store";
-import StarIcon from "@/assets/images/star-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -13,7 +11,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -26,17 +23,33 @@ const EmailComponent = () => {
   const [payAmount, setPayAmount] = useState("");
   const [receiveAmount, setReceiveAmount] = useState("");
   const [email, setEmail] = useState("");
-  const [isFavorite, setIsFavorite] = useState(false);
   const { selectedToken } = useToken();
   const balances = useSelector((state: RootState) => state.auth.balances);
-  const {
-    addFavoriteEmail,
-    removeFavoriteEmail,
-    isEmailFavorite,
-    favoriteEmails,
-    selectedEmailFromFavorite,
-    clearSelectedEmailFromFavorite,
-  } = useFavoriteEmails();
+
+  const shortenNetworkName = (value?: string) => {
+    const raw = (value || "").trim();
+    const normalized = raw.toLowerCase().replace(/\s+/g, "-");
+
+    if (
+      normalized === "bnb-smart-chain" ||
+      normalized === "bnb-chain" ||
+      normalized === "binance-smart-chain" ||
+      normalized === "bsc" ||
+      normalized === "bnb"
+    ) {
+      return "BNB";
+    }
+
+    if (normalized === "solana") {
+      return "Solana";
+    }
+
+    if (normalized === "base") {
+      return "Base";
+    }
+
+    return raw;
+  };
 
   const [registrationStatus, setRegistrationStatus] = useState<
     "unknown" | "checking" | "registered" | "unregistered"
@@ -57,23 +70,6 @@ const EmailComponent = () => {
   };
 
   const tokenBalance = getTokenBalance(selectedToken?.symbol || "USDC");
-
-  // Handle selected email from favorites
-  useEffect(() => {
-    if (selectedEmailFromFavorite) {
-      setEmail(selectedEmailFromFavorite);
-      clearSelectedEmailFromFavorite();
-    }
-  }, [selectedEmailFromFavorite, clearSelectedEmailFromFavorite]);
-
-  // Check if current email is already in favorites when email changes
-  useEffect(() => {
-    if (email) {
-      setIsFavorite(isEmailFavorite(email));
-    } else {
-      setIsFavorite(false);
-    }
-  }, [email, isEmailFavorite]);
 
   const handleEmailChange = (text: string) => {
     setEmail(text);
@@ -114,33 +110,6 @@ const EmailComponent = () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [email]);
-
-  const handleFavoriteToggle = async (value: boolean) => {
-    if (value && email) {
-      // Request to add to favorites
-      await addFavoriteEmail(email);
-      // The context handles optimistic UI and reverts on failure
-      // Update local state based on context after a short delay to allow context update
-      setTimeout(() => {
-        setIsFavorite(isEmailFavorite(email));
-      }, 100);
-    } else if (!value && email) {
-      // Request to remove from favorites
-      const favoriteEmail = favoriteEmails.find((fav) => fav.email === email);
-      if (favoriteEmail) {
-        await removeFavoriteEmail(favoriteEmail.id);
-        // The context handles optimistic UI and reverts on failure
-        // Update local state based on context after a short delay to allow context update
-        setTimeout(() => {
-          setIsFavorite(isEmailFavorite(email));
-        }, 100);
-      }
-    }
-  };
-
-  const handleFavoritesPress = () => {
-    router.push("/(action)/favorites-page");
-  };
 
   const handlePayAmountChange = (text: string) => {
     const numericValue = text.replace(/[^0-9.]/g, "");
@@ -228,14 +197,6 @@ const EmailComponent = () => {
             <View style={styles.emailSection}>
               <View style={styles.emailHeader}>
                 <Text style={styles.emailLabel}>Enter email address</Text>
-                <TouchableOpacity
-                  style={styles.favoritesButton}
-                  onPress={handleFavoritesPress}
-                >
-                  <StarIcon />
-                  <Text style={styles.favoritesText}>Favorites</Text>
-                  <Ionicons name="chevron-down" color="#4A9DFF" />
-                </TouchableOpacity>
               </View>
               <TextInput
                 style={styles.emailInput}
@@ -263,19 +224,6 @@ const EmailComponent = () => {
                   Email not registered
                 </Text>
               )}
-              <View style={styles.favoriteToggle}>
-                <Text style={styles.favoriteToggleText}>
-                  {isFavorite ? "Remove from favorite" : "Add to favorite"}
-                </Text>
-                <Switch
-                  trackColor={{ false: "#000", true: "#4B5563" }}
-                  thumbColor={isFavorite ? "#B0BACB" : "#9CA3AF"}
-                  ios_backgroundColor="#4B5563"
-                  onValueChange={handleFavoriteToggle}
-                  value={isFavorite}
-                  style={styles.switch}
-                />
-              </View>
             </View>
 
             {/* Amount Controls */}
@@ -328,7 +276,7 @@ const EmailComponent = () => {
                         {selectedToken.symbol}
                       </Text>
                       <Text style={styles.tokenNetwork}>
-                        {selectedToken.network}
+                        {shortenNetworkName(selectedToken.network)}
                       </Text>
                     </View>
                     <View>

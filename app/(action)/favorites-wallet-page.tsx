@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -21,17 +22,24 @@ export default function FavoritesWalletPage() {
     toggleFavorite,
     markWalletAsUsed,
     setSelectedWalletFromFavorite,
+    refreshFavorites,
   } = useFavoriteWallets();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"favorites" | "recent">(
-    "favorites"
+    "favorites",
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshFavorites();
+    }, [refreshFavorites]),
   );
 
   const currentWallets =
     activeTab === "favorites" ? favoriteWallets : recentWallets;
 
   const filteredWallets = currentWallets.filter((wallet) =>
-    wallet.walletAddress.toLowerCase().includes(searchQuery.toLowerCase())
+    wallet.walletAddress.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const sortedWallets = [...filteredWallets].sort((a, b) => {
@@ -51,7 +59,7 @@ export default function FavoritesWalletPage() {
   const handleToggleFavorite = (
     walletId: string,
     walletAddress: string,
-    isCurrentlyFavorite: boolean
+    isCurrentlyFavorite: boolean,
   ) => {
     if (isCurrentlyFavorite) {
       Alert.alert(
@@ -64,7 +72,7 @@ export default function FavoritesWalletPage() {
             style: "destructive",
             onPress: () => toggleFavorite(walletId),
           },
-        ]
+        ],
       );
     } else {
       toggleFavorite(walletId);
@@ -227,7 +235,7 @@ export default function FavoritesWalletPage() {
                       handleToggleFavorite(
                         wallet.id,
                         wallet.walletAddress,
-                        wallet.isFavorite
+                        wallet.isFavorite,
                       )
                     }
                   >

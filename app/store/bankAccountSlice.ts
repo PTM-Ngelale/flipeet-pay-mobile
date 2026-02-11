@@ -15,6 +15,7 @@ export interface Bank {
   id: number | string;
   name: string;
   code: string;
+  logoUrl?: string | null;
 }
 
 type BankAccountState = {
@@ -149,6 +150,13 @@ export const fetchBanks = createAsyncThunk(
           id: bank.id || index + 1,
           name: bank.name || bank.bankName,
           code: bank.code || bank.bankCode,
+          logoUrl:
+            bank.logoUrl ||
+            bank.logo ||
+            bank.icon ||
+            bank.imageUrl ||
+            bank.image ||
+            null,
         }));
         console.log(
           "[fetchBanks] Successfully formatted",

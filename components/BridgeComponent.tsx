@@ -43,6 +43,31 @@ const BridgeComponent = () => {
   const dailyLimit = 5000;
   const usedLimit = 0;
 
+  const shortenNetworkName = (value?: string) => {
+    const raw = (value || "").trim();
+    const normalized = raw.toLowerCase().replace(/\s+/g, "-");
+
+    if (
+      normalized === "bnb-smart-chain" ||
+      normalized === "bnb-chain" ||
+      normalized === "binance-smart-chain" ||
+      normalized === "bsc" ||
+      normalized === "bnb"
+    ) {
+      return "BNB";
+    }
+
+    if (normalized === "solana") {
+      return "Solana";
+    }
+
+    if (normalized === "base") {
+      return "Base";
+    }
+
+    return raw;
+  };
+
   // Get user balance for selected tokens (case-insensitive)
   const getTokenBalance = (symbol: string, network: string) => {
     if (!balances || !Array.isArray(balances)) return 0;
@@ -387,7 +412,7 @@ const BridgeComponent = () => {
                     <View>
                       <Text style={styles.tokenName}>{fromToken.symbol}</Text>
                       <Text style={styles.tokenNetwork}>
-                        {fromToken.network}
+                        {shortenNetworkName(fromToken.network)}
                       </Text>
                     </View>
                     <View>
@@ -447,7 +472,9 @@ const BridgeComponent = () => {
                     </View>
                     <View>
                       <Text style={styles.tokenName}>{toToken.symbol}</Text>
-                      <Text style={styles.tokenNetwork}>{toToken.network}</Text>
+                      <Text style={styles.tokenNetwork}>
+                        {shortenNetworkName(toToken.network)}
+                      </Text>
                     </View>
                     <View>
                       <Ionicons name="chevron-down" color={"#4A9DFF"} />

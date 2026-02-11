@@ -1,12 +1,10 @@
-import { useFavoriteWallets } from "@/app/contexts/FavoriteWalletsContext";
 import { useToken } from "@/app/contexts/TokenContext";
 import { RootState } from "@/app/store";
 import ScanIcon from "@/assets/images/scan-icon.svg";
-import StarIcon from "@/assets/images/star-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   Image,
@@ -15,7 +13,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -28,20 +25,36 @@ const WalletComponent = () => {
   const [payAmount, setPayAmount] = useState("");
   const [receiveAmount, setReceiveAmount] = useState("");
   const [walletAddress, setWalletAddress] = useState("");
-  const [isFavorite, setIsFavorite] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const { selectedToken } = useToken();
   const balances = useSelector((state: RootState) => state.auth.balances);
-  const {
-    addFavoriteWallet,
-    removeFavoriteWallet,
-    isWalletFavorite,
-    favoriteWallets,
-    selectedWalletFromFavorite,
-    clearSelectedWalletFromFavorite,
-  } = useFavoriteWallets();
+
+  const shortenNetworkName = (value?: string) => {
+    const raw = (value || "").trim();
+    const normalized = raw.toLowerCase().replace(/\s+/g, "-");
+
+    if (
+      normalized === "bnb-smart-chain" ||
+      normalized === "bnb-chain" ||
+      normalized === "binance-smart-chain" ||
+      normalized === "bsc" ||
+      normalized === "bnb"
+    ) {
+      return "BNB";
+    }
+
+    if (normalized === "solana") {
+      return "Solana";
+    }
+
+    if (normalized === "base") {
+      return "Base";
+    }
+
+    return raw;
+  };
 
   // Get balance for selected token/network (case-insensitive)
   const getTokenBalance = (symbol: string) => {
@@ -57,23 +70,6 @@ const WalletComponent = () => {
   };
 
   const tokenBalance = getTokenBalance(selectedToken?.symbol || "USDC");
-
-  // Handle selected wallet from favorites
-  useEffect(() => {
-    if (selectedWalletFromFavorite) {
-      setWalletAddress(selectedWalletFromFavorite);
-      clearSelectedWalletFromFavorite();
-    }
-  }, [selectedWalletFromFavorite, clearSelectedWalletFromFavorite]);
-
-  // Check if current wallet address is already in favorites when it changes
-  useEffect(() => {
-    if (walletAddress) {
-      setIsFavorite(isWalletFavorite(walletAddress));
-    } else {
-      setIsFavorite(false);
-    }
-  }, [walletAddress, isWalletFavorite]);
 
   const handleWalletAddressChange = (text: string) => {
     setWalletAddress(text);
@@ -105,36 +101,6 @@ const WalletComponent = () => {
     }
     setShowScanner(false);
     setTimeout(() => setIsScanning(false), 300);
-  };
-
-  const handleFavoriteToggle = async (value: boolean) => {
-    if (value && walletAddress) {
-      // Request to add to favorites
-      await addFavoriteWallet(walletAddress);
-      // The context handles optimistic UI and reverts on failure
-      // Update local state based on context after a short delay to allow context update
-      setTimeout(() => {
-        setIsFavorite(isWalletFavorite(walletAddress));
-      }, 100);
-    } else if (!value && walletAddress) {
-      // Find and remove the wallet from favorites
-      const favoriteWallet = favoriteWallets.find(
-        (fav) => fav.walletAddress === walletAddress,
-      );
-      if (favoriteWallet) {
-        // Request to remove from favorites
-        await removeFavoriteWallet(favoriteWallet.id);
-        // The context handles optimistic UI and reverts on failure
-        // Update local state based on context after a short delay to allow context update
-        setTimeout(() => {
-          setIsFavorite(isWalletFavorite(walletAddress));
-        }, 100);
-      }
-    }
-  };
-
-  const handleFavoritesPress = () => {
-    router.push("/(action)/favorites-wallet-page");
   };
 
   const handlePayAmountChange = (text: string) => {
@@ -213,14 +179,6 @@ const WalletComponent = () => {
                 <Text style={{ color: "#B0BACB", fontSize: 16 }}>
                   Recipient wallet address
                 </Text>
-                <TouchableOpacity
-                  style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
-                  onPress={handleFavoritesPress}
-                >
-                  <StarIcon />
-                  <Text style={{ color: "#E2E6F0" }}>Favorites</Text>
-                  <Ionicons name="chevron-down" color="#4A9DFF" />
-                </TouchableOpacity>
               </View>
               <View style={styles.walletInputWrapper}>
                 <TextInput
@@ -237,29 +195,8 @@ const WalletComponent = () => {
                   style={styles.scanButton}
                   onPress={handleOpenScanner}
                 >
-                  <ScanIcon />
+                  <ScanIcon width={24} height={24} />
                 </TouchableOpacity>
-              </View>
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  alignItems: "center",
-                  gap: 2,
-                }}
-              >
-                <Text style={{ color: "#E2E6F0" }}>
-                  {isFavorite ? "Remove from favorite" : "Add to favorite"}
-                </Text>
-
-                <Switch
-                  trackColor={{ false: "#000", true: "#4B5563" }}
-                  thumbColor={isFavorite ? "#B0BACB" : "#9CA3AF"}
-                  ios_backgroundColor="#4B5563"
-                  onValueChange={handleFavoriteToggle}
-                  value={isFavorite}
-                  style={{ transform: [{ scale: 0.6 }] }}
-                />
               </View>
             </View>
 
@@ -314,7 +251,7 @@ const WalletComponent = () => {
                           {selectedToken.symbol}
                         </Text>
                         <Text style={styles.tokenNetwork}>
-                          {selectedToken.network}
+                          {shortenNetworkName(selectedToken.network)}
                         </Text>
                       </View>
                       <View>

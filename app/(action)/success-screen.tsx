@@ -1,10 +1,51 @@
 import SuccessIcon from "@/assets/images/success-icon.svg";
-import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 export default function SuccessScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const { network } = params;
+  const RECENT_NETWORKS_KEY = "flipeet_recent_networks_v1";
+  const MAX_RECENT_NETWORKS = 1;
+
+  useEffect(() => {
+    const normalizeNetworkId = (value: string) => {
+      const normalized = (value || "").toLowerCase().replace(/\s+/g, "-");
+      if (
+        normalized === "bnb-chain" ||
+        normalized === "bnb" ||
+        normalized === "bsc"
+      ) {
+        return "bnb-smart-chain";
+      }
+      return normalized;
+    };
+
+    const updateRecentNetworks = async () => {
+      if (!network) return;
+
+      const networkId = normalizeNetworkId(String(network));
+      if (!networkId) return;
+
+      try {
+        const raw = await AsyncStorage.getItem(RECENT_NETWORKS_KEY);
+        const parsed = raw ? (JSON.parse(raw) as string[]) : [];
+        const next = [
+          networkId,
+          ...parsed.filter((id) => id !== networkId),
+        ].slice(0, MAX_RECENT_NETWORKS);
+        await AsyncStorage.setItem(RECENT_NETWORKS_KEY, JSON.stringify(next));
+      } catch (error) {
+        console.warn("Failed to update recent networks:", error);
+      }
+    };
+
+    void updateRecentNetworks();
+  }, [network]);
 
   const handleClose = () => {
     router.replace("/home");

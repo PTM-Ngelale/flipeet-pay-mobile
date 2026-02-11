@@ -35,6 +35,31 @@ const SellComponent = () => {
   const displayTokenSymbol = selectedToken?.symbol || "USDC";
   const displayTokenNetwork = selectedToken?.network || "Solana";
 
+  const shortenNetworkName = (value?: string) => {
+    const raw = (value || "").trim();
+    const normalized = raw.toLowerCase().replace(/\s+/g, "-");
+
+    if (
+      normalized === "bnb-smart-chain" ||
+      normalized === "bnb-chain" ||
+      normalized === "binance-smart-chain" ||
+      normalized === "bsc" ||
+      normalized === "bnb"
+    ) {
+      return "BNB";
+    }
+
+    if (normalized === "solana") {
+      return "Solana";
+    }
+
+    if (normalized === "base") {
+      return "Base";
+    }
+
+    return raw;
+  };
+
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [loadingRate, setLoadingRate] = useState<boolean>(false);
   const dailyLimit = 1000;
@@ -291,7 +316,7 @@ const SellComponent = () => {
                   <View>
                     <Text style={styles.tokenName}>{displayTokenSymbol}</Text>
                     <Text style={styles.tokenNetwork}>
-                      {displayTokenNetwork}
+                      {shortenNetworkName(displayTokenNetwork)}
                     </Text>
                   </View>
                   <View>

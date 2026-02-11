@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -21,10 +22,17 @@ export default function FavoritesBankPage() {
     toggleFavorite,
     markBankAsUsed,
     setSelectedBankFromFavorite,
+    refreshFavorites,
   } = useFavoriteBanks();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"favorites" | "recent">(
-    "favorites"
+    "favorites",
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshFavorites();
+    }, [refreshFavorites]),
   );
 
   const currentBanks = activeTab === "favorites" ? favoriteBanks : recentBanks;
@@ -32,7 +40,7 @@ export default function FavoritesBankPage() {
   const filteredBanks = currentBanks.filter(
     (bank) =>
       bank.accountNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bank.bankName.toLowerCase().includes(searchQuery.toLowerCase())
+      bank.bankName.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const sortedBanks = [...filteredBanks].sort((a, b) => {
@@ -55,7 +63,7 @@ export default function FavoritesBankPage() {
   const handleToggleFavorite = (
     bankId: string,
     accountNumber: string,
-    isCurrentlyFavorite: boolean
+    isCurrentlyFavorite: boolean,
   ) => {
     if (isCurrentlyFavorite) {
       Alert.alert(
@@ -68,7 +76,7 @@ export default function FavoritesBankPage() {
             style: "destructive",
             onPress: () => toggleFavorite(bankId),
           },
-        ]
+        ],
       );
     } else {
       toggleFavorite(bankId);
@@ -232,7 +240,7 @@ export default function FavoritesBankPage() {
                       handleToggleFavorite(
                         bank.id,
                         bank.accountNumber,
-                        bank.isFavorite
+                        bank.isFavorite,
                       )
                     }
                   >

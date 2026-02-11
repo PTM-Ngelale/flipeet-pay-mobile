@@ -39,13 +39,46 @@ export default function ReviewTransactionScreen() {
     walletAddress,
     recipient,
     recipientType, // 'wallet', 'email', or 'bank'
+    bankName,
+    accountNumber,
   } = params;
 
   // Calculate transaction fee (can be dynamic from API later)
   const transactionFee = "0.50";
-  const totalValue = (
-    parseFloat(payAmount as string) + parseFloat(transactionFee)
-  ).toFixed(6);
+  const formatAccountNumber = (value?: string) => {
+    const trimmed = (value || "").replace(/\s+/g, "");
+    if (!trimmed) {
+      return "";
+    }
+    if (trimmed.length <= 6) {
+      return trimmed.length <= 4
+        ? trimmed
+        : `${trimmed.slice(0, 2)}...${trimmed.slice(-2)}`;
+    }
+    return `${trimmed.slice(0, 3)}...${trimmed.slice(-3)}`;
+  };
+
+  const totalValueAmount = (() => {
+    const parsedReceive = parseFloat(receiveAmount as string);
+    if (!Number.isNaN(parsedReceive)) {
+      return parsedReceive.toFixed(2);
+    }
+    const parsedPay = parseFloat(payAmount as string);
+    if (!Number.isNaN(parsedPay)) {
+      return parsedPay.toFixed(2);
+    }
+    return "0.00";
+  })();
+
+  const recipientDisplay = (() => {
+    if (recipientType === "bank") {
+      const bankLabel = bankName ? String(bankName) : "Bank";
+      const accountLabel = formatAccountNumber(String(accountNumber || ""));
+      return accountLabel ? `${bankLabel} -${accountLabel}` : bankLabel;
+    }
+
+    return recipient || walletAddress || "N/A";
+  })();
 
   const handleConfirm = async () => {
     if (!token) {
@@ -124,11 +157,13 @@ export default function ReviewTransactionScreen() {
         return normalized;
       };
 
+      const normalizedNetwork = normalizeNetwork(network as string);
+
       if (recipientType === "wallet" && walletAddress) {
         const payload = {
           amount: parseFloat(payAmount as string),
           asset: (payCurrency as string).toLowerCase(), // API expects lowercase: "usdc", "usdt"
-          network: normalizeNetwork(network as string),
+          network: normalizedNetwork,
           payoutAddress: walletAddress,
           favorite: false,
         };
@@ -146,7 +181,7 @@ export default function ReviewTransactionScreen() {
           email: recipient,
           amount: parseFloat(payAmount as string),
           asset: (payCurrency as string).toLowerCase(), // API expects lowercase: "usdc", "usdt"
-          network: normalizeNetwork(network as string),
+          network: normalizedNetwork,
           favorite: false,
         };
 
@@ -171,7 +206,7 @@ export default function ReviewTransactionScreen() {
           amount: parseFloat(payAmount as string),
           asset: (payCurrency as string).toLowerCase(),
           rate: parseFloat(exchangeRate as string),
-          network: normalizeNetwork(network as string),
+          network: normalizedNetwork,
           currency: receiveCurrency,
           favorite: false,
           provider: "bread",
@@ -221,6 +256,7 @@ export default function ReviewTransactionScreen() {
             data?.id || data?.transactionId || data?.txRef || "N/A",
           amount: payAmount,
           currency: payCurrency,
+          network: normalizedNetwork,
         },
       });
     } catch (error: any) {
@@ -284,7 +320,7 @@ export default function ReviewTransactionScreen() {
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Total Value</Text>
               <Text style={styles.detailValue}>
-                {totalValue} {payCurrency}
+                {totalValueAmount} {receiveCurrency}
               </Text>
             </View>
 
@@ -295,9 +331,7 @@ export default function ReviewTransactionScreen() {
 
             <View style={styles.detailRow}>
               <Text style={styles.detailLabel}>Recipient</Text>
-              <Text style={styles.detailValue}>
-                {recipient || walletAddress || "N/A"}
-              </Text>
+              <Text style={styles.detailValue}>{recipientDisplay}</Text>
             </View>
           </View>
 
@@ -398,7 +432,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 20,
   },
   detailLabel: {
     color: "#B0BACB",

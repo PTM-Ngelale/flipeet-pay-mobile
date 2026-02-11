@@ -251,7 +251,7 @@ export default function WalletHomeScreen() {
             <Image source={{ uri: profileImage }} style={styles.userAvatar} />
           ) : (
             // <UserProfile width={48} height={48} />
-            <Ionicons name="person-circle-outline" size={48} color="#B0BACB" />
+            <Ionicons name="person-circle-outline" size={40} color="#B0BACB" />
           )}
         </TouchableOpacity>
         <View>
@@ -269,6 +269,7 @@ export default function WalletHomeScreen() {
 
   const renderBalanceSection = () => (
     <View style={styles.balanceSection}>
+      <Text style={styles.totalBalance}>TOTAL BALANCE</Text>
       <View style={styles.balanceRow}>
         <Text
           style={[
@@ -329,20 +330,30 @@ export default function WalletHomeScreen() {
 
   const renderActionButtons = () => (
     <View style={styles.actionButtonsContainer}>
-      {actionButtons.map((button) => (
-        <TouchableOpacity
-          key={button.label}
-          onPress={() => handleActionPress(button.route)}
-          style={styles.actionButton}
-        >
-          {button.icon}
-          <Text
-            style={[styles.actionButtonText, { color: COLORS.textPrimary }]}
-          >
-            {button.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
+      {actionButtons.map((button) =>
+        (() => {
+          const isServices = button.label === "Services";
+          return (
+            <TouchableOpacity
+              key={button.label}
+              onPress={
+                isServices ? undefined : () => handleActionPress(button.route)
+              }
+              style={[
+                styles.actionButton,
+                isServices && styles.actionButtonDisabled,
+              ]}
+              disabled={isServices}
+              accessibilityState={{ disabled: isServices }}
+            >
+              {button.icon}
+              <Text style={[styles.actionButtonText, { color: "#B0BACB" }]}>
+                {button.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })(),
+      )}
     </View>
   );
 
@@ -368,9 +379,7 @@ export default function WalletHomeScreen() {
               style={[
                 styles.tokenBalance,
                 {
-                  color: isBalanceVisible
-                    ? COLORS.textSecondary
-                    : COLORS.textPrimary,
+                  color: isBalanceVisible ? "#B0BACB" : COLORS.textPrimary,
                 },
               ]}
             >
@@ -473,6 +482,7 @@ export default function WalletHomeScreen() {
             source={require("@/assets/images/circle.png")}
             resizeMode="cover"
           >
+            <View></View>
             <View style={styles.content}>
               {renderHeader()}
               {renderBalanceSection()}
@@ -486,13 +496,13 @@ export default function WalletHomeScreen() {
                   >
                     Tokens
                   </Text>
-                  <TouchableOpacity>
+                  {/* <TouchableOpacity>
                     <Ionicons
                       name="ellipsis-horizontal"
                       size={24}
                       color="#757B85"
                     />
-                  </TouchableOpacity>
+                  </TouchableOpacity> */}
                 </View>
               </View>
 
@@ -532,8 +542,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   userAvatar: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 40,
     borderRadius: 24,
   },
   welcomeText: {
@@ -544,6 +554,12 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "bold",
   },
+  totalBalance: {
+    color: "#757B85",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+
   balanceSection: {
     alignItems: "center",
     gap: 8,
@@ -591,6 +607,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     flexDirection: "column",
     justifyContent: "center",
+  },
+  actionButtonDisabled: {
+    opacity: 0.4,
   },
   actionButtonText: {
     fontSize: 12,

@@ -49,6 +49,31 @@ export default function ReviewBridgeScreen() {
   const FromIcon = iconMap[paySymbol?.toUpperCase()] || null;
   const ToIcon = iconMap[receiveSymbol?.toUpperCase()] || null;
 
+  const shortenNetworkName = (value?: string) => {
+    const raw = (value || "").trim();
+    const normalized = raw.toLowerCase().replace(/\s+/g, "-");
+
+    if (
+      normalized === "bnb-smart-chain" ||
+      normalized === "bnb-chain" ||
+      normalized === "binance-smart-chain" ||
+      normalized === "bsc" ||
+      normalized === "bnb"
+    ) {
+      return "BNB";
+    }
+
+    if (normalized === "solana") {
+      return "Solana";
+    }
+
+    if (normalized === "base") {
+      return "Base";
+    }
+
+    return raw;
+  };
+
   const handleConfirm = async () => {
     if (!token) {
       Alert.alert("Error", "Authentication required. Please login again.");
@@ -71,6 +96,10 @@ export default function ReviewBridgeScreen() {
         }
         return normalized;
       };
+
+      const recentNetwork = normalizeNetwork(
+        (fromNetwork as string) || (fromToken.network as string),
+      );
 
       const payload = {
         amount: parseFloat(payAmount as string),
@@ -97,6 +126,7 @@ export default function ReviewBridgeScreen() {
             amount: payAmount,
             currency: fromToken.symbol,
             type: "bridge",
+            network: recentNetwork,
           },
         });
       } else {
@@ -165,7 +195,11 @@ export default function ReviewBridgeScreen() {
                 {FromIcon ? <FromIcon /> : null}
                 <Text style={styles.networkText}>
                   {paySymbol}
-                  {fromNetwork ? ` on ${fromNetwork}` : ""}
+                  {fromNetwork || fromToken?.network
+                    ? ` on ${shortenNetworkName(
+                        String(fromNetwork || fromToken?.network || ""),
+                      )}`
+                    : ""}
                 </Text>
               </View>
             </View>
@@ -177,7 +211,11 @@ export default function ReviewBridgeScreen() {
                 {ToIcon ? <ToIcon /> : null}
                 <Text style={styles.networkText}>
                   {receiveSymbol}
-                  {toNetwork ? ` on ${toNetwork}` : ""}
+                  {toNetwork || toToken?.network
+                    ? ` on ${shortenNetworkName(
+                        String(toNetwork || toToken?.network || ""),
+                      )}`
+                    : ""}
                 </Text>
               </View>
             </View>
@@ -235,25 +273,22 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    marginTop: 5,
   },
   detailRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 16,
-    paddingVertical: 4,
+    alignItems: "center",
+    marginBottom: 20,
   },
   detailLabel: {
     color: "#B0BACB",
     fontSize: 16,
-    flex: 1,
   },
   detailValue: {
     color: "#E2E6F0",
     fontSize: 16,
     fontWeight: "500",
-    textAlign: "right",
-    flex: 1,
   },
   networkDetail: {
     flexDirection: "row",
@@ -266,7 +301,7 @@ const styles = StyleSheet.create({
   },
   networkText: {
     color: "#E2E6F0",
-    fontSize: 18,
+    fontSize: 14,
     marginTop: 2,
     fontWeight: 700,
   },

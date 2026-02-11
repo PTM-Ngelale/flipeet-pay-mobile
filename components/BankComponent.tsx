@@ -1,10 +1,8 @@
 import { useCurrency } from "@/app/contexts/CurrencySelectorContext";
-import { useFavoriteBanks } from "@/app/contexts/FavoriteBanksContext";
 import { useToken } from "@/app/contexts/TokenContext";
 import { AppDispatch, RootState } from "@/app/store";
 import { fetchBanks, verifyBankAccount } from "@/app/store/bankAccountSlice";
 import NGNFlag from "@/assets/images/ngn-flag.svg";
-import StarIcon from "@/assets/images/star-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -16,7 +14,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -30,7 +27,6 @@ const BankComponent = () => {
   const [payAmount, setPayAmount] = useState("");
   const [receiveAmount, setReceiveAmount] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
-  const [isFavorite, setIsFavorite] = useState(false);
   const [showBankDropdown, setShowBankDropdown] = useState(false);
   const [bankSearchQuery, setBankSearchQuery] = useState("");
   const [selectedBank, setSelectedBank] = useState<{
@@ -52,14 +48,31 @@ const BankComponent = () => {
   );
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [loadingRate, setLoadingRate] = useState<boolean>(false);
-  const {
-    addFavoriteBank,
-    removeFavoriteBank,
-    isBankFavorite,
-    favoriteBanks,
-    selectedBankFromFavorite,
-    clearSelectedBankFromFavorite,
-  } = useFavoriteBanks();
+
+  const shortenNetworkName = (value?: string) => {
+    const raw = (value || "").trim();
+    const normalized = raw.toLowerCase().replace(/\s+/g, "-");
+
+    if (
+      normalized === "bnb-smart-chain" ||
+      normalized === "bnb-chain" ||
+      normalized === "binance-smart-chain" ||
+      normalized === "bsc" ||
+      normalized === "bnb"
+    ) {
+      return "BNB";
+    }
+
+    if (normalized === "solana") {
+      return "Solana";
+    }
+
+    if (normalized === "base") {
+      return "Base";
+    }
+
+    return raw;
+  };
 
   // Fetch banks on mount
   useEffect(() => {
@@ -114,35 +127,6 @@ const BankComponent = () => {
 
   const tokenBalance = getTokenBalance(selectedToken?.symbol || "USDC");
 
-  // Handle selected bank from favorites
-  useEffect(() => {
-    if (selectedBankFromFavorite) {
-      const { accountNumber: selectedAccountNumber, bankName } =
-        selectedBankFromFavorite;
-
-      // Set the account number
-      setAccountNumber(selectedAccountNumber);
-
-      // Find and set the corresponding bank
-      const bank = banks.find((b) => b.name === bankName);
-      if (bank) {
-        setSelectedBank(bank);
-      }
-
-      // Clear the selected bank from favorites
-      clearSelectedBankFromFavorite();
-    }
-  }, [selectedBankFromFavorite, clearSelectedBankFromFavorite, banks]);
-
-  // Check if current account number is already in favorites when it changes
-  useEffect(() => {
-    if (accountNumber) {
-      setIsFavorite(isBankFavorite(accountNumber));
-    } else {
-      setIsFavorite(false);
-    }
-  }, [accountNumber, isBankFavorite]);
-
   // Validate account number when bank or account number changes
   useEffect(() => {
     const verifyAccount = async () => {
@@ -178,35 +162,6 @@ const BankComponent = () => {
     setAccountNumber(numericValue);
   };
 
-  const handleFavoriteToggle = async (value: boolean) => {
-    if (value && accountNumber && selectedBank) {
-      // Request to add to favorites
-      await addFavoriteBank(accountNumber, selectedBank.name);
-      // The context handles optimistic UI and reverts on failure
-      // Update local state based on context after a short delay to allow context update
-      setTimeout(() => {
-        setIsFavorite(isBankFavorite(accountNumber));
-      }, 100);
-    } else if (!value && accountNumber) {
-      const favoriteBank = favoriteBanks.find(
-        (fav) => fav.accountNumber === accountNumber,
-      );
-      if (favoriteBank) {
-        // Request to remove from favorites
-        await removeFavoriteBank(favoriteBank.id);
-        // The context handles optimistic UI and reverts on failure
-        // Update local state based on context after a short delay to allow context update
-        setTimeout(() => {
-          setIsFavorite(isBankFavorite(accountNumber));
-        }, 100);
-      }
-    }
-  };
-
-  const handleFavoritesPress = () => {
-    router.push("/(action)/favorites-bank-page");
-  };
-
   const handleBankSelect = (bank: {
     id: number;
     name: string;
@@ -220,6 +175,25 @@ const BankComponent = () => {
   const filteredBanks = banks.filter((bank) =>
     bank.name.toLowerCase().includes(bankSearchQuery.toLowerCase()),
   );
+
+  const renderBankLogo = (bank: any) => {
+    if (bank?.logoUrl) {
+      return (
+        <Image
+          source={{ uri: bank.logoUrl }}
+          style={styles.bankLogo}
+          resizeMode="contain"
+        />
+      );
+    }
+
+    const initial = (bank?.name || "?").trim().charAt(0).toUpperCase();
+    return (
+      <View style={styles.bankLogoFallback}>
+        <Text style={styles.bankLogoFallbackText}>{initial}</Text>
+      </View>
+    );
+  };
 
   // Fetch exchange rate from API
   useEffect(() => {
@@ -473,14 +447,17 @@ const BankComponent = () => {
                   style={styles.bankSelect}
                   onPress={() => setShowBankDropdown(!showBankDropdown)}
                 >
-                  <Text
-                    style={{
-                      color: selectedBank ? "#FFFFFF" : "#757B85",
-                      fontSize: 14,
-                    }}
-                  >
-                    {selectedBank ? selectedBank.name : "Pick an option"}
-                  </Text>
+                  <View style={styles.bankSelectRow}>
+                    {selectedBank ? renderBankLogo(selectedBank) : null}
+                    <Text
+                      style={{
+                        color: selectedBank ? "#FFFFFF" : "#757B85",
+                        fontSize: 14,
+                      }}
+                    >
+                      {selectedBank ? selectedBank.name : "Pick an option"}
+                    </Text>
+                  </View>
                   <Ionicons
                     name={showBankDropdown ? "chevron-up" : "chevron-down"}
                     color={"#4A9DFF"}
@@ -560,15 +537,18 @@ const BankComponent = () => {
                             ]}
                             onPress={() => handleBankSelect(bank)}
                           >
-                            <Text
-                              style={[
-                                styles.bankOptionText,
-                                selectedBank?.id === bank.id &&
-                                  styles.selectedBankOptionText,
-                              ]}
-                            >
-                              {bank.name}
-                            </Text>
+                            <View style={styles.bankOptionRow}>
+                              {renderBankLogo(bank)}
+                              <Text
+                                style={[
+                                  styles.bankOptionText,
+                                  selectedBank?.id === bank.id &&
+                                    styles.selectedBankOptionText,
+                                ]}
+                              >
+                                {bank.name}
+                              </Text>
+                            </View>
                             {selectedBank?.id === bank.id && (
                               <Ionicons
                                 name="checkmark"
@@ -603,14 +583,6 @@ const BankComponent = () => {
                 <Text style={{ color: "#B0BACB", fontSize: 16 }}>
                   Enter Account Number
                 </Text>
-                <TouchableOpacity
-                  style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
-                  onPress={handleFavoritesPress}
-                >
-                  <StarIcon />
-                  <Text style={{ color: "#E2E6F0" }}>Favorites</Text>
-                  <Ionicons name="chevron-down" color="#4A9DFF" />
-                </TouchableOpacity>
               </View>
 
               <View>
@@ -665,28 +637,6 @@ const BankComponent = () => {
                     </View>
                   )}
               </View>
-
-              <View
-                style={{
-                  flexDirection: "row",
-                  justifyContent: "flex-end",
-                  alignItems: "center",
-                  gap: 2,
-                }}
-              >
-                <Text style={{ color: "#E2E6F0" }}>
-                  {isFavorite ? "Remove from favorite" : "Add to favorite"}
-                </Text>
-
-                <Switch
-                  trackColor={{ false: "#000", true: "#4B5563" }}
-                  thumbColor={isFavorite ? "#B0BACB" : "#9CA3AF"}
-                  ios_backgroundColor="#4B5563"
-                  onValueChange={handleFavoriteToggle}
-                  value={isFavorite}
-                  style={{ transform: [{ scale: 0.6 }] }}
-                />
-              </View>
             </View>
 
             <View style={styles.amountControls}>
@@ -740,7 +690,7 @@ const BankComponent = () => {
                           {selectedToken.symbol}
                         </Text>
                         <Text style={styles.tokenNetwork}>
-                          {selectedToken.network}
+                          {shortenNetworkName(selectedToken.network)}
                         </Text>
                       </View>
                       <View>
@@ -934,6 +884,11 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 3,
   },
+  bankSelectRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   // Currency Icon positioned absolutely
   currencyIconContainer: {
     position: "absolute",
@@ -1008,6 +963,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#333333",
   },
+  bankOptionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   selectedBankOption: {
     backgroundColor: "#1C1C1C",
   },
@@ -1018,6 +978,25 @@ const styles = StyleSheet.create({
   selectedBankOptionText: {
     color: "#4A9DFF",
     fontWeight: "600",
+  },
+  bankLogo: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#111111",
+  },
+  bankLogoFallback: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#2A2A2A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bankLogoFallbackText: {
+    color: "#E2E6F0",
+    fontSize: 10,
+    fontWeight: "700",
   },
 
   emailInput: {

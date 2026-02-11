@@ -32,7 +32,6 @@ export default function LoginScreen() {
   const [email, setLocalEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [keepLoggedIn, setKeepLoggedIn] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isEmailLoading, setIsEmailLoading] = useState(false);
   const router = useRouter();
@@ -200,28 +199,6 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-
-            {/* Keep me logged in */}
-            <TouchableOpacity
-              style={styles.rememberMeContainer}
-              onPress={() => setKeepLoggedIn(!keepLoggedIn)}
-            >
-              <View style={styles.checkboxContainer}>
-                <View
-                  style={[
-                    styles.checkbox,
-                    keepLoggedIn && styles.checkboxChecked,
-                  ]}
-                >
-                  {keepLoggedIn && (
-                    <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                  )}
-                </View>
-              </View>
-              <Text style={styles.rememberMeText}>
-                Keep me logged in on this device
-              </Text>
-            </TouchableOpacity>
 
             {/* Login Button */}
             <TouchableOpacity

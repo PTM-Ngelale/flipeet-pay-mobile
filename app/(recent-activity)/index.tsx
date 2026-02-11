@@ -19,7 +19,7 @@ import { fetchTransactions } from "../store/authSlice";
 // Types
 interface Activity {
   id: string;
-  type: "swap" | "received" | "sent";
+  type: "swap" | "received" | "sent" | "bridge";
   title: string;
   description: string;
   amount: string;
@@ -149,6 +149,9 @@ export default function RecentActivity() {
   );
   const token = useSelector((state: RootState) => state.auth.token);
   const user = useSelector((state: RootState) => state.auth.user);
+  const lastBridgeActivity = useSelector(
+    (state: RootState) => state.transaction.lastBridgeActivity,
+  );
 
   // Fetch transactions on mount
   useEffect(() => {
@@ -228,9 +231,43 @@ export default function RecentActivity() {
 
   // Map API transactions to activity data
   const activityData = useMemo((): Activity[] => {
-    if (!transactions || transactions.length === 0) return [];
+    const baseTransactions = Array.isArray(transactions) ? transactions : [];
+    const existingRefs = new Set(
+      baseTransactions
+        .map((tx: any) =>
+          String(
+            tx.txRef ||
+              tx.tx_ref ||
+              tx.reference ||
+              tx.id ||
+              tx._id ||
+              tx.transactionId ||
+              "",
+          ),
+        )
+        .filter(Boolean),
+    );
 
-    return transactions.map((tx: any) => {
+    const hydratedTransactions = [...baseTransactions];
+
+    if (
+      lastBridgeActivity?.txRef &&
+      !existingRefs.has(lastBridgeActivity.txRef)
+    ) {
+      hydratedTransactions.unshift({
+        id: lastBridgeActivity.txRef,
+        txRef: lastBridgeActivity.txRef,
+        type: "bridge",
+        amount: lastBridgeActivity.amount,
+        fromAsset: lastBridgeActivity.fromAsset,
+        toAsset: lastBridgeActivity.toAsset,
+        fromNetwork: lastBridgeActivity.fromNetwork,
+        toNetwork: lastBridgeActivity.toNetwork,
+        createdAt: lastBridgeActivity.createdAt,
+      });
+    }
+
+    return hydratedTransactions.map((tx: any) => {
       const type = (tx.type || tx.transactionType || "transfer").toLowerCase();
       const directionRaw = String(
         tx.direction ||
@@ -243,6 +280,7 @@ export default function RecentActivity() {
       const amount = parseFloat(tx.amount || 0);
       const userId = user?.id || user?.userId || user?._id;
       const userEmail = String(user?.email || "").toLowerCase();
+      const actorEmail = String(tx.actorEmail || "").toLowerCase();
       const senderId =
         tx.senderId || tx.fromUserId || tx.userId || tx.sender?.id;
       const receiverId =
@@ -287,12 +325,26 @@ export default function RecentActivity() {
       let displayAmount = `${amount} ${asset}`;
       let secondaryAmount: string | undefined;
 
-      if (type.includes("swap") || type.includes("exchange")) {
-        title = "Swap successful";
+      if (type.includes("bridge")) {
+        title = "Bridged";
+        const fromAsset = tx.fromAsset || tx.fromCurrency || asset;
+        const toAsset = tx.toAsset || tx.toCurrency || "USDC";
+        const fromNetwork = tx.fromNetwork || tx.network || "";
+        const toNetwork = tx.toNetwork || "";
+        const networkInfo = [fromNetwork, toNetwork].filter(Boolean).length
+          ? ` (${[fromNetwork, toNetwork].filter(Boolean).join(" → ")})`
+          : "";
+        description = `${fromAsset} to ${toAsset}${networkInfo}`;
+        displayAmount = `-${Math.abs(amount)} ${fromAsset}`;
+        if (tx.toAmount) {
+          secondaryAmount = `+${tx.toAmount} ${toAsset}`;
+        }
+      } else if (type.includes("swap") || type.includes("exchange")) {
+        title = "Swapped";
         const fromAsset = tx.fromAsset || tx.fromCurrency || asset;
         const toAsset = tx.toAsset || tx.toCurrency || "NGN";
         description = `${fromAsset} to ${toAsset}`;
-        displayAmount = `-${amount} ${fromAsset}`;
+        displayAmount = `-${Math.abs(amount)} ${fromAsset}`;
         if (tx.toAmount) {
           secondaryAmount = `+${tx.toAmount} ${toAsset}`;
         }
@@ -307,11 +359,13 @@ export default function RecentActivity() {
         } else {
           const isOutgoingByType =
             type.includes("send") ||
+            type.includes("sent") ||
             type.includes("withdrawal") ||
             type.includes("debit") ||
             type.includes("transfer_out");
           const isIncomingByType =
             type.includes("receive") ||
+            type.includes("received") ||
             type.includes("deposit") ||
             type.includes("credit") ||
             type.includes("onramp") ||
@@ -324,26 +378,32 @@ export default function RecentActivity() {
             directionRaw.includes("in") ||
             directionRaw.includes("credit") ||
             directionRaw.includes("deposit");
-          const isOutgoingByUser =
+          const isSenderMatch =
             (!!userId && !!senderId && String(senderId) === String(userId)) ||
-            (!!userEmail && !!senderEmail && senderEmail === userEmail);
-          const isIncomingByUser =
+            (!!userEmail && !!senderEmail && senderEmail === userEmail) ||
+            (!!userEmail && !!actorEmail && actorEmail === userEmail);
+          const isReceiverMatch =
             (!!userId &&
               !!receiverId &&
               String(receiverId) === String(userId)) ||
             (!!userEmail && !!receiverEmail && receiverEmail === userEmail);
 
-          const isOutgoing =
-            isOutgoingByType || isOutgoingByDirection || isOutgoingByUser;
-          const isIncoming =
-            isIncomingByType || isIncomingByDirection || isIncomingByUser;
+          const explicitOutgoing = isOutgoingByType || isOutgoingByDirection;
+          const explicitIncoming = isIncomingByType || isIncomingByDirection;
 
-          if (isOutgoing && !isIncoming) {
+          const isOutgoing =
+            (explicitOutgoing && !explicitIncoming) ||
+            (isSenderMatch && !isReceiverMatch);
+          const isIncoming =
+            (explicitIncoming && !explicitOutgoing) ||
+            (isReceiverMatch && !isSenderMatch);
+
+          if (isOutgoing) {
             title = "Sent";
-            const to = tx.to || tx.recipient || tx.toAddress;
-            description = to ? `To ${shortenAddress(to)}` : "Sent funds";
+            description = "Sent funds";
             displayAmount = `-${Math.abs(amount)} ${asset}`;
-          } else if (isIncoming && !isOutgoing) {
+            amountColor = "#FF5F5F";
+          } else if (isIncoming) {
             title = "Received";
             const from = tx.from || tx.sender || tx.fromAddress;
             description = from
@@ -353,9 +413,9 @@ export default function RecentActivity() {
             amountColor = "#34D058";
           } else if (amount < 0) {
             title = "Sent";
-            const to = tx.to || tx.recipient || tx.toAddress;
-            description = to ? `To ${shortenAddress(to)}` : "Sent funds";
+            description = "Sent funds";
             displayAmount = `-${Math.abs(amount)} ${asset}`;
+            amountColor = "#FF5F5F";
           } else {
             title = "Received";
             const from = tx.from || tx.sender || tx.fromAddress;

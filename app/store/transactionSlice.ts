@@ -103,6 +103,17 @@ export interface BridgeExecuteResponse {
   toAmount: number;
 }
 
+export interface RecentBridgeActivity {
+  txRef?: string;
+  amount: number;
+  fromAsset: string;
+  toAsset: string;
+  fromNetwork: string;
+  toNetwork: string;
+  status?: string;
+  createdAt: number;
+}
+
 type TransactionState = {
   loading: boolean;
   error: string | null;
@@ -129,6 +140,7 @@ type TransactionState = {
   bridgeQuotaLoading: boolean;
   bridgeExecution: BridgeExecuteResponse | null;
   bridgeLoading: boolean;
+  lastBridgeActivity: RecentBridgeActivity | null;
 };
 
 const initialState: TransactionState = {
@@ -145,6 +157,7 @@ const initialState: TransactionState = {
   bridgeQuotaLoading: false,
   bridgeExecution: null,
   bridgeLoading: false,
+  lastBridgeActivity: null,
 };
 
 // 2.1 Initialize Payment
@@ -708,6 +721,21 @@ const transactionSlice = createSlice({
       .addCase(executeBridge.fulfilled, (state, action) => {
         state.bridgeLoading = false;
         state.bridgeExecution = action.payload;
+        const metaArg = action.meta?.arg as BridgeExecutePayload | undefined;
+        const payload = action.payload as Partial<BridgeExecuteResponse> | null;
+
+        if (metaArg) {
+          state.lastBridgeActivity = {
+            txRef: payload?.txRef || payload?.id || undefined,
+            amount: metaArg.amount,
+            fromAsset: metaArg.fromAsset || "",
+            toAsset: metaArg.toAsset || "",
+            fromNetwork: metaArg.fromNetwork || "",
+            toNetwork: metaArg.toNetwork || "",
+            status: payload?.status || "processing",
+            createdAt: Date.now(),
+          };
+        }
       })
       .addCase(executeBridge.rejected, (state, action: any) => {
         state.bridgeLoading = false;

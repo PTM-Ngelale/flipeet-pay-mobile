@@ -1,6 +1,7 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
+import { useFocusEffect } from "@react-navigation/native";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Alert,
   ScrollView,
@@ -21,17 +22,24 @@ export default function FavoritesPage() {
     toggleFavorite,
     markEmailAsUsed,
     setSelectedEmailFromFavorite,
+    refreshFavorites,
   } = useFavoriteEmails();
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"favorites" | "recent">(
-    "favorites"
+    "favorites",
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshFavorites();
+    }, [refreshFavorites]),
   );
 
   const currentEmails =
     activeTab === "favorites" ? favoriteEmails : recentEmails;
 
   const filteredEmails = currentEmails.filter((email) =>
-    email.email.toLowerCase().includes(searchQuery.toLowerCase())
+    email.email.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const sortedEmails = [...filteredEmails].sort((a, b) => {
@@ -51,7 +59,7 @@ export default function FavoritesPage() {
   const handleToggleFavorite = (
     emailId: string,
     email: string,
-    isCurrentlyFavorite: boolean
+    isCurrentlyFavorite: boolean,
   ) => {
     if (isCurrentlyFavorite) {
       Alert.alert(
@@ -64,7 +72,7 @@ export default function FavoritesPage() {
             style: "destructive",
             onPress: () => toggleFavorite(emailId),
           },
-        ]
+        ],
       );
     } else {
       toggleFavorite(emailId);
@@ -225,7 +233,7 @@ export default function FavoritesPage() {
                       handleToggleFavorite(
                         email.id,
                         email.email,
-                        email.isFavorite
+                        email.isFavorite,
                       )
                     }
                   >
