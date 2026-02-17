@@ -38,6 +38,8 @@ const FavoriteEmailsContext = createContext<
   FavoriteEmailsContextType | undefined
 >(undefined);
 
+const FAVORITES_ENABLED = false;
+
 export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
@@ -58,31 +60,32 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // Load from storage then fetch from backend on mount
   useEffect(() => {
+    if (!FAVORITES_ENABLED) return;
     const loadFromStorage = async () => {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) setFavoriteEmails(JSON.parse(raw));
-      } catch (err) {
-        console.error("Failed to load favorite emails from storage:", err);
-      }
+      } catch (err) {}
     };
 
     loadFromStorage();
   }, []);
 
   useEffect(() => {
+    if (!FAVORITES_ENABLED) return;
     if (token) {
       fetchFavorites();
     }
   }, [token]);
 
   useEffect(() => {
+    if (!FAVORITES_ENABLED) return;
     updateRecentEmails();
   }, [favoriteEmails]);
 
   const fetchFavorites = async () => {
+    if (!FAVORITES_ENABLED) return;
     if (!token) return;
 
     try {
@@ -100,9 +103,6 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Fetched favorite emails:", data);
-
-        // Map backend data to local format
         const emails = (data.data?.favorites || data.data || []).map(
           (item: any) => ({
             id: item.id || item._id,
@@ -116,11 +116,12 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
         );
 
         setFavoriteEmails(emails);
+        try {
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(emails));
+        } catch (err) {}
       } else {
-        console.warn("Failed to fetch favorite emails");
       }
     } catch (error) {
-      console.warn("Error fetching favorite emails:", error);
     } finally {
       setLoading(false);
     }
@@ -138,8 +139,9 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const addFavoriteEmail = async (email: string) => {
+    if (!FAVORITES_ENABLED) return;
     if (!token) return;
-    // Optimistic update
+
     const localId = `local-email-${Date.now()}`;
     const newEmail: FavoriteEmail = {
       id: localId,
@@ -154,9 +156,7 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
     setFavoriteEmails(updated);
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    } catch (err) {
-      console.error("Failed to save favorite emails to storage:", err);
-    }
+    } catch (err) {}
 
     try {
       const response = await fetch(
@@ -175,36 +175,33 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
       );
 
       if (response.ok) {
-        await fetchFavorites(); // Refresh the list
+        await fetchFavorites();
       } else {
-        console.error("Failed to add favorite email");
         showToast("Failed to add favorite");
         setFavoriteEmails(previous);
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
+        try {
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
+        } catch (err) {}
       }
     } catch (error) {
-      console.error("Error adding favorite email:", error);
       showToast("Failed to add favorite");
       setFavoriteEmails(previous);
       try {
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
-      } catch (err) {
-        console.error("Failed to save favorite emails to storage:", err);
-      }
+      } catch (err) {}
     }
   };
 
   const removeFavoriteEmail = async (emailId: string) => {
+    if (!FAVORITES_ENABLED) return;
     if (!token) return;
-    // Optimistic remove
+
     const previous = favoriteEmails;
     const updated = previous.filter((e) => e.id !== emailId);
     setFavoriteEmails(updated);
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    } catch (err) {
-      console.error("Failed to save favorite emails to storage:", err);
-    }
+    } catch (err) {}
 
     try {
       const response = await fetch(
@@ -219,22 +216,20 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
       );
 
       if (response.ok) {
-        await fetchFavorites(); // Refresh the list
+        await fetchFavorites();
       } else {
-        console.error("Failed to remove favorite email");
         showToast("Failed to remove favorite");
         setFavoriteEmails(previous);
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
+        try {
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
+        } catch (err) {}
       }
     } catch (error) {
-      console.error("Error removing favorite email:", error);
       showToast("Failed to remove favorite");
       setFavoriteEmails(previous);
       try {
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
-      } catch (err) {
-        console.error("Failed to save favorite emails to storage:", err);
-      }
+      } catch (err) {}
     }
   };
 
@@ -255,12 +250,16 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const markEmailAsUsed = (email: string) => {
+    if (!FAVORITES_ENABLED) return;
     const updatedEmails = favoriteEmails.map((fav) =>
       fav.email === email
         ? { ...fav, lastUsed: new Date().toISOString() }
         : fav,
     );
     setFavoriteEmails(updatedEmails);
+    try {
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedEmails));
+    } catch (err) {}
   };
 
   const getEmailById = (emailId: string) => {
@@ -272,6 +271,7 @@ export const FavoriteEmailsProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const refreshFavorites = async () => {
+    if (!FAVORITES_ENABLED) return;
     await fetchFavorites();
   };
 

@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { apiGet, apiPost, normalizeAuthToken } from "../constants/api";
+import { apiGet, apiPost } from "../constants/api";
 
 type AuthState = {
   loading: boolean;
@@ -70,60 +70,8 @@ export const signIn = createAsyncThunk(
     thunkAPI: any,
   ) => {
     try {
-      const response = await fetch(
-        "https://api.pay.flipeet.io/api/v1/auth/sign-in",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password }),
-        },
-      );
-
-      const raw = await response.text();
-      let data: any = { message: raw };
-      try {
-        data = JSON.parse(raw);
-      } catch {
-        // keep raw message
-      }
-
-      if (!response.ok) {
-        return thunkAPI.rejectWithValue(data.message || "Sign in failed");
-      }
-
-      const headerTokenRaw =
-        response.headers.get("authorization") ||
-        response.headers.get("Authorization") ||
-        response.headers.get("x-access-token") ||
-        response.headers.get("x-auth-token") ||
-        response.headers.get("x-token");
-
-      const setCookieRaw =
-        response.headers.get("set-cookie") ||
-        response.headers.get("Set-Cookie");
-
-      const cookieTokenMatch = setCookieRaw
-        ? setCookieRaw.match(/(accessToken|token|jwt)=([^;]+)/i)
-        : null;
-
-      const headerToken = headerTokenRaw
-        ? headerTokenRaw.replace(/^Bearer\s+/i, "").trim()
-        : null;
-
-      const cookieToken = cookieTokenMatch?.[2]?.trim() || null;
-      const tokenFromResponse = normalizeAuthToken(
-        headerToken || cookieToken || data,
-      );
-
-      if (!tokenFromResponse) {
-        return thunkAPI.rejectWithValue(
-          "Authentication token missing. Please contact support.",
-        );
-      }
-
-      return { ...data, headerToken: tokenFromResponse };
+      const data = await apiPost(`/auth/sign-in`, { email, password });
+      return data;
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Sign in failed");
     }
@@ -144,25 +92,9 @@ export const signUp = createAsyncThunk(
 
 export const googleSignIn = createAsyncThunk(
   "auth/googleSignIn",
-  async (
-    payload: {
-      token?: string;
-      idToken?: string;
-      provider?: string;
-      redirectUri?: string;
-    },
-    thunkAPI: any,
-  ) => {
+  async ({ token }: { token: string }, thunkAPI: any) => {
     try {
-      const { token, idToken, provider, redirectUri } = payload || {};
-      const body = token
-        ? { token }
-        : {
-            idToken,
-            provider,
-            redirectUri,
-          };
-      const data = await apiPost(`/auth/oauth/validate`, body);
+      const data = await apiPost(`/auth/oauth/validate`, { token });
       return data;
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Google sign in failed");
@@ -357,41 +289,16 @@ export const loadAuthState = createAsyncThunk(
   "auth/loadAuthState",
   async (_, thunkAPI: any) => {
     try {
-      console.log("Loading auth state from AsyncStorage...");
-      const { normalizeAuthToken } = await import("../constants/api");
-      const tokenRaw = await AsyncStorage.getItem("auth_token");
+      const token = await AsyncStorage.getItem("auth_token");
       const userJson = await AsyncStorage.getItem("auth_user");
       const email = await AsyncStorage.getItem("auth_email");
 
-      const token = normalizeAuthToken(tokenRaw);
-
       if (token && userJson) {
         const user = JSON.parse(userJson);
-        console.log(
-          "Auth state loaded successfully. Token:",
-          token.substring(0, 20) + "...",
-        );
-        if (tokenRaw && tokenRaw !== token) {
-          AsyncStorage.setItem("auth_token", token);
-        }
         return { token, user, email };
       }
-
-      if (tokenRaw && !token) {
-        await AsyncStorage.multiRemove([
-          "auth_token",
-          "auth_user",
-          "auth_email",
-        ]);
-        return thunkAPI.rejectWithValue(
-          "Invalid saved session. Please log in again.",
-        );
-      }
-
-      console.log("No saved auth state found");
       return thunkAPI.rejectWithValue("No saved auth state");
     } catch (err: any) {
-      console.error("Failed to load auth state:", err);
       return thunkAPI.rejectWithValue("Failed to load auth state");
     }
   },
@@ -462,46 +369,31 @@ const authSlice = createSlice({
         state.error = null;
         // Handle different possible response structures
         const payload = action.payload || {};
-        console.log(
-          "signIn fulfilled payload:",
-          JSON.stringify(payload, null, 2),
-        );
-
         // Try to safely extract user and token from various response structures
         try {
           const data = payload.data || {};
           const credentials = data.credentials || {};
 
           state.user = payload.user || data.user || null;
-          const rawToken =
-            payload.headerToken ||
+          state.token =
             credentials.accessToken ||
             payload.accessToken ||
             payload.token ||
             data.accessToken ||
             data.token ||
             null;
-          state.token = normalizeAuthToken(rawToken);
 
           // Persist to AsyncStorage
           if (state.token) {
-            console.log(
-              "Saving token to AsyncStorage:",
-              state.token.substring(0, 20) + "...",
-            );
             AsyncStorage.setItem("auth_token", state.token);
-          } else {
-            console.warn("No token found in response to save");
           }
           if (state.user) {
-            console.log("Saving user to AsyncStorage:", state.user);
             AsyncStorage.setItem("auth_user", JSON.stringify(state.user));
           }
           if (state.email) {
             AsyncStorage.setItem("auth_email", state.email);
           }
         } catch (e) {
-          console.error("Error extracting auth data:", e);
           state.user = null;
           state.token = null;
         }
@@ -536,13 +428,12 @@ const authSlice = createSlice({
         const payload = action.payload || {};
         const data = payload.data || {};
         state.user = payload.user || data.user || state.user;
-        const rawToken =
+        state.token =
           payload.accessToken ||
           payload.token ||
           data.accessToken ||
           data.token ||
           null;
-        state.token = normalizeAuthToken(rawToken);
       })
       .addCase(signUp.rejected, (state: any, action: any) => {
         state.loading = false;
@@ -563,7 +454,6 @@ const authSlice = createSlice({
       })
       .addCase(loadAuthState.fulfilled, (state: any, action: any) => {
         const { token, user, email } = action.payload;
-        console.log("loadAuthState fulfilled - restoring token to Redux state");
         state.token = token;
         state.user = user;
         state.email = email;
@@ -578,8 +468,6 @@ const authSlice = createSlice({
       .addCase(fetchUserBalances.fulfilled, (state: any, action: any) => {
         state.balancesLoading = false;
         const payload = action.payload || {};
-        console.log("[fetchUserBalances] Raw API response:", payload);
-
         const balancesPayload =
           payload.balances || (payload.data && payload.data.balances);
 
@@ -631,26 +519,16 @@ const authSlice = createSlice({
                 token: token,
                 usdValue: usdValue,
               });
-
-              console.log(
-                `[fetchUserBalances] ${token} on ${network}: balance=${balance}, usdValue=${usdValue}`,
-              );
             });
           });
 
           state.balances = flatBalances;
-          console.log(
-            "[fetchUserBalances] Total balances:",
-            flatBalances.length,
-            "items",
-          );
         } else {
           state.balances = payload.data || payload || [];
         }
       })
       .addCase(fetchUserBalances.rejected, (state: any, action: any) => {
         state.balancesLoading = false;
-        console.error("Failed to fetch balances:", action.payload);
       })
       .addCase(fetchTransactions.pending, (state: any) => {
         state.transactionsLoading = true;
@@ -661,11 +539,9 @@ const authSlice = createSlice({
         // Handle different response structures
         state.transactions =
           payload.data || payload.transactions || payload || [];
-        console.log("Transactions fetched:", state.transactions);
       })
       .addCase(fetchTransactions.rejected, (state: any, action: any) => {
         state.transactionsLoading = false;
-        console.error("Failed to fetch transactions:", action.payload);
       })
       .addCase(updateUsername.pending, (state: any) => {
         state.loading = true;
@@ -677,12 +553,10 @@ const authSlice = createSlice({
           state.user.username = action.payload.username;
           AsyncStorage.setItem("auth_user", JSON.stringify(state.user));
         }
-        console.log("Username updated:", action.payload.username);
       })
       .addCase(updateUsername.rejected, (state: any, action: any) => {
         state.loading = false;
         state.error = action.payload || "Failed to update username";
-        console.error("Failed to update username:", action.payload);
       })
       .addCase(fetchUserProfile.pending, (state: any) => {
         state.loading = true;
@@ -695,23 +569,19 @@ const authSlice = createSlice({
           state.user = { ...state.user, ...payload.data };
           AsyncStorage.setItem("auth_user", JSON.stringify(state.user));
         }
-        console.log("User profile fetched:", payload.data);
       })
       .addCase(fetchUserProfile.rejected, (state: any, action: any) => {
         state.loading = false;
-        console.error("Failed to fetch profile:", action.payload);
       })
       .addCase(changePin.pending, (state: any) => {
         state.loading = true;
       })
       .addCase(changePin.fulfilled, (state: any) => {
         state.loading = false;
-        console.log("PIN changed successfully");
       })
       .addCase(changePin.rejected, (state: any, action: any) => {
         state.loading = false;
         state.error = action.payload || "Failed to change PIN";
-        console.error("Failed to change PIN:", action.payload);
       })
       .addCase(changeEmail.pending, (state: any) => {
         state.loading = true;
@@ -720,12 +590,10 @@ const authSlice = createSlice({
         state.loading = false;
         state.email = action.payload.email;
         AsyncStorage.setItem("auth_email", action.payload.email);
-        console.log("Email changed successfully:", action.payload.email);
       })
       .addCase(changeEmail.rejected, (state: any, action: any) => {
         state.loading = false;
         state.error = action.payload || "Failed to change email";
-        console.error("Failed to change email:", action.payload);
       });
   },
 });

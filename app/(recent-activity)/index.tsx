@@ -1,5 +1,5 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -19,6 +19,7 @@ import { fetchTransactions } from "../store/authSlice";
 // Types
 interface Activity {
   id: string;
+  txRef?: string;
   type: "swap" | "received" | "sent" | "bridge";
   title: string;
   description: string;
@@ -70,6 +71,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 10,
     marginBottom: 12,
+  },
+  focusedActivityItem: {
+    borderWidth: 1,
+    borderColor: "#4A9DFF",
+    backgroundColor: "#202736",
   },
   activityLeft: {
     flexDirection: "row",
@@ -137,6 +143,10 @@ const styles = StyleSheet.create({
 
 export default function RecentActivity() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ txRef?: string }>();
+  const focusedTxRef = String(params?.txRef || "")
+    .trim()
+    .toLowerCase();
   const dispatch = useDispatch<AppDispatch>();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -430,6 +440,9 @@ export default function RecentActivity() {
 
       return {
         id: tx.id || tx._id || tx.transactionId || Math.random().toString(),
+        txRef: String(
+          tx.txRef || tx.tx_ref || tx.reference || tx.transactionRef || "",
+        ),
         type: type as any,
         title,
         description,
@@ -458,33 +471,49 @@ export default function RecentActivity() {
   }, [activityData]);
 
   // Reusable Activity Item Component
-  const ActivityItem = ({ activity }: { activity: Activity }) => (
-    <TouchableOpacity style={styles.activityItem} onPress={() => {}} disabled>
-      <View style={styles.activityLeft}>
-        <Image
-          source={activity.icon}
-          style={styles.activityIcon}
-          resizeMode="contain"
-        />
-        <View style={styles.activityContent}>
-          <Text style={styles.activityTitle}>{activity.title}</Text>
-          <Text style={styles.activityDescription}>{activity.description}</Text>
-          <Text style={styles.activityDate}>{activity.time}</Text>
-        </View>
-      </View>
+  const ActivityItem = ({ activity }: { activity: Activity }) => {
+    const isFocused =
+      !!focusedTxRef &&
+      String(activity.txRef || "")
+        .trim()
+        .toLowerCase() === focusedTxRef;
 
-      <View style={styles.activityRight}>
-        <Text style={[styles.activityAmount, { color: activity.amountColor }]}>
-          {activity.amount}
-        </Text>
-        {activity.secondaryAmount && (
-          <Text style={styles.activitySecondaryAmount}>
-            {activity.secondaryAmount}
+    return (
+      <TouchableOpacity
+        style={[styles.activityItem, isFocused && styles.focusedActivityItem]}
+        onPress={() => {}}
+        disabled
+      >
+        <View style={styles.activityLeft}>
+          <Image
+            source={activity.icon}
+            style={styles.activityIcon}
+            resizeMode="contain"
+          />
+          <View style={styles.activityContent}>
+            <Text style={styles.activityTitle}>{activity.title}</Text>
+            <Text style={styles.activityDescription}>
+              {activity.description}
+            </Text>
+            <Text style={styles.activityDate}>{activity.time}</Text>
+          </View>
+        </View>
+
+        <View style={styles.activityRight}>
+          <Text
+            style={[styles.activityAmount, { color: activity.amountColor }]}
+          >
+            {activity.amount}
           </Text>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
+          {activity.secondaryAmount && (
+            <Text style={styles.activitySecondaryAmount}>
+              {activity.secondaryAmount}
+            </Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   // Reusable Date Section Component
   const DateSection = ({

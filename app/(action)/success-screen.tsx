@@ -9,6 +9,24 @@ export default function SuccessScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { network } = params;
+
+  const asSingleValue = (value: string | string[] | undefined) =>
+    Array.isArray(value) ? value[0] : value;
+
+  const title =
+    asSingleValue(params.title) ||
+    asSingleValue(params.heading) ||
+    "Transaction Successful";
+  const description =
+    asSingleValue(params.description) ||
+    "Your transaction was completed successfully";
+  const viewText = asSingleValue(params.viewText) || "View Transaction";
+  const txRef =
+    asSingleValue(params.txRef) ||
+    asSingleValue(params.transactionId) ||
+    asSingleValue(params.reference) ||
+    "";
+
   const RECENT_NETWORKS_KEY = "flipeet_recent_networks_v1";
   const MAX_RECENT_NETWORKS = 1;
 
@@ -48,7 +66,14 @@ export default function SuccessScreen() {
   }, [network]);
 
   const handleClose = () => {
-    router.replace("/home");
+    router.replace("/(tabs)");
+  };
+
+  const handleViewTransaction = () => {
+    router.push({
+      pathname: "/(recent-activity)",
+      params: txRef ? { txRef } : undefined,
+    });
   };
 
   return (
@@ -58,17 +83,15 @@ export default function SuccessScreen() {
         <View style={styles.content}>
           <SuccessIcon />
           <View style={styles.textContainer}>
-            <Text style={styles.title}>Swap Successful</Text>
-            <Text style={styles.description}>
-              Your swap was completed Successfully
-            </Text>
+            <Text style={styles.title}>{title}</Text>
+            <Text style={styles.description}>{description}</Text>
           </View>
         </View>
 
         {/* Close Button at Bottom */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.view}>
-            <Text style={styles.viewText}>View Transaction</Text>
+          <TouchableOpacity style={styles.view} onPress={handleViewTransaction}>
+            <Text style={styles.viewText}>{viewText}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>

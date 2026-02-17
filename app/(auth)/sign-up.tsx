@@ -73,7 +73,7 @@ export default function SignUpScreen() {
           redirectUri,
         }),
       ).unwrap();
-      router.replace("/home");
+      router.replace("/(tabs)");
     } catch (error: any) {
       console.error("Google sign-up failed:", error);
       Alert.alert(

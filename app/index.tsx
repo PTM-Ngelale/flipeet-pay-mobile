@@ -10,12 +10,7 @@ export default function Index() {
       try {
         const raw = await AsyncStorage.getItem("flipeet_onboarding_seen_v1");
         const hasSeen = raw === "true";
-        if (!hasSeen) {
-          router.replace("/(intro)");
-          return;
-        }
-
-        router.replace("/(auth)/login");
+        router.replace(hasSeen ? "/(auth)/login" : "/(intro)");
       } catch (error) {
         console.warn("Failed to read onboarding flag:", error);
         router.replace("/(intro)");

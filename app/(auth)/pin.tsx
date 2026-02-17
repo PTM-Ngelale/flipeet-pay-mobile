@@ -73,7 +73,7 @@ export default function PinScreen() {
         // Fall back to server verification if no stored PIN
         try {
           await dispatch(signIn({ email, password: pinCode })).unwrap();
-          router.replace("/home");
+          router.replace("/(tabs)");
           return;
         } catch (err) {
           console.warn("sign-in failed", err);
@@ -83,7 +83,7 @@ export default function PinScreen() {
       }
 
       if (pinCode === storedPin) {
-        router.replace("/home");
+        router.replace("/(tabs)");
       } else {
         dispatch(setError("Incorrect PIN. Please try again."));
       }

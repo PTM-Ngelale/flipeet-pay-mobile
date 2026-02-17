@@ -39,6 +39,8 @@ const FavoriteWalletsContext = createContext<
   FavoriteWalletsContextType | undefined
 >(undefined);
 
+const FAVORITES_ENABLED = false;
+
 export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
   children,
 }) => {
@@ -60,31 +62,32 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
-  // Load cached favorites from storage then fetch from backend
   useEffect(() => {
+    if (!FAVORITES_ENABLED) return;
     const loadFromStorage = async () => {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) setFavoriteWallets(JSON.parse(raw));
-      } catch (err) {
-        console.error("Failed to load favorite wallets from storage:", err);
-      }
+      } catch (err) {}
     };
 
     loadFromStorage();
   }, []);
 
   useEffect(() => {
+    if (!FAVORITES_ENABLED) return;
     if (token) {
       fetchFavorites();
     }
   }, [token]);
 
   useEffect(() => {
+    if (!FAVORITES_ENABLED) return;
     updateRecentWallets();
   }, [favoriteWallets]);
 
   const fetchFavorites = async () => {
+    if (!FAVORITES_ENABLED) return;
     if (!token) return;
 
     try {
@@ -99,8 +102,6 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
             )}&page=1&limit=100`,
             { method: "GET", token },
           );
-          console.log("Fetched favorite wallets:", data);
-
           const wallets = (data?.data?.favorites || data?.data || []).map(
             (item: any) => ({
               id: item.id || item._id,
@@ -116,18 +117,17 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
           setFavoriteWallets(wallets);
           try {
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(wallets));
-          } catch (err) {
-            console.error("Failed to save favorite wallets to storage:", err);
-          }
+          } catch (err) {}
           return;
         } catch (err) {
           lastError = err;
         }
       }
 
-      console.error("Failed to fetch favorite wallets:", lastError);
+      if (lastError) {
+        showToast("Failed to load favorites");
+      }
     } catch (error) {
-      console.error("Error fetching favorite wallets:", error);
     } finally {
       setLoading(false);
     }
@@ -145,8 +145,9 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const addFavoriteWallet = async (walletAddress: string) => {
+    if (!FAVORITES_ENABLED) return;
     if (!token) return;
-    // Optimistic update
+
     const localId = `local-wallet-${Date.now()}`;
     const newWallet: FavoriteWallet = {
       id: localId,
@@ -161,9 +162,7 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
     setFavoriteWallets(updated);
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    } catch (err) {
-      console.error("Failed to save favorite wallets to storage:", err);
-    }
+    } catch (err) {}
 
     try {
       let lastError: any = null;
@@ -184,33 +183,31 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
         }
       }
 
-      console.error("Failed to add favorite wallet:", lastError);
-      showToast("Failed to add favorite");
+      if (lastError) {
+        showToast("Failed to add favorite");
+      }
+
       setFavoriteWallets(previous);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
     } catch (error) {
-      console.error("Error adding favorite wallet:", error);
       showToast("Failed to add favorite");
       setFavoriteWallets(previous);
       try {
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
-      } catch (err) {
-        console.error("Failed to save favorite wallets to storage:", err);
-      }
+      } catch (err) {}
     }
   };
 
   const removeFavoriteWallet = async (walletId: string) => {
+    if (!FAVORITES_ENABLED) return;
     if (!token) return;
-    // Optimistic remove
+
     const previous = favoriteWallets;
     const updated = previous.filter((w) => w.id !== walletId);
     setFavoriteWallets(updated);
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    } catch (err) {
-      console.error("Failed to save favorite wallets to storage:", err);
-    }
+    } catch (err) {}
 
     try {
       const response = await fetch(
@@ -225,22 +222,18 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
       );
 
       if (response.ok) {
-        await fetchFavorites(); // Refresh the list
+        await fetchFavorites();
       } else {
-        console.error("Failed to remove favorite wallet");
         showToast("Failed to remove favorite");
         setFavoriteWallets(previous);
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
       }
     } catch (error) {
-      console.error("Error removing favorite wallet:", error);
       showToast("Failed to remove favorite");
       setFavoriteWallets(previous);
       try {
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(previous));
-      } catch (err) {
-        console.error("Failed to save favorite wallets to storage:", err);
-      }
+      } catch (err) {}
     }
   };
 
@@ -263,6 +256,7 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const markWalletAsUsed = (walletAddress: string) => {
+    if (!FAVORITES_ENABLED) return;
     const updatedWallets = favoriteWallets.map((fav) =>
       fav.walletAddress === walletAddress
         ? { ...fav, lastUsed: new Date().toISOString() }
@@ -271,9 +265,7 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
     setFavoriteWallets(updatedWallets);
     try {
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedWallets));
-    } catch (err) {
-      console.error("Failed to save favorite wallets to storage:", err);
-    }
+    } catch (err) {}
   };
 
   const getWalletById = (walletId: string) => {
@@ -285,6 +277,7 @@ export const FavoriteWalletsProvider: React.FC<{ children: ReactNode }> = ({
   };
 
   const refreshFavorites = async () => {
+    if (!FAVORITES_ENABLED) return;
     await fetchFavorites();
   };
 

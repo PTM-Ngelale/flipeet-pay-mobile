@@ -173,17 +173,13 @@ export default function WalletHomeScreen() {
   // Calculate total balance in USD from grouped assets
   const totalBalanceUSD = useMemo(() => {
     if (!assets || assets.length === 0) {
-      console.log("[totalBalanceUSD] No assets found");
       return 0;
     }
 
     const total = assets.reduce((sum, asset) => {
       const assetUsdValue = asset.usdValue || 0;
-      console.log(`[totalBalanceUSD] ${asset.name}: usdValue=${assetUsdValue}`);
       return sum + assetUsdValue;
     }, 0);
-
-    console.log("[totalBalanceUSD] Final total from assets:", total);
     return total;
   }, [assets]);
 
@@ -262,7 +258,7 @@ export default function WalletHomeScreen() {
         </View>
       </View>
       <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
-        <HistoryIcon />
+        <HistoryIcon width={30} height={30} />
       </TouchableOpacity>
     </View>
   );
@@ -331,28 +327,18 @@ export default function WalletHomeScreen() {
   const renderActionButtons = () => (
     <View style={styles.actionButtonsContainer}>
       {actionButtons.map((button) =>
-        (() => {
-          const isServices = button.label === "Services";
-          return (
-            <TouchableOpacity
-              key={button.label}
-              onPress={
-                isServices ? undefined : () => handleActionPress(button.route)
-              }
-              style={[
-                styles.actionButton,
-                isServices && styles.actionButtonDisabled,
-              ]}
-              disabled={isServices}
-              accessibilityState={{ disabled: isServices }}
-            >
-              {button.icon}
-              <Text style={[styles.actionButtonText, { color: "#B0BACB" }]}>
-                {button.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })(),
+        (() => (
+          <TouchableOpacity
+            key={button.label}
+            onPress={() => handleActionPress(button.route)}
+            style={styles.actionButton}
+          >
+            {button.icon}
+            <Text style={[styles.actionButtonText, { color: "#B0BACB" }]}>
+              {button.label}
+            </Text>
+          </TouchableOpacity>
+        ))(),
       )}
     </View>
   );

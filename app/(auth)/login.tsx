@@ -1,5 +1,6 @@
 import GoogleLogo from "@/assets/images/google-logo.svg";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import Constants from "expo-constants";
@@ -32,6 +33,7 @@ export default function LoginScreen() {
   const [email, setLocalEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [keepLoggedIn, setKeepLoggedIn] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isEmailLoading, setIsEmailLoading] = useState(false);
   const router = useRouter();
@@ -53,6 +55,8 @@ export default function LoginScreen() {
     scopes: ["profile", "email", "openid"],
   });
 
+  console.log(redirectUri);
+
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     try {
@@ -66,11 +70,14 @@ export default function LoginScreen() {
 
       await dispatch(
         googleSignIn({
-          idToken: authCode,
-          provider: "google",
-          redirectUri,
+          token: authCode,
         }),
       ).unwrap();
+      if (keepLoggedIn) {
+        await AsyncStorage.setItem("auth_keep_logged_in", "true");
+      } else {
+        await AsyncStorage.removeItem("auth_keep_logged_in");
+      }
       router.replace("/home");
     } catch (error: any) {
       console.error("Google sign-in failed:", error);
@@ -199,6 +206,28 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               </View>
             </View>
+
+            {/* Keep me logged in */}
+            <TouchableOpacity
+              style={styles.rememberMeContainer}
+              onPress={() => setKeepLoggedIn(!keepLoggedIn)}
+            >
+              <View style={styles.checkboxContainer}>
+                <View
+                  style={[
+                    styles.checkbox,
+                    keepLoggedIn && styles.checkboxChecked,
+                  ]}
+                >
+                  {keepLoggedIn && (
+                    <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                  )}
+                </View>
+              </View>
+              <Text style={styles.rememberMeText}>
+                Keep me logged in on this device
+              </Text>
+            </TouchableOpacity>
 
             {/* Login Button */}
             <TouchableOpacity

@@ -63,9 +63,7 @@ export default function IntroScreen() {
   const handleGetStarted = async () => {
     try {
       await AsyncStorage.setItem("flipeet_onboarding_seen_v1", "true");
-    } catch (error) {
-      console.warn("Failed to store onboarding flag:", error);
-    }
+    } catch (error) {}
     router.replace("/(auth)/login");
   };
 

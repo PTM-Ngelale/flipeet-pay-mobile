@@ -50,6 +50,34 @@ export default function ActionLayout() {
           }}
         />
         <Stack.Screen
+          name="data"
+          options={{
+            title: "Data",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="airtime"
+          options={{
+            title: "Airtime",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="electricity"
+          options={{
+            title: "Electricity",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="gift-cards"
+          options={{
+            title: "Gift Cards",
+            headerShown: false,
+          }}
+        />
+        <Stack.Screen
           name="qr-screen"
           options={{
             title: "QR Code",

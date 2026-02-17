@@ -630,6 +630,84 @@ export async function initializeSendOrder(
   });
 }
 
+// ---------- Commerce helpers ----------
+
+export interface AirtimeCompany {
+  id?: string | number;
+  name?: string;
+  code?: string;
+  provider?: string;
+  disco?: string;
+  logo?: string;
+  logoUrl?: string;
+}
+
+export async function getCommerceAirtimeCompanies(token: string) {
+  return apiRequest(`/commerce/airtime/companies`, {
+    method: "GET",
+    token,
+  });
+}
+
+export async function getCommerceElectricityCompanies(token: string) {
+  return apiRequest(`/commerce/electricity/companies`, {
+    method: "GET",
+    token,
+  });
+}
+
+export async function initializeCommerceAirtime(
+  payload: {
+    provider: string;
+    phoneNumber: string;
+    disco?: string;
+    amount: number;
+    asset: string;
+    network: string;
+  },
+  token: string,
+) {
+  return apiRequest(`/commerce/airtime/initialize`, {
+    method: "POST",
+    body: payload,
+    token,
+  });
+}
+
+export async function getCommerceDiscoPrices(
+  query: { service: "DATA" | "TV"; disco: string },
+  token: string,
+) {
+  const params = new URLSearchParams();
+  params.append("service", query.service);
+  params.append("disco", query.disco);
+
+  return apiRequest(`/commerce/disco/prices?${params.toString()}`, {
+    method: "GET",
+    token,
+  });
+}
+
+export async function initializeCommerceDataTv(
+  payload: {
+    number: string;
+    disco: string;
+    tariffClass: string;
+    amount: number;
+    phoneNumber: string;
+    type: "DATA" | "TV";
+    asset: string;
+    network: string;
+  },
+  token: string,
+) {
+  return apiRequest(`/commerce/dataTv/initialize`, {
+    method: "POST",
+    body: payload,
+    token,
+  });
+}
+
 // ---------- Webhook helpers ----------
 
 export async function filterWebhooks(
