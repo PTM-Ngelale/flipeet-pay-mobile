@@ -81,9 +81,14 @@ export async function apiRequest(path: string, options: RequestOptions = {}) {
   const { method = "GET", body, token, headers = {} } = options;
 
   const finalHeaders: Record<string, string> = {
-    "Content-Type": "application/json",
+    Accept: "application/json",
     ...headers,
   };
+
+  // Avoid sending a Content-Type for GET requests (some servers reject it)
+  if (method !== "GET") {
+    finalHeaders["Content-Type"] = "application/json";
+  }
 
   const normalizedToken = normalizeAuthToken(token);
   if (normalizedToken) {
@@ -95,8 +100,47 @@ export async function apiRequest(path: string, options: RequestOptions = {}) {
     headers: finalHeaders,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-
-  return handleResponse(res);
+  const isDiscoPrices = path.toLowerCase().includes("disco/prices");
+  const isFetchMeter =
+    path.toLowerCase().includes("fetchmeter") ||
+    path.toLowerCase().includes("/commerce/electricity/fetchmeter");
+  const resStatus = res.status;
+  const resStatusText = res.statusText;
+  try {
+    const parsed = await handleResponse(res);
+    if (isFetchMeter) {
+      try {
+        console.log("[api] fetchMeter request", {
+          method,
+          url: `${API_BASE_URL}${path}`,
+          hasToken: Boolean(normalizedToken),
+        });
+        console.log("[api] fetchMeter status", {
+          status: resStatus,
+          statusText: resStatusText,
+        });
+        console.log("[api] fetchMeter response", parsed);
+      } catch {}
+    }
+    if (isDiscoPrices) {
+      try {
+        console.log("[api] disco/prices request", {
+          method,
+          url: `${API_BASE_URL}${path}`,
+          hasToken: Boolean(normalizedToken),
+        });
+        console.log("[api] disco/prices response", parsed);
+      } catch {}
+    }
+    return parsed;
+  } catch (err) {
+    if (isDiscoPrices) {
+      try {
+        console.log("[api] disco/prices error", String(err));
+      } catch {}
+    }
+    throw err;
+  }
 }
 
 export async function apiGet(path: string) {
@@ -702,6 +746,50 @@ export async function initializeCommerceDataTv(
   token: string,
 ) {
   return apiRequest(`/commerce/dataTv/initialize`, {
+    method: "POST",
+    body: payload,
+    token,
+  });
+}
+
+export async function initializeCommerceElectricity(
+  payload: {
+    provider: string;
+    meterNumber: string;
+    meterType?: string;
+    amount: number;
+    asset: string;
+    network: string;
+  },
+  token: string,
+) {
+  return apiRequest(`/commerce/electricity/initialize`, {
+    method: "POST",
+    body: payload,
+    token,
+  });
+}
+
+export async function fetchCommerceElectricityMeterInfo(
+  query: { provider: string; meterNumber: string; meterType?: string },
+  token: string,
+) {
+  const params = new URLSearchParams();
+  params.append("provider", query.provider);
+  params.append("meterNumber", query.meterNumber);
+  if (query.meterType) params.append("meterType", query.meterType);
+
+  return apiRequest(`/commerce/electricity/fetchMeter?${params.toString()}`, {
+    method: "GET",
+    token,
+  });
+}
+
+export async function verifyCommerceElectricityMeter(
+  payload: { provider: string; meterNumber: string; meterType?: string },
+  token: string,
+) {
+  return apiRequest(`/commerce/electricity/meter-verification`, {
     method: "POST",
     body: payload,
     token,

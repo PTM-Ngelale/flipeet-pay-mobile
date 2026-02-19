@@ -19,6 +19,9 @@ import {
 import { useSelector } from "react-redux";
 
 import { useBridgeToken } from "@/app/contexts/BridgeTokenContext";
+import Base from "@/assets/images/networks/base.svg";
+import Bnb from "@/assets/images/networks/bnb.svg";
+import Solana from "@/assets/images/networks/solana.svg";
 
 const BridgeComponent = () => {
   const router = useRouter();
@@ -350,6 +353,14 @@ const BridgeComponent = () => {
     return <IconComponent width={30} height={30} />;
   };
 
+  const getNetworkIcon = (network?: string) => {
+    const id = (network || "").toLowerCase().replace(/\s+/g, "-");
+    if (id.includes("solana")) return Solana;
+    if (id.includes("base")) return Base;
+    if (id.includes("bnb")) return Bnb;
+    return null;
+  };
+
   const exchangeIconTop = paySectionHeight
     ? Math.max(paySectionHeight - 18, 0)
     : 140;
@@ -406,8 +417,19 @@ const BridgeComponent = () => {
                     style={styles.tokenSelector}
                     onPress={handleFromTokenSelect}
                   >
-                    <View>
-                      {fromToken.icon ? renderTokenIcon(fromToken.icon) : ""}
+                    <View style={styles.tokenIconWrapper}>
+                      {fromToken.icon ? (
+                        <fromToken.icon width={30} height={30} />
+                      ) : null}
+                      {fromToken?.network &&
+                        (() => {
+                          const Net = getNetworkIcon(fromToken.network);
+                          return Net ? (
+                            <View style={styles.networkBadge}>
+                              <Net width={14} height={14} />
+                            </View>
+                          ) : null;
+                        })()}
                     </View>
                     <View>
                       <Text style={styles.tokenName}>{fromToken.symbol}</Text>
@@ -467,8 +489,19 @@ const BridgeComponent = () => {
                     style={styles.tokenSelector}
                     onPress={handleToTokenSelect}
                   >
-                    <View>
-                      {toToken.icon ? renderTokenIcon(toToken.icon) : ""}
+                    <View style={styles.tokenIconWrapper}>
+                      {toToken.icon ? (
+                        <toToken.icon width={30} height={30} />
+                      ) : null}
+                      {toToken?.network &&
+                        (() => {
+                          const Net = getNetworkIcon(toToken.network);
+                          return Net ? (
+                            <View style={styles.networkBadge}>
+                              <Net width={14} height={14} />
+                            </View>
+                          ) : null;
+                        })()}
                     </View>
                     <View>
                       <Text style={styles.tokenName}>{toToken.symbol}</Text>
@@ -683,6 +716,27 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "bold",
+  },
+  tokenIconWrapper: {
+    width: 40,
+    height: 40,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  networkBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 18,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#111827",
   },
 });
 

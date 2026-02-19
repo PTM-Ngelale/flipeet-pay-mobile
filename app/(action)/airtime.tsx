@@ -7,6 +7,14 @@ import {
 } from "@/app/constants/api";
 import { useToken } from "@/app/contexts/TokenContext";
 import { RootState } from "@/app/store";
+import NineMobileIcon from "@/assets/images/network-providers-icons/9mobile-icon.svg";
+import AirtelIcon from "@/assets/images/network-providers-icons/airtel-icon.svg";
+import GloIcon from "@/assets/images/network-providers-icons/glo-icon.svg";
+import MTNIcon from "@/assets/images/network-providers-icons/mtn-icon.svg";
+import Base from "@/assets/images/networks/base.svg";
+import Bnb from "@/assets/images/networks/bnb.svg";
+import Solana from "@/assets/images/networks/solana.svg";
+import NGNFlag from "@/assets/images/ngn-flag.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -229,6 +237,21 @@ export default function AirtimeScreen() {
   };
 
   const renderNetworkLogo = (network: NetworkProvider) => {
+    // Prefer local provider icons when available
+    const localMap: Record<string, any> = {
+      mtn: MTNIcon,
+      airtel: AirtelIcon,
+      glo: GloIcon,
+      "9mobile": NineMobileIcon,
+      etisalat: NineMobileIcon,
+    };
+
+    const normalizedId = (network.id || "").toLowerCase();
+    const LocalIcon = localMap[normalizedId];
+    if (LocalIcon) {
+      return <LocalIcon width={22} height={22} />;
+    }
+
     if (!hasFailedLogo(network.id) && network.logoUrl) {
       return (
         <Image
@@ -246,6 +269,14 @@ export default function AirtimeScreen() {
         <Text style={styles.networkLogoFallbackText}>{initial}</Text>
       </View>
     );
+  };
+
+  const getNetworkIcon = (network?: string) => {
+    const id = (network || "").toLowerCase().replace(/\s+/g, "-");
+    if (id.includes("solana")) return Solana;
+    if (id.includes("base")) return Base;
+    if (id.includes("bnb")) return Bnb;
+    return null;
   };
 
   const handleTopUpSelect = (amount: number) => {
@@ -708,6 +739,10 @@ export default function AirtimeScreen() {
           <View style={styles.phoneSelectContainer}>
             <View style={styles.phoneSelect}>
               <View style={styles.phoneSelectRow}>
+                <View style={styles.countryTag}>
+                  <NGNFlag width={18} height={12} />
+                  <Ionicons name="chevron-down" size={11} color="#4A9DFF" />
+                </View>
                 <Text style={styles.phonePrefix}>+234</Text>
                 <TextInput
                   style={styles.phoneInput}
@@ -822,11 +857,22 @@ export default function AirtimeScreen() {
                   style={styles.tokenSelector}
                   onPress={() => router.push("/(action)/token-selector")}
                 >
-                  {TokenIcon ? (
-                    <TokenIcon width={30} height={30} />
-                  ) : (
-                    <Ionicons name="ellipse" size={24} color="#4A9DFF" />
-                  )}
+                  <View style={styles.tokenIconWrapper}>
+                    {TokenIcon ? (
+                      <TokenIcon width={30} height={30} />
+                    ) : (
+                      <Ionicons name="ellipse" size={24} color="#4A9DFF" />
+                    )}
+                    {displayTokenNetwork &&
+                      (() => {
+                        const Net = getNetworkIcon(displayTokenNetwork);
+                        return Net ? (
+                          <View style={styles.networkBadge}>
+                            <Net width={14} height={14} />
+                          </View>
+                        ) : null;
+                      })()}
+                  </View>
                   <View>
                     <Text style={styles.tokenName}>{displayTokenSymbol}</Text>
                     <Text style={styles.tokenNetwork}>
@@ -932,6 +978,17 @@ const styles = StyleSheet.create({
     padding: 0,
     margin: 0,
     flex: 1,
+  },
+  countryTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#111418",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#262C35",
+    paddingHorizontal: 8,
+    height: 28,
   },
   networkIconContainer: {
     position: "absolute",
@@ -1098,6 +1155,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginBottom: 8,
+  },
+  tokenIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+    position: "relative",
+    backgroundColor: "transparent",
+  },
+  networkBadge: {
+    position: "absolute",
+    right: -6,
+    bottom: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 16,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#111827",
   },
   tokenName: {
     color: "#E2E6F0",

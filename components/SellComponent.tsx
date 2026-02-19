@@ -2,6 +2,9 @@ import { useBankAccount } from "@/app/contexts/BankAccountContext";
 import { useCurrency } from "@/app/contexts/CurrencySelectorContext";
 import { useToken } from "@/app/contexts/TokenContext";
 import ExchangeIcon from "@/assets/images/exchange-icon.svg";
+import Base from "@/assets/images/networks/base.svg";
+import Bnb from "@/assets/images/networks/bnb.svg";
+import Solana from "@/assets/images/networks/solana.svg";
 import NGNFlag from "@/assets/images/ngn-flag.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
@@ -239,18 +242,21 @@ const SellComponent = () => {
     switch (savedCurrency) {
       case "NGN":
         return <NGNFlag />;
-      // Add cases for other currencies if you have their icons
-      // case "USD":
-      //   return <USDFlag />;
-      // case "EUR":
-      //   return <EURFlag />;
       default:
-        return <NGNFlag />; // Default to NGN flag
+        return <NGNFlag />;
     }
   };
 
   const renderTokenIcon = (IconComponent: React.ComponentType<any>) => {
     return <IconComponent width={30} height={30} />;
+  };
+
+  const getNetworkIcon = (network?: string) => {
+    const id = (network || "").toLowerCase().replace(/\s+/g, "-");
+    if (id.includes("solana")) return Solana;
+    if (id.includes("base")) return Base;
+    if (id.includes("bnb")) return Bnb;
+    return null;
   };
 
   const exchangeIconTop = paySectionHeight
@@ -306,12 +312,21 @@ const SellComponent = () => {
                   style={styles.tokenSelector}
                   onPress={() => router.push("/(action)/token-selector")}
                 >
-                  <View>
+                  <View style={styles.tokenIconWrapper}>
                     {selectedToken?.icon ? (
-                      renderTokenIcon(selectedToken.icon)
+                      <selectedToken.icon width={30} height={30} />
                     ) : (
                       <Ionicons name="ellipse" size={24} color="#4A9DFF" />
                     )}
+                    {selectedToken?.network &&
+                      (() => {
+                        const Net = getNetworkIcon(selectedToken.network);
+                        return Net ? (
+                          <View style={styles.networkBadge}>
+                            <Net width={14} height={14} />
+                          </View>
+                        ) : null;
+                      })()}
                   </View>
                   <View>
                     <Text style={styles.tokenName}>{displayTokenSymbol}</Text>
@@ -677,6 +692,27 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  tokenIconWrapper: {
+    width: 40,
+    height: 40,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  networkBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 18,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#111827",
   },
 });
 

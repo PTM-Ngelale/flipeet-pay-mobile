@@ -1,5 +1,8 @@
 import { useToken } from "@/app/contexts/TokenContext";
 import { RootState } from "@/app/store";
+import Base from "@/assets/images/networks/base.svg";
+import Bnb from "@/assets/images/networks/bnb.svg";
+import Solana from "@/assets/images/networks/solana.svg";
 import ScanIcon from "@/assets/images/scan-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -154,6 +157,14 @@ const WalletComponent = () => {
     return <IconComponent width={30} height={30} />;
   };
 
+  const getNetworkIcon = (network?: string) => {
+    const id = (network || "").toLowerCase().replace(/\s+/g, "-");
+    if (id.includes("solana")) return Solana;
+    if (id.includes("base")) return Base;
+    if (id.includes("bnb")) return Bnb;
+    return null;
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.keyboardAvoidingView}
@@ -245,7 +256,20 @@ const WalletComponent = () => {
                       style={styles.tokenSelector}
                       onPress={() => router.push("/(action)/token-selector")}
                     >
-                      <View>{renderTokenIcon(selectedToken.icon)}</View>
+                      <View style={styles.tokenIconWrapper}>
+                        {selectedToken?.icon ? (
+                          <selectedToken.icon width={30} height={30} />
+                        ) : null}
+                        {selectedToken?.network &&
+                          (() => {
+                            const Net = getNetworkIcon(selectedToken.network);
+                            return Net ? (
+                              <View style={styles.networkBadge}>
+                                <Net width={14} height={14} />
+                              </View>
+                            ) : null;
+                          })()}
+                      </View>
                       <View>
                         <Text style={styles.tokenName}>
                           {selectedToken.symbol}
@@ -510,5 +534,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 2,
     elevation: 2,
+  },
+  tokenIconWrapper: {
+    width: 40,
+    height: 40,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  networkBadge: {
+    position: "absolute",
+    right: -6,
+    bottom: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 16,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#111827",
   },
 });

@@ -16,6 +16,16 @@ import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../store";
 import { fetchTransactions } from "../store/authSlice";
 
+import BaseNet from "@/assets/images/networks/base.svg";
+import BnbNet from "@/assets/images/networks/bnb.svg";
+import SolanaNet from "@/assets/images/networks/solana.svg";
+
+import USDCIcon from "@/assets/images/tokens/usdc.svg";
+import USDTIcon from "@/assets/images/tokens/usdt.svg";
+
+import ReceiveIcon from "@/assets/images/receive-icon.svg";
+import SendIcon from "@/assets/images/send-icon.svg";
+import SwapIcon from "@/assets/images/swap-icon.svg";
 // Types
 interface Activity {
   id: string;
@@ -26,6 +36,8 @@ interface Activity {
   amount: string;
   secondaryAmount?: string;
   icon: any;
+  badgeIcon?: any;
+  actionIcon?: any;
   date: string;
   time: string;
   amountColor: string;
@@ -86,6 +98,40 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     marginRight: 12,
+  },
+  activityIconWrapper: {
+    width: 40,
+    height: 40,
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  activityActionBadge: {
+    position: "absolute",
+    right: -6,
+    top: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 16,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#111827",
+  },
+  activityNetworkBadge: {
+    position: "absolute",
+    right: -6,
+    bottom: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 16,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#111827",
   },
   activityContent: {
     flex: 1,
@@ -239,6 +285,29 @@ export default function RecentActivity() {
     return `${address.slice(0, 4)}...${address.slice(-4)}`;
   };
 
+  // Helper to shorten/format numeric amounts (e.g. 1,250 -> 1.2k)
+  const formatShortAmount = (
+    value: number | string | undefined | null,
+    maxDecimals = 2,
+  ) => {
+    if (value === null || value === undefined) return "0";
+    const n = Number(value);
+    if (!Number.isFinite(n)) return String(value);
+    const abs = Math.abs(n);
+    const sign = n < 0 ? "-" : "";
+
+    if (abs >= 1e12)
+      return `${sign}${(abs / 1e12).toFixed(1).replace(/\.0$/, "")}T`;
+    if (abs >= 1e9)
+      return `${sign}${(abs / 1e9).toFixed(1).replace(/\.0$/, "")}B`;
+    if (abs >= 1e6)
+      return `${sign}${(abs / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
+    if (abs >= 1e3)
+      return `${sign}${(abs / 1e3).toFixed(1).replace(/\.0$/, "")}k`;
+
+    return `${sign}${abs % 1 === 0 ? String(abs) : abs.toFixed(maxDecimals)}`;
+  };
+
   // Map API transactions to activity data
   const activityData = useMemo((): Activity[] => {
     const baseTransactions = Array.isArray(transactions) ? transactions : [];
@@ -276,6 +345,18 @@ export default function RecentActivity() {
         createdAt: lastBridgeActivity.createdAt,
       });
     }
+
+    const tokenIconMap: Record<string, React.ComponentType<any>> = {
+      usdc: USDCIcon,
+      usdt: USDTIcon,
+    };
+
+    const networkIconMap: Record<string, React.ComponentType<any>> = {
+      solana: SolanaNet,
+      base: BaseNet,
+      "bnb-smart-chain": BnbNet,
+      bnb: BnbNet,
+    };
 
     return hydratedTransactions.map((tx: any) => {
       const type = (tx.type || tx.transactionType || "transfer").toLowerCase();
@@ -332,8 +413,18 @@ export default function RecentActivity() {
       let title = "Transaction";
       let description = "";
       let amountColor = "#757B85";
-      let displayAmount = `${amount} ${asset}`;
+      let displayAmount = `${formatShortAmount(amount)} ${asset}`;
       let secondaryAmount: string | undefined;
+      let mainIcon: React.ComponentType<any> | null = null;
+      let badgeIcon: React.ComponentType<any> | null = null;
+      let actionIcon: React.ComponentType<any> | null = null;
+
+      // pick main token icon if available
+      try {
+        mainIcon = tokenIconMap[(asset || "").toLowerCase()] || null;
+      } catch (e) {
+        mainIcon = null;
+      }
 
       if (type.includes("bridge")) {
         title = "Bridged";
@@ -345,27 +436,36 @@ export default function RecentActivity() {
           ? ` (${[fromNetwork, toNetwork].filter(Boolean).join(" → ")})`
           : "";
         description = `${fromAsset} to ${toAsset}${networkInfo}`;
-        displayAmount = `-${Math.abs(amount)} ${fromAsset}`;
+        displayAmount = `-${formatShortAmount(Math.abs(amount))} ${fromAsset}`;
         if (tx.toAmount) {
-          secondaryAmount = `+${tx.toAmount} ${toAsset}`;
+          secondaryAmount = `+${formatShortAmount(tx.toAmount)} ${toAsset}`;
         }
+        // show badge for destination network where available
+        badgeIcon = networkIconMap[(toNetwork || "").toLowerCase()] || null;
+        // bridge -> show swap action icon
+        actionIcon = SwapIcon;
       } else if (type.includes("swap") || type.includes("exchange")) {
         title = "Swapped";
         const fromAsset = tx.fromAsset || tx.fromCurrency || asset;
         const toAsset = tx.toAsset || tx.toCurrency || "NGN";
         description = `${fromAsset} to ${toAsset}`;
-        displayAmount = `-${Math.abs(amount)} ${fromAsset}`;
+        displayAmount = `-${formatShortAmount(Math.abs(amount))} ${fromAsset}`;
         if (tx.toAmount) {
-          secondaryAmount = `+${tx.toAmount} ${toAsset}`;
+          secondaryAmount = `+${formatShortAmount(tx.toAmount)} ${toAsset}`;
         }
+        // for swaps show the toAsset token as badge when available
+        badgeIcon = tokenIconMap[(toAsset || "").toLowerCase()] || null;
+        actionIcon = SwapIcon;
       } else {
         if (type.includes("sell") || type.includes("offramp")) {
           title = "Sold";
           description = `${asset} to ${tx.currency || "NGN"}`;
-          displayAmount = `-${Math.abs(amount)} ${asset}`;
+          displayAmount = `-${formatShortAmount(Math.abs(amount))} ${asset}`;
           if (tx.fiatAmount) {
-            secondaryAmount = `+${tx.fiatAmount} ${tx.currency || "NGN"}`;
+            secondaryAmount = `+${formatShortAmount(tx.fiatAmount)} ${tx.currency || "NGN"}`;
           }
+          badgeIcon = networkIconMap[(tx.network || "").toLowerCase()] || null;
+          actionIcon = SendIcon;
         } else {
           const isOutgoingByType =
             type.includes("send") ||
@@ -411,29 +511,40 @@ export default function RecentActivity() {
           if (isOutgoing) {
             title = "Sent";
             description = "Sent funds";
-            displayAmount = `-${Math.abs(amount)} ${asset}`;
+            displayAmount = `-${formatShortAmount(Math.abs(amount))} ${asset}`;
             amountColor = "#FF5F5F";
+            badgeIcon =
+              networkIconMap[(tx.network || "").toLowerCase()] || null;
+            actionIcon = SendIcon;
           } else if (isIncoming) {
             title = "Received";
             const from = tx.from || tx.sender || tx.fromAddress;
             description = from
               ? `From ${shortenAddress(from)}`
               : "Received funds";
-            displayAmount = `+${Math.abs(amount)} ${asset}`;
+            displayAmount = `+${formatShortAmount(Math.abs(amount))} ${asset}`;
             amountColor = "#34D058";
+            badgeIcon =
+              networkIconMap[(tx.network || "").toLowerCase()] || null;
+            actionIcon = ReceiveIcon;
           } else if (amount < 0) {
             title = "Sent";
             description = "Sent funds";
-            displayAmount = `-${Math.abs(amount)} ${asset}`;
+            displayAmount = `-${formatShortAmount(Math.abs(amount))} ${asset}`;
             amountColor = "#FF5F5F";
+            badgeIcon =
+              networkIconMap[(tx.network || "").toLowerCase()] || null;
+            actionIcon = SendIcon;
           } else {
             title = "Received";
             const from = tx.from || tx.sender || tx.fromAddress;
             description = from
               ? `From ${shortenAddress(from)}`
               : "Received funds";
-            displayAmount = `+${Math.abs(amount)} ${asset}`;
+            displayAmount = `+${formatShortAmount(Math.abs(amount))} ${asset}`;
             amountColor = "#34D058";
+            badgeIcon =
+              networkIconMap[(tx.network || "").toLowerCase()] || null;
           }
         }
       }
@@ -448,7 +559,10 @@ export default function RecentActivity() {
         description,
         amount: displayAmount,
         secondaryAmount,
-        icon: require("@/assets/images/bnb-chain.png"),
+        // icon can be an SVG component or an Image source
+        icon: mainIcon || require("@/assets/images/bnb-chain.png"),
+        badgeIcon: badgeIcon || null,
+        actionIcon: actionIcon || null,
         date,
         time,
         amountColor,
@@ -485,11 +599,46 @@ export default function RecentActivity() {
         disabled
       >
         <View style={styles.activityLeft}>
-          <Image
-            source={activity.icon}
-            style={styles.activityIcon}
-            resizeMode="contain"
-          />
+          <View style={styles.activityIconWrapper}>
+            {typeof activity.icon === "function" ? (
+              // @ts-ignore - dynamic SVG component
+              <activity.icon width={28} height={28} />
+            ) : (
+              <Image
+                source={activity.icon}
+                style={styles.activityIcon}
+                resizeMode="contain"
+              />
+            )}
+            {activity.actionIcon ? (
+              <View style={styles.activityActionBadge}>
+                {typeof activity.actionIcon === "function" ? (
+                  // @ts-ignore - dynamic SVG component
+                  <activity.actionIcon width={10} height={10} />
+                ) : (
+                  <Image
+                    source={activity.actionIcon}
+                    style={{ width: 10, height: 10 }}
+                    resizeMode="contain"
+                  />
+                )}
+              </View>
+            ) : null}
+            {activity.badgeIcon ? (
+              <View style={styles.activityNetworkBadge}>
+                {typeof activity.badgeIcon === "function" ? (
+                  // @ts-ignore - dynamic SVG component
+                  <activity.badgeIcon width={10} height={10} />
+                ) : (
+                  <Image
+                    source={activity.badgeIcon}
+                    style={{ width: 10, height: 10 }}
+                    resizeMode="contain"
+                  />
+                )}
+              </View>
+            ) : null}
+          </View>
           <View style={styles.activityContent}>
             <Text style={styles.activityTitle}>{activity.title}</Text>
             <Text style={styles.activityDescription}>

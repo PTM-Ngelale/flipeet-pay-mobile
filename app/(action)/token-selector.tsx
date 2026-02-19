@@ -254,7 +254,18 @@ export default function TokenSelector() {
         onPress={() => handleTokenSelect(item)}
       >
         <View style={styles.tokenLeft}>
-          {renderTokenIcon(item.icon)}
+          <View style={styles.tokenIconWrapper}>
+            <item.icon width={40} height={40} />
+            {isSelected && (
+              <View style={styles.networkBadge}>
+                {(() => {
+                  const net = networks.find((n) => n.id === item.network);
+                  const NetIcon = net?.icon;
+                  return NetIcon ? <NetIcon width={14} height={14} /> : null;
+                })()}
+              </View>
+            )}
+          </View>
           <View style={styles.tokenInfo}>
             <Text style={styles.tokenSymbol}>{item.symbol}</Text>
             <Text style={styles.tokenName}>{item.name}</Text>
@@ -410,6 +421,26 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+  },
+  tokenIconWrapper: {
+    width: 40,
+    height: 40,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  networkBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 18,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#111827",
   },
   tokenInfo: {
     marginLeft: 12,

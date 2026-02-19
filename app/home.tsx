@@ -247,7 +247,7 @@ export default function WalletHomeScreen() {
             <Image source={{ uri: profileImage }} style={styles.userAvatar} />
           ) : (
             // <UserProfile width={48} height={48} />
-            <Ionicons name="person-circle-outline" size={40} color="#B0BACB" />
+            <Ionicons name="person-circle-outline" size={25} color="#B0BACB" />
           )}
         </TouchableOpacity>
         <View>
@@ -258,7 +258,7 @@ export default function WalletHomeScreen() {
         </View>
       </View>
       <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
-        <HistoryIcon width={30} height={30} />
+        <HistoryIcon width={25} height={25} />
       </TouchableOpacity>
     </View>
   );
@@ -528,8 +528,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   userAvatar: {
-    width: 40,
-    height: 40,
+    width: 35,
+    height: 35,
     borderRadius: 24,
   },
   welcomeText: {

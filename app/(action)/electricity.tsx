@@ -1,3 +1,6 @@
+import Base from "@/assets/images/networks/base.svg";
+import Bnb from "@/assets/images/networks/bnb.svg";
+import Solana from "@/assets/images/networks/solana.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
@@ -155,6 +158,14 @@ export default function ElectricityScreen() {
       "Electricity payment ready",
       `Provider: ${selectedProvider?.name}\nMeter: ${meterNumber}\nType: ${meterType}\nAmount: ₦${amountNumber.toFixed(2)}`,
     );
+  };
+
+  const getNetworkIcon = (network?: string) => {
+    const id = (network || "").toLowerCase().replace(/\s+/g, "-");
+    if (id.includes("solana")) return Solana;
+    if (id.includes("base")) return Base;
+    if (id.includes("bnb")) return Bnb;
+    return null;
   };
 
   return (
@@ -325,11 +336,22 @@ export default function ElectricityScreen() {
                   style={styles.tokenSelector}
                   onPress={() => router.push("/(action)/token-selector")}
                 >
-                  {TokenIcon ? (
-                    <TokenIcon width={30} height={30} />
-                  ) : (
-                    <Ionicons name="ellipse" size={24} color="#4A9DFF" />
-                  )}
+                  <View style={styles.tokenIconWrapper}>
+                    {TokenIcon ? (
+                      <TokenIcon width={30} height={30} />
+                    ) : (
+                      <Ionicons name="ellipse" size={24} color="#4A9DFF" />
+                    )}
+                    {displayTokenNetwork &&
+                      (() => {
+                        const Net = getNetworkIcon(displayTokenNetwork);
+                        return Net ? (
+                          <View style={styles.networkBadge}>
+                            <Net width={14} height={14} />
+                          </View>
+                        ) : null;
+                      })()}
+                  </View>
                   <View>
                     <Text style={styles.tokenName}>{displayTokenSymbol}</Text>
                     <Text style={styles.tokenNetwork}>
@@ -568,6 +590,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginBottom: 8,
+  },
+  tokenIconWrapper: {
+    width: 40,
+    height: 40,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  networkBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 18,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#111827",
   },
   tokenPill: {
     backgroundColor: "#111418",

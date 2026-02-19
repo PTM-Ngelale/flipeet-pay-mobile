@@ -4,6 +4,14 @@ import {
   initializeCommerceDataTv,
   normalizeAuthToken,
 } from "@/app/constants/api";
+import NineMobileIcon from "@/assets/images/network-providers-icons/9mobile-icon.svg";
+import AirtelIcon from "@/assets/images/network-providers-icons/airtel-icon.svg";
+import GloIcon from "@/assets/images/network-providers-icons/glo-icon.svg";
+import MTNIcon from "@/assets/images/network-providers-icons/mtn-icon.svg";
+import Base from "@/assets/images/networks/base.svg";
+import Bnb from "@/assets/images/networks/bnb.svg";
+import Solana from "@/assets/images/networks/solana.svg";
+import NGNFlag from "@/assets/images/ngn-flag.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -49,6 +57,13 @@ const NETWORKS: NetworkOption[] = [
   { id: "9mobile", name: "9mobile", color: "#8DC63F" },
 ];
 
+const getNetworkIcon = (network?: string) => {
+  const id = (network || "").toLowerCase().replace(/\s+/g, "-");
+  if (id.includes("solana")) return Solana;
+  if (id.includes("base")) return Base;
+  if (id.includes("bnb")) return Bnb;
+  return null;
+};
 const NETWORK_PREFIXES: Record<string, string[]> = {
   mtn: [
     "803",
@@ -182,6 +197,7 @@ export default function DataScreen() {
   );
   const [dataPlans, setDataPlans] = useState<DataPlan[]>(DATA_PLANS);
   const [loadingPlans, setLoadingPlans] = useState(false);
+  const [debugResponse, setDebugResponse] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllPlans, setShowAllPlans] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
@@ -277,6 +293,14 @@ export default function DataScreen() {
   const balanceLabel = `${tokenBalance.toFixed(6)} ${displayTokenSymbol}`;
   const TokenIcon = selectedToken?.icon;
 
+  const providerIconMap: Record<string, any> = {
+    mtn: MTNIcon,
+    airtel: AirtelIcon,
+    glo: GloIcon,
+    "9mobile": NineMobileIcon,
+    etisalat: NineMobileIcon,
+  };
+
   const normalizePaymentNetwork = (value: string) => {
     const normalized = (value || "").toLowerCase().replace(/\s+/g, "-");
     if (
@@ -313,6 +337,7 @@ export default function DataScreen() {
 
   const parsePlansFromResponse = (response: any, fallbackDisco: string) => {
     const rawList =
+      response?.data?.data ||
       response?.data?.prices ||
       response?.data?.plans ||
       response?.prices ||
@@ -380,7 +405,14 @@ export default function DataScreen() {
   };
 
   useEffect(() => {
-    if (!normalizedToken) return;
+    if (!normalizedToken) {
+      try {
+        console.log(
+          "[data] fetchPlans skipped — no auth token present (normalizedToken falsy)",
+        );
+      } catch {}
+      return;
+    }
 
     const fetchPlans = async () => {
       setLoadingPlans(true);
@@ -392,30 +424,21 @@ export default function DataScreen() {
           },
           normalizedToken,
         );
+        // Save raw response for debugging when plans are missing
+        setDebugResponse(response);
+        try {
+          console.log("[data] disco/prices response", response);
+          console.log("[data] selectedNetwork", selectedNetwork.name);
+          console.log("[data] normalizedToken present", !!normalizedToken);
+        } catch {}
 
         const parsed = parsePlansFromResponse(response, selectedNetwork.name);
-        if (parsed.length > 0) {
-          setDataPlans(parsed);
-          setSelectedPlanId(null);
-        } else {
-          setDataPlans(
-            sortPlansByAmount(
-              DATA_PLANS.map((plan) => ({
-                ...plan,
-                disco: selectedNetwork.name,
-              })),
-            ),
-          );
-        }
+        setDataPlans(parsed);
+        setSelectedPlanId(null);
       } catch {
-        setDataPlans(
-          sortPlansByAmount(
-            DATA_PLANS.map((plan) => ({
-              ...plan,
-              disco: selectedNetwork.name,
-            })),
-          ),
-        );
+        setDebugResponse({ error: "request_failed" });
+        setDataPlans([]);
+        setSelectedPlanId(null);
       } finally {
         setLoadingPlans(false);
       }
@@ -430,6 +453,12 @@ export default function DataScreen() {
 
     const matchedNetwork = detectNetworkFromPhone(cleaned);
     if (matchedNetwork) {
+      try {
+        console.log(
+          "[data] detectNetworkFromPhone matched",
+          matchedNetwork?.id,
+        );
+      } catch {}
       setSelectedNetwork(matchedNetwork);
     }
   };
@@ -643,7 +672,7 @@ export default function DataScreen() {
             <View style={styles.phoneSelect}>
               <View style={styles.phoneInputRow}>
                 <View style={styles.countryTag}>
-                  <View style={styles.flagStub} />
+                  <NGNFlag width={18} height={12} />
                   <Ionicons name="chevron-down" size={11} color="#4A9DFF" />
                 </View>
                 <Text style={styles.phonePrefix}>+234</Text>
@@ -661,16 +690,23 @@ export default function DataScreen() {
               onPress={() => setShowNetworkDropdown((prev) => !prev)}
             >
               <View style={styles.networkIconWrapper}>
-                <View
-                  style={[
-                    styles.networkDot,
-                    { backgroundColor: selectedNetwork.color || "#6C7486" },
-                  ]}
-                >
-                  <Text style={styles.networkDotText}>
-                    {selectedNetwork.name.slice(0, 3)}
-                  </Text>
-                </View>
+                {(() => {
+                  const id = (selectedNetwork.id || "").toLowerCase();
+                  const Local = providerIconMap[id];
+                  if (Local) return <Local width={18} height={18} />;
+                  return (
+                    <View
+                      style={[
+                        styles.networkDot,
+                        { backgroundColor: selectedNetwork.color || "#6C7486" },
+                      ]}
+                    >
+                      <Text style={styles.networkDotText}>
+                        {selectedNetwork.name.slice(0, 3)}
+                      </Text>
+                    </View>
+                  );
+                })()}
                 <Text style={styles.networkText}>{selectedNetwork.name}</Text>
                 <Ionicons
                   name={showNetworkDropdown ? "chevron-up" : "chevron-down"}
@@ -697,12 +733,19 @@ export default function DataScreen() {
                       setShowNetworkDropdown(false);
                     }}
                   >
-                    <View
-                      style={[
-                        styles.dropdownDot,
-                        { backgroundColor: network.color },
-                      ]}
-                    />
+                    {(() => {
+                      const id = (network.id || "").toLowerCase();
+                      const Local = providerIconMap[id];
+                      if (Local) return <Local width={20} height={20} />;
+                      return (
+                        <View
+                          style={[
+                            styles.dropdownDot,
+                            { backgroundColor: network.color },
+                          ]}
+                        />
+                      );
+                    })()}
                     <Text style={styles.dropdownText}>{network.name}</Text>
                     {isActive ? (
                       <Ionicons name="checkmark" size={15} color="#34D058" />
@@ -732,6 +775,12 @@ export default function DataScreen() {
             <View style={styles.planLoader}>
               <ActivityIndicator color="#4A9DFF" />
               <Text style={styles.planLoaderText}>Loading data plans...</Text>
+            </View>
+          ) : dataPlans.length === 0 ? (
+            <View style={styles.planLoader}>
+              <Text style={styles.planLoaderText}>
+                No data plans available for this provider.
+              </Text>
             </View>
           ) : (
             <View style={styles.planGrid}>
@@ -785,11 +834,22 @@ export default function DataScreen() {
                   style={styles.tokenSelector}
                   onPress={() => router.push("/(action)/token-selector")}
                 >
-                  {TokenIcon ? (
-                    <TokenIcon width={30} height={30} />
-                  ) : (
-                    <Ionicons name="ellipse" size={24} color="#4A9DFF" />
-                  )}
+                  <View style={styles.tokenIconWrapper}>
+                    {TokenIcon ? (
+                      <TokenIcon width={30} height={30} />
+                    ) : (
+                      <Ionicons name="ellipse" size={24} color="#4A9DFF" />
+                    )}
+                    {displayTokenNetwork &&
+                      (() => {
+                        const Net = getNetworkIcon(displayTokenNetwork);
+                        return Net ? (
+                          <View style={styles.networkBadge}>
+                            <Net width={14} height={14} />
+                          </View>
+                        ) : null;
+                      })()}
+                  </View>
                   <View>
                     <Text style={styles.tokenName}>{displayTokenSymbol}</Text>
                     <Text style={styles.tokenNetwork}>
@@ -902,6 +962,11 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 2,
     backgroundColor: "#2BA84A",
+  },
+  flagImage: {
+    width: 18,
+    height: 12,
+    borderRadius: 2,
   },
   phonePrefix: {
     color: "#B0BACB",
@@ -1023,6 +1088,27 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 10,
     gap: 4,
+  },
+  tokenIconWrapper: {
+    width: 40,
+    height: 40,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  networkBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 18,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#111827",
   },
   planCardSelected: {
     borderColor: "#34D058",

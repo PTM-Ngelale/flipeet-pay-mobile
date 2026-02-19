@@ -2,6 +2,9 @@ import { useCurrency } from "@/app/contexts/CurrencySelectorContext";
 import { useToken } from "@/app/contexts/TokenContext";
 import { AppDispatch, RootState } from "@/app/store";
 import { fetchBanks, verifyBankAccount } from "@/app/store/bankAccountSlice";
+import Base from "@/assets/images/networks/base.svg";
+import Bnb from "@/assets/images/networks/bnb.svg";
+import Solana from "@/assets/images/networks/solana.svg";
 import NGNFlag from "@/assets/images/ngn-flag.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
@@ -422,6 +425,14 @@ const BankComponent = () => {
     return <IconComponent width={30} height={30} />;
   };
 
+  const getNetworkIcon = (network?: string) => {
+    const id = (network || "").toLowerCase().replace(/\s+/g, "-");
+    if (id.includes("solana")) return Solana;
+    if (id.includes("base")) return Base;
+    if (id.includes("bnb")) return Bnb;
+    return null;
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.keyboardAvoidingView}
@@ -684,7 +695,20 @@ const BankComponent = () => {
                       style={styles.tokenSelector}
                       onPress={() => router.push("/(action)/token-selector")}
                     >
-                      <View>{renderTokenIcon(selectedToken.icon)}</View>
+                      <View style={styles.tokenIconWrapper}>
+                        {selectedToken?.icon ? (
+                          <selectedToken.icon width={30} height={30} />
+                        ) : null}
+                        {selectedToken?.network &&
+                          (() => {
+                            const Net = getNetworkIcon(selectedToken.network);
+                            return Net ? (
+                              <View style={styles.networkBadge}>
+                                <Net width={14} height={14} />
+                              </View>
+                            ) : null;
+                          })()}
+                      </View>
                       <View>
                         <Text style={styles.tokenName}>
                           {selectedToken.symbol}
@@ -858,6 +882,27 @@ const styles = StyleSheet.create({
     color: "#E2E6F0",
     fontSize: 12,
     marginLeft: 4,
+  },
+  tokenIconWrapper: {
+    width: 40,
+    height: 40,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  networkBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 18,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#111827",
   },
 
   // Bank Selection Styles
