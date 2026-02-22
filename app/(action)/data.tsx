@@ -1,9 +1,4 @@
-import {
-  getCommerceDiscoPrices,
-  getTransactionByTxRef,
-  initializeCommerceDataTv,
-  normalizeAuthToken,
-} from "@/app/constants/api";
+// Integrate API: fetch data plans and initialize purchases
 import NineMobileIcon from "@/assets/images/network-providers-icons/9mobile-icon.svg";
 import AirtelIcon from "@/assets/images/network-providers-icons/airtel-icon.svg";
 import GloIcon from "@/assets/images/network-providers-icons/glo-icon.svg";
@@ -28,6 +23,10 @@ import {
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
+import {
+  getCommerceDiscoPrices,
+  initializeCommerceDataTv,
+} from "../constants/api";
 import { useToken } from "../contexts/TokenContext";
 import { RootState } from "../store";
 
@@ -48,7 +47,7 @@ type NetworkOption = {
   color: string;
 };
 
-const FX_RATE_NGN_PER_USD = 1600;
+const FX_RATE_NGN_PER_USD = 1600; // Should be fetched dynamically if available
 
 const NETWORKS: NetworkOption[] = [
   { id: "mtn", name: "MTN", color: "#F8C312" },
@@ -64,6 +63,7 @@ const getNetworkIcon = (network?: string) => {
   if (id.includes("bnb")) return Bnb;
   return null;
 };
+
 const NETWORK_PREFIXES: Record<string, string[]> = {
   mtn: [
     "803",
@@ -95,94 +95,45 @@ const NETWORK_PREFIXES: Record<string, string[]> = {
   "9mobile": ["809", "817", "818", "908", "909"],
 };
 
-const DATA_PLANS: DataPlan[] = [
-  {
-    id: "0",
-    title: "150 MB",
-    amount: 100,
-    subtitle1: "Mini Daily Plan",
-    subtitle2: "valid for 24 hours",
-    tariffClass: "default",
-    disco: "MTN",
-    number: "0",
-  },
-  {
-    id: "0b",
-    title: "500 MB",
-    amount: 200,
-    subtitle1: "Daily Plan",
-    subtitle2: "valid for 24 hours",
-    tariffClass: "default",
-    disco: "MTN",
-    number: "0b",
-  },
-  {
-    id: "0c",
-    title: "750 MB",
-    amount: 300,
-    subtitle1: "Daily Plus Plan",
-    subtitle2: "valid for 24 hours",
-    tariffClass: "default",
-    disco: "MTN",
-    number: "0c",
-  },
-  {
-    id: "1",
-    title: "1.8 GB",
-    amount: 500,
-    subtitle1: "Extradta 1.8GB+10 mins",
-    subtitle2: "valid for 30 days",
-    tariffClass: "default",
-    disco: "MTN",
-    number: "1",
-  },
-  {
-    id: "2",
-    title: "1GB",
-    amount: 500,
-    subtitle1: "1GB Daily Plan + 1.5mins.",
-    tariffClass: "default",
-    disco: "MTN",
-    number: "2",
-  },
-  {
-    id: "3",
-    title: "2GB",
-    amount: 750,
-    subtitle1: "2GB 2-Day Plan",
-    tariffClass: "default",
-    disco: "MTN",
-    number: "3",
-  },
-  {
-    id: "4",
-    title: "2GB",
-    amount: 800,
-    subtitle1: "1GB + 1GB YouTube Night +",
-    subtitle2: "100MB YouTube Music Weekly Plan",
-    tariffClass: "default",
-    disco: "MTN",
-    number: "4",
-  },
-  {
-    id: "5",
-    title: "5GB",
-    amount: 1500,
-    subtitle1: "5GB Weekly Booster",
-    tariffClass: "default",
-    disco: "MTN",
-    number: "5",
-  },
-  {
-    id: "6",
-    title: "10GB",
-    amount: 3000,
-    subtitle1: "10GB Monthly Plan",
-    tariffClass: "default",
-    disco: "MTN",
-    number: "6",
-  },
-];
+const normalizeLocalPhone = (raw: string) => {
+  const digits = (raw || "").replace(/\D/g, "");
+
+  if (digits.startsWith("234") && digits.length >= 13) {
+    return digits.slice(3, 13);
+  }
+
+  if (digits.startsWith("0") && digits.length >= 11) {
+    return digits.slice(1, 11);
+  }
+
+  if (digits.length >= 10) {
+    return digits.slice(0, 10);
+  }
+
+  return digits;
+};
+
+const detectNetworkFromPhone = (rawPhone: string) => {
+  const local = normalizeLocalPhone(rawPhone);
+  if (local.length < 3) return null;
+
+  const prefix = local.slice(0, 3);
+  const matchedKey = Object.keys(NETWORK_PREFIXES).find((key) =>
+    NETWORK_PREFIXES[key].includes(prefix),
+  );
+
+  if (!matchedKey) return null;
+
+  return (
+    NETWORKS.find((network) => {
+      const hay = (network.id + " " + network.name).toLowerCase();
+      if (matchedKey === "9mobile") {
+        return hay.includes("9mobile") || hay.includes("etisalat");
+      }
+      return hay.includes(matchedKey);
+    }) || null
+  );
+};
 
 export default function DataScreen() {
   const router = useRouter();
@@ -192,12 +143,11 @@ export default function DataScreen() {
 
   const [localPhone, setLocalPhone] = useState("");
   const [showNetworkDropdown, setShowNetworkDropdown] = useState(false);
-  const [selectedNetwork, setSelectedNetwork] = useState<NetworkOption>(
-    NETWORKS[0],
+  const [selectedNetwork, setSelectedNetwork] = useState<NetworkOption | null>(
+    NETWORKS.find((n) => n.id === "mtn") || null,
   );
-  const [dataPlans, setDataPlans] = useState<DataPlan[]>(DATA_PLANS);
+  const [dataPlans, setDataPlans] = useState<DataPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(false);
-  const [debugResponse, setDebugResponse] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAllPlans, setShowAllPlans] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
@@ -215,26 +165,8 @@ export default function DataScreen() {
     return amountNumber / FX_RATE_NGN_PER_USD;
   }, [amountNumber]);
 
-  const isPhoneValid = localPhone.length === 10;
-  const canPay =
-    isPhoneValid &&
-    amountNumber > 0 &&
-    !!selectedNetwork &&
-    !!selectedPlanId &&
-    !isSubmitting;
-
-  const detectNetworkFromPhone = (phoneDigits: string) => {
-    if (!phoneDigits || phoneDigits.length < 3) return null;
-
-    const prefix = phoneDigits.slice(0, 3);
-    const matchedNetworkId = Object.entries(NETWORK_PREFIXES).find(
-      ([, prefixes]) => prefixes.includes(prefix),
-    )?.[0];
-
-    if (!matchedNetworkId) return null;
-    return NETWORKS.find((network) => network.id === matchedNetworkId) || null;
-  };
-
+  const isPhoneValid = (localPhone || "").replace(/\D/g, "").length === 10;
+  const canPay = isPhoneValid && amountNumber > 0 && !isSubmitting;
   const shortenNetworkName = (value?: string) => {
     const raw = (value || "").trim();
     const normalized = raw.toLowerCase().replace(/\s+/g, "-");
@@ -249,13 +181,8 @@ export default function DataScreen() {
       return "BNB";
     }
 
-    if (normalized === "solana") {
-      return "Solana";
-    }
-
-    if (normalized === "base") {
-      return "Base";
-    }
+    if (normalized === "solana") return "Solana";
+    if (normalized === "base") return "Base";
 
     return raw;
   };
@@ -288,7 +215,6 @@ export default function DataScreen() {
 
   const displayTokenSymbol = selectedToken?.symbol || "USDC";
   const displayTokenNetwork = selectedToken?.network || "Solana";
-  const normalizedToken = normalizeAuthToken(token);
   const tokenBalance = getTokenBalance(displayTokenSymbol, displayTokenNetwork);
   const balanceLabel = `${tokenBalance.toFixed(6)} ${displayTokenSymbol}`;
   const TokenIcon = selectedToken?.icon;
@@ -299,18 +225,6 @@ export default function DataScreen() {
     glo: GloIcon,
     "9mobile": NineMobileIcon,
     etisalat: NineMobileIcon,
-  };
-
-  const normalizePaymentNetwork = (value: string) => {
-    const normalized = (value || "").toLowerCase().replace(/\s+/g, "-");
-    if (
-      normalized === "bnb-chain" ||
-      normalized === "bnb" ||
-      normalized === "bsc"
-    ) {
-      return "bnb-smart-chain";
-    }
-    return normalized;
   };
 
   const normalizePhoneNumber = (raw: string) => {
@@ -335,117 +249,94 @@ export default function DataScreen() {
   const sortPlansByAmount = (plans: DataPlan[]) =>
     [...plans].sort((a, b) => a.amount - b.amount);
 
-  const parsePlansFromResponse = (response: any, fallbackDisco: string) => {
-    const rawList =
-      response?.data?.data ||
-      response?.data?.prices ||
-      response?.data?.plans ||
-      response?.prices ||
-      response?.plans ||
-      response?.data ||
-      [];
+  // Parse plan list returned by `/commerce/disco/prices?service=DATA&disco=${disco}`.
+  // The API may return plans in `response.data.data` (observed) or `response.data.prices`.
+  const parsePlansFromResponse = (response: any) => {
+    const rawList = response?.data?.data ?? response?.data?.prices ?? null;
+    try {
+      console.log("[data] parsePlansFromResponse rawList present", {
+        isArray: Array.isArray(rawList),
+        length: rawList?.length,
+      });
+      console.log("[data] parsePlansFromResponse firstItem", rawList?.[0]);
+    } catch {}
 
     if (!Array.isArray(rawList)) return [] as DataPlan[];
 
-    const parsedPlans = rawList
+    const parsed: DataPlan[] = rawList
       .map((item: any, index: number) => {
-        const amount = Number(item?.amount || item?.price || item?.value || 0);
-        if (!Number.isFinite(amount) || amount <= 0) return null;
-
-        const size = String(
-          item?.size ||
+        const amount = Number(item?.price ?? item?.amount ?? item?.value);
+        const title = String(
+          item?.desc ||
             item?.name ||
             item?.title ||
             item?.bundle ||
+            item?.size ||
             item?.plan ||
             "",
         ).trim();
-
-        const subtitle1 = String(
-          item?.description ||
-            item?.desc ||
-            item?.validity ||
-            item?.details ||
-            "",
-        ).trim();
-
-        const subtitle2 = String(item?.extra || item?.meta || "").trim();
-
-        const tariffClass = String(
-          item?.tariffClass ||
-            item?.tariff ||
-            item?.class ||
-            item?.planType ||
-            "default",
-        ).trim();
-
-        const disco = String(
-          item?.disco || item?.provider || fallbackDisco,
-        ).trim();
-        const number = String(
-          item?.number || item?.code || item?.id || item?.planId || index + 1,
-        ).trim();
+        const id = item?.id ?? item?.planId ?? item?.code ?? `plan-${index}`;
+        if (!id || !Number.isFinite(amount) || amount <= 0 || !title)
+          return null;
 
         return {
-          id: String(
-            item?.id || `${disco}-${tariffClass}-${number}-${amount}-${index}`,
-          ),
-          title: size || `Plan ${index + 1}`,
+          id: String(id),
+          title,
           amount,
-          subtitle1: subtitle1 || `Data plan (${disco})`,
-          subtitle2: subtitle2 || undefined,
-          tariffClass,
-          disco,
-          number,
+          subtitle1: String(
+            item?.desc || item?.description || item?.validity || "",
+          ).trim(),
+          subtitle2:
+            item?.meta || item?.extra
+              ? String(item?.meta ?? item?.extra)
+              : undefined,
+          tariffClass: String(item?.tariffClass || item?.tariff || "default"),
+          disco: String(item?.disco || "").trim(),
+          number: String(item?.code || id),
         } as DataPlan;
       })
       .filter(Boolean) as DataPlan[];
 
-    return sortPlansByAmount(parsedPlans);
+    return sortPlansByAmount(parsed);
   };
 
   useEffect(() => {
-    if (!normalizedToken) {
-      try {
-        console.log(
-          "[data] fetchPlans skipped — no auth token present (normalizedToken falsy)",
-        );
-      } catch {}
+    // Fetch remote plans for the selected network/provider
+    if (!selectedNetwork) {
+      setDataPlans([]);
+      setSelectedPlanId(null);
       return;
     }
 
+    let mounted = true;
     const fetchPlans = async () => {
       setLoadingPlans(true);
       try {
-        const response = await getCommerceDiscoPrices(
-          {
-            service: "DATA",
-            disco: selectedNetwork.name,
-          },
-          normalizedToken,
+        const res = await getCommerceDiscoPrices(
+          { service: "DATA", disco: selectedNetwork.id },
+          token,
         );
-        // Save raw response for debugging when plans are missing
-        setDebugResponse(response);
-        try {
-          console.log("[data] disco/prices response", response);
-          console.log("[data] selectedNetwork", selectedNetwork.name);
-          console.log("[data] normalizedToken present", !!normalizedToken);
-        } catch {}
-
-        const parsed = parsePlansFromResponse(response, selectedNetwork.name);
-        setDataPlans(parsed);
-        setSelectedPlanId(null);
-      } catch {
-        setDebugResponse({ error: "request_failed" });
-        setDataPlans([]);
-        setSelectedPlanId(null);
+        const plans = parsePlansFromResponse(res);
+        if (mounted) {
+          setDataPlans(plans);
+          setSelectedPlanId(null);
+        }
+      } catch (err) {
+        console.warn("[data] fetch plans error", err);
+        if (mounted) {
+          setDataPlans([]);
+          setSelectedPlanId(null);
+        }
       } finally {
-        setLoadingPlans(false);
+        if (mounted) setLoadingPlans(false);
       }
     };
 
-    void fetchPlans();
-  }, [selectedNetwork, normalizedToken]);
+    fetchPlans();
+    return () => {
+      mounted = false;
+    };
+  }, [selectedNetwork]);
 
   const handlePhoneNumberChange = (text: string) => {
     const cleaned = text.replace(/\D/g, "").slice(0, 10);
@@ -453,12 +344,6 @@ export default function DataScreen() {
 
     const matchedNetwork = detectNetworkFromPhone(cleaned);
     if (matchedNetwork) {
-      try {
-        console.log(
-          "[data] detectNetworkFromPhone matched",
-          matchedNetwork?.id,
-        );
-      } catch {}
       setSelectedNetwork(matchedNetwork);
     }
   };
@@ -496,11 +381,6 @@ export default function DataScreen() {
       return;
     }
 
-    if (!normalizedToken) {
-      Alert.alert("Authentication required", "Please sign in and try again.");
-      return;
-    }
-
     const selectedPlan = dataPlans.find((plan) => plan.id === selectedPlanId);
     if (!selectedPlan) {
       Alert.alert("Select a plan", "Please choose a valid data plan.");
@@ -512,120 +392,34 @@ export default function DataScreen() {
     const submit = async () => {
       setIsSubmitting(true);
       try {
-        const response = await initializeCommerceDataTv(
-          {
-            number: selectedPlan.number,
-            disco: selectedPlan.disco || selectedNetwork.name,
-            tariffClass: selectedPlan.tariffClass || "default",
-            amount: amountNumber,
-            phoneNumber: normalizedPhone,
-            type: "DATA",
-            asset: (displayTokenSymbol || "USDC").toLowerCase(),
-            network: normalizePaymentNetwork(displayTokenNetwork || "solana"),
-          },
-          normalizedToken,
+        const selectedPlan = dataPlans.find(
+          (plan) => plan.id === selectedPlanId,
         );
+        const payload: any = {
+          number: selectedPlan?.number || undefined,
+          tariffClass: selectedPlan?.tariffClass,
+          disco: selectedPlan?.disco || selectedNetwork?.id,
+          amount: amountNumber,
+          phoneNumber: normalizedPhone,
+          type: "DATA",
+          asset: (displayTokenSymbol || "usdc").toLowerCase(),
+          network: normalizeTokenNetwork(displayTokenNetwork || "solana"),
+        };
 
-        const statusText = String(
-          response?.status || response?.data?.status || "",
-        ).toLowerCase();
-        const responseMessage =
-          response?.message || response?.data?.message || "";
+        const res = await initializeCommerceDataTv(payload, token);
         const txRef =
-          response?.data?.txRef ||
-          response?.data?.reference ||
-          response?.txRef ||
-          response?.reference ||
-          response?.data?.transactionRef ||
-          response?.transactionRef;
-
-        const isExplicitFailure =
-          response?.success === false ||
-          response?.data?.success === false ||
-          statusText.includes("fail") ||
-          statusText.includes("error") ||
-          statusText.includes("declined");
-
-        if (isExplicitFailure) {
-          throw new Error(
-            responseMessage ||
-              "Transaction was not created. Please verify and try again.",
-          );
-        }
-
-        const isExplicitSuccess =
-          response?.success === true ||
-          response?.data?.success === true ||
-          statusText.includes("success") ||
-          statusText.includes("pending") ||
-          statusText.includes("created");
-
-        if (!txRef) {
-          throw new Error(
-            "No transaction reference returned. Please try again.",
-          );
-        }
-
-        if (!isExplicitSuccess) {
-          throw new Error(
-            "Unable to confirm that the transaction was created. Please check recent activity.",
-          );
-        }
-
-        let purchaseState: "pending" | "successful" = "pending";
-
-        try {
-          const transaction = await getTransactionByTxRef(
-            txRef,
-            normalizedToken,
-          );
-          const txStatus = String(
-            transaction?.data?.status || transaction?.status || "",
-          ).toLowerCase();
-
-          const isFailedStatus =
-            txStatus.includes("fail") ||
-            txStatus.includes("cancel") ||
-            txStatus.includes("expire") ||
-            txStatus.includes("error");
-
-          if (isFailedStatus) {
-            throw new Error(
-              `Transaction was not successful (status: ${txStatus || "failed"}).`,
-            );
-          }
-
-          const isSuccessStatus =
-            txStatus.includes("success") || txStatus.includes("complete");
-
-          if (isSuccessStatus) {
-            purchaseState = "successful";
-          }
-        } catch (verificationError: any) {
-          const message = String(
-            verificationError?.message || "",
-          ).toLowerCase();
-          const looksLikeAuthHeaderIssue =
-            message.includes("authorization") || message.includes("header");
-
-          if (!looksLikeAuthHeaderIssue) {
-            throw verificationError;
-          }
-        }
+          res?.data?.txRef ||
+          res?.txRef ||
+          res?.reference ||
+          `local-${Date.now()}`;
 
         router.push({
           pathname: "/(action)/success-screen",
           params: {
-            network: normalizePaymentNetwork(displayTokenNetwork || "solana"),
+            network: normalizeTokenNetwork(displayTokenNetwork || "solana"),
             txRef,
-            title:
-              purchaseState === "successful"
-                ? "Data Purchase Successful"
-                : "Data Purchase Initiated",
-            description:
-              purchaseState === "successful"
-                ? `Phone: ${normalizedPhone} • ${selectedNetwork.name} • ₦${amountNumber.toFixed(2)} • Ref: ${txRef}`
-                : `Your data request was created and is processing. Ref: ${txRef}`,
+            title: "Data Purchase Initiated",
+            description: `Phone: ${normalizedPhone} • ${selectedNetwork?.name || "Unknown"} • ₦${amountNumber.toFixed(2)}`,
             viewText: "View Transaction",
           },
         });
@@ -634,17 +428,13 @@ export default function DataScreen() {
         setSelectedPlanId(null);
         setAmountInput("");
       } catch (error: any) {
-        Alert.alert(
-          "Purchase failed",
-          error?.message ||
-            "Unable to initialize data purchase. Please try again.",
-        );
+        Alert.alert("Purchase failed", error?.message || String(error));
       } finally {
         setIsSubmitting(false);
       }
     };
 
-    void submit();
+    submit();
   };
 
   return (
@@ -691,23 +481,27 @@ export default function DataScreen() {
             >
               <View style={styles.networkIconWrapper}>
                 {(() => {
-                  const id = (selectedNetwork.id || "").toLowerCase();
+                  const id = (selectedNetwork?.id || "").toLowerCase();
                   const Local = providerIconMap[id];
                   if (Local) return <Local width={18} height={18} />;
                   return (
                     <View
                       style={[
                         styles.networkDot,
-                        { backgroundColor: selectedNetwork.color || "#6C7486" },
+                        {
+                          backgroundColor: selectedNetwork?.color || "#6C7486",
+                        },
                       ]}
                     >
                       <Text style={styles.networkDotText}>
-                        {selectedNetwork.name.slice(0, 3)}
+                        {(selectedNetwork?.name || "Sel").slice(0, 3)}
                       </Text>
                     </View>
                   );
                 })()}
-                <Text style={styles.networkText}>{selectedNetwork.name}</Text>
+                <Text style={styles.networkText}>
+                  {selectedNetwork?.name || "Select"}
+                </Text>
                 <Ionicons
                   name={showNetworkDropdown ? "chevron-up" : "chevron-down"}
                   size={12}
@@ -720,7 +514,7 @@ export default function DataScreen() {
           {showNetworkDropdown && (
             <View style={styles.dropdownMenu}>
               {NETWORKS.map((network) => {
-                const isActive = selectedNetwork.id === network.id;
+                const isActive = selectedNetwork?.id === network.id;
                 return (
                   <TouchableOpacity
                     key={network.id}
@@ -764,11 +558,15 @@ export default function DataScreen() {
 
           <View style={styles.planHeaderRow}>
             <Text style={styles.sectionLabel}>Choose data plan</Text>
-            <TouchableOpacity onPress={() => setShowAllPlans((prev) => !prev)}>
-              <Text style={styles.viewAllText}>
-                {showAllPlans ? "Show less" : "View all"}
-              </Text>
-            </TouchableOpacity>
+            {dataPlans.length > 4 && (
+              <TouchableOpacity
+                onPress={() => setShowAllPlans((prev) => !prev)}
+              >
+                <Text style={styles.viewAllText}>
+                  {showAllPlans ? "Show less" : "View all"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           {loadingPlans ? (
@@ -957,17 +755,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     height: 28,
   },
-  flagStub: {
-    width: 14,
-    height: 10,
-    borderRadius: 2,
-    backgroundColor: "#2BA84A",
-  },
-  flagImage: {
-    width: 18,
-    height: 12,
-    borderRadius: 2,
-  },
   phonePrefix: {
     color: "#B0BACB",
     fontSize: 15,
@@ -1080,59 +867,50 @@ const styles = StyleSheet.create({
   planCard: {
     width: "48%",
     minHeight: 110,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#2B313D",
-    backgroundColor: "#13161B",
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    marginBottom: 10,
-    gap: 4,
-  },
-  tokenIconWrapper: {
-    width: 40,
-    height: 40,
+    borderColor: "#1F2733",
+    backgroundColor: "#0F1418",
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    paddingTop: 22,
+    marginBottom: 12,
+    gap: 6,
     position: "relative",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  networkBadge: {
-    position: "absolute",
-    right: -2,
-    bottom: -2,
-    width: 18,
-    height: 18,
-    borderRadius: 18,
-    backgroundColor: "#0B1220",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#111827",
+    // subtle shadow (iOS) and elevation (Android)
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 3,
   },
   planCardSelected: {
     borderColor: "#34D058",
-    backgroundColor: "#152019",
+    backgroundColor: "#072017",
   },
   planBadge: {
-    alignSelf: "flex-end",
-    borderRadius: 4,
+    position: "absolute",
+    right: 10,
+    top: 10,
+    borderRadius: 16,
     backgroundColor: "#1B9C62",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    zIndex: 10,
   },
   planBadgeText: {
     color: "#E9FFF3",
-    fontSize: 10,
-    fontWeight: "600",
+    fontSize: 12,
+    fontWeight: "700",
   },
   planTitle: {
     color: "#E6EBF5",
-    fontSize: 26,
+    fontSize: 16,
     fontWeight: "700",
+    marginBottom: 6,
   },
   planSubtitle: {
-    color: "#7D8799",
+    color: "#9AA6B6",
     fontSize: 12,
     lineHeight: 16,
   },
@@ -1167,6 +945,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginBottom: 8,
+  },
+  tokenIconWrapper: {
+    width: 40,
+    height: 40,
+    position: "relative",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  networkBadge: {
+    position: "absolute",
+    right: -2,
+    bottom: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 18,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#111827",
   },
   tokenName: {
     color: "#E2E6F0",

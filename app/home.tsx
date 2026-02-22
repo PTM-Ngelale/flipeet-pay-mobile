@@ -247,7 +247,7 @@ export default function WalletHomeScreen() {
             <Image source={{ uri: profileImage }} style={styles.userAvatar} />
           ) : (
             // <UserProfile width={48} height={48} />
-            <Ionicons name="person-circle-outline" size={25} color="#B0BACB" />
+            <Ionicons name="person-circle-outline" size={35} color="#B0BACB" />
           )}
         </TouchableOpacity>
         <View>

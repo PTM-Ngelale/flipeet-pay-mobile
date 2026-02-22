@@ -63,11 +63,28 @@ async function handleResponse(res: Response) {
   if (!res.ok) {
     const errorText = await res.text();
     let errorMessage = errorText;
+    let parsedJson: any = null;
     try {
-      const errorJson = JSON.parse(errorText);
-      errorMessage = errorJson.message || errorJson.error || errorText;
+      parsedJson = JSON.parse(errorText);
+      // Prefer explicit message fields; fall back to full JSON string so callers have context
+      errorMessage =
+        parsedJson.message ||
+        parsedJson.error ||
+        (typeof parsedJson === "object"
+          ? JSON.stringify(parsedJson)
+          : errorText);
+    } catch {
+      // Not JSON, keep raw text
+    }
+
+    const err = new Error(errorMessage);
+    try {
+      // Attach HTTP status and parsed body for callers that inspect the error object
+      (err as any).status = res.status;
+      (err as any).statusText = res.statusText;
+      (err as any).body = parsedJson ?? errorText;
     } catch {}
-    throw new Error(errorMessage);
+    throw err;
   }
   // Some endpoints may return no body (204, file download, etc.)
   try {
@@ -107,6 +124,22 @@ export async function apiRequest(path: string, options: RequestOptions = {}) {
   const resStatus = res.status;
   const resStatusText = res.statusText;
   try {
+    // If this is a fetchMeter request and the response is not OK, capture body for debugging
+    if (isFetchMeter && !res.ok) {
+      try {
+        const clone = res.clone();
+        const bodyText = await clone.text();
+        console.warn("[api] fetchMeter failed response", {
+          url: `${API_BASE_URL}${path}`,
+          status: resStatus,
+          statusText: resStatusText,
+          body: bodyText,
+        });
+      } catch (logErr) {
+        // ignore logging errors
+      }
+    }
+
     const parsed = await handleResponse(res);
     if (isFetchMeter) {
       try {
@@ -754,18 +787,31 @@ export async function initializeCommerceDataTv(
 
 export async function initializeCommerceElectricity(
   payload: {
-    provider: string;
+    provider?: string;
+    discoName?: string;
     meterNumber: string;
     meterType?: string;
+    type?: string;
     amount: number;
+    phoneNumber?: string;
     asset: string;
     network: string;
   },
   token: string,
 ) {
+  const body: any = {
+    meterNumber: payload.meterNumber,
+    discoName: payload.discoName || payload.provider,
+    amount: payload.amount,
+    type: payload.meterType || payload.type,
+    phoneNumber: payload.phoneNumber,
+    asset: payload.asset,
+    network: payload.network,
+  };
+
   return apiRequest(`/commerce/electricity/initialize`, {
     method: "POST",
-    body: payload,
+    body,
     token,
   });
 }
@@ -775,9 +821,19 @@ export async function fetchCommerceElectricityMeterInfo(
   token: string,
 ) {
   const params = new URLSearchParams();
-  params.append("provider", query.provider);
-  params.append("meterNumber", query.meterNumber);
-  if (query.meterType) params.append("meterType", query.meterType);
+  // Support multiple possible parameter names used by different providers
+  if (query.provider) {
+    params.append("provider", query.provider);
+    params.append("disco", query.provider);
+  }
+  if (query.meterNumber) {
+    params.append("meterNumber", query.meterNumber);
+    params.append("meter", query.meterNumber);
+  }
+  if (query.meterType) {
+    params.append("meterType", query.meterType);
+    params.append("vendType", query.meterType);
+  }
 
   return apiRequest(`/commerce/electricity/fetchMeter?${params.toString()}`, {
     method: "GET",

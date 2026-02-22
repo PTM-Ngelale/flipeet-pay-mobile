@@ -60,7 +60,10 @@ export default function ServicesScreen() {
                   <ElectricityIcon />
                   <Text style={styles.tileLabel}>Electricity</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.billsTile}>
+                <TouchableOpacity
+                  style={[styles.billsTile, styles.tileDisabled]}
+                  disabled
+                >
                   <TVIcon />
                   <Text style={styles.tileLabel}>TV</Text>
                 </TouchableOpacity>
@@ -70,8 +73,8 @@ export default function ServicesScreen() {
               <Text style={styles.sectionTitle}>Ecommerce</Text>
               <View style={styles.singleRow}>
                 <TouchableOpacity
-                  style={styles.tile}
-                  onPress={() => router.push("/(action)/gift-cards")}
+                  style={[styles.tile, styles.tileDisabled]}
+                  disabled
                 >
                   <GiftCardIcon />
                   <Text style={styles.tileLabel}>Gift Cards</Text>
@@ -81,7 +84,10 @@ export default function ServicesScreen() {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Others</Text>
               <View style={styles.singleRow}>
-                <TouchableOpacity style={styles.tile}>
+                <TouchableOpacity
+                  style={[styles.tile, styles.tileDisabled]}
+                  disabled
+                >
                   <VirtualCardIcon />
                   <Text style={styles.tileLabel}>Virtual Card</Text>
                 </TouchableOpacity>
@@ -162,6 +168,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
+  },
+  tileDisabled: {
+    opacity: 0.45,
   },
   tileLabel: {
     color: "#B0BACB",

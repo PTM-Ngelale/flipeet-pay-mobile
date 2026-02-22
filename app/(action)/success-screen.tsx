@@ -17,15 +17,10 @@ export default function SuccessScreen() {
     asSingleValue(params.title) ||
     asSingleValue(params.heading) ||
     "Transaction Successful";
-  const description =
-    asSingleValue(params.description) ||
-    "Your transaction was completed successfully";
-  const viewText = asSingleValue(params.viewText) || "View Transaction";
-  const txRef =
-    asSingleValue(params.txRef) ||
-    asSingleValue(params.transactionId) ||
-    asSingleValue(params.reference) ||
-    "";
+  // Minimal UI: avoid showing extra transaction details
+  const description = "";
+  const viewText = "";
+  const txRef = "";
 
   const RECENT_NETWORKS_KEY = "flipeet_recent_networks_v1";
   const MAX_RECENT_NETWORKS = 1;
@@ -84,16 +79,11 @@ export default function SuccessScreen() {
           <SuccessIcon />
           <View style={styles.textContainer}>
             <Text style={styles.title}>{title}</Text>
-            <Text style={styles.description}>{description}</Text>
           </View>
         </View>
 
         {/* Close Button at Bottom */}
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.view} onPress={handleViewTransaction}>
-            <Text style={styles.viewText}>{viewText}</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
