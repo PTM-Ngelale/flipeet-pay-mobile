@@ -168,7 +168,7 @@ export default function LoginScreen() {
               <Text style={styles.inputLabel}>Enter Email</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your email"
+                placeholder=""
                 placeholderTextColor="#757B85"
                 value={email}
                 onChangeText={setLocalEmail}
@@ -185,7 +185,7 @@ export default function LoginScreen() {
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder="Enter your password"
+                  placeholder=""
                   placeholderTextColor="#757B85"
                   value={password}
                   onChangeText={setPassword}
@@ -304,18 +304,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1C1C1C",
+    // backgroundColor: "#1C1C1C",
     paddingVertical: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#374151",
+    borderColor: "#3A4D8C",
     marginBottom: 24,
     gap: 12,
   },
   googleButtonText: {
-    color: "#FFFFFF",
+    color: "#B0BACB",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   divider: {
     flexDirection: "row",
@@ -393,14 +393,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   loginButton: {
-    backgroundColor: "#4A9DFF",
+    backgroundColor: "#0A66D3",
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: "center",
     marginBottom: 24,
   },
   loginButtonDisabled: {
-    backgroundColor: "#374151",
+    opacity: 0.6,
   },
   loginButtonText: {
     color: "#FFFFFF",
@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   loginButtonTextDisabled: {
-    color: "#9CA3AF",
+    color: "#F2F4F8",
   },
   signUpContainer: {
     flexDirection: "row",

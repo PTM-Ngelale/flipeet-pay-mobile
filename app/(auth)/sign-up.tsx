@@ -153,7 +153,7 @@ export default function SignUpScreen() {
         >
           <View style={styles.content}>
             <View style={styles.header}>
-              <Text style={styles.welcomeText}>Create account</Text>
+              <Text style={styles.welcomeText}>Get Started</Text>
               <Text style={styles.subtitle}>
                 Welcome to Flipeet Pay - Let's create your account{" "}
               </Text>
@@ -174,7 +174,7 @@ export default function SignUpScreen() {
                 <>
                   <GoogleLogo />
                   <Text style={styles.googleButtonText}>
-                    Continue with Google
+                    Sign up with Google
                   </Text>
                 </>
               )}
@@ -187,7 +187,7 @@ export default function SignUpScreen() {
             </View>
 
             <View style={{ marginBottom: 30 }}>
-              <Text style={{ color: "#E2E6F0", fontSize: 20, fontWeight: 700 }}>
+              <Text style={{ color: "#E2E6F0", fontSize: 18, fontWeight: 700 }}>
                 Sign up with email
               </Text>
             </View>
@@ -197,7 +197,7 @@ export default function SignUpScreen() {
               <Text style={styles.inputLabel}>Enter Email</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter your email"
+                placeholder=""
                 placeholderTextColor="#757B85"
                 value={email}
                 onChangeText={setEmail}
@@ -214,7 +214,7 @@ export default function SignUpScreen() {
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder="Enter your password"
+                  placeholder=""
                   placeholderTextColor="#757B85"
                   value={password}
                   onChangeText={setPassword}
@@ -242,7 +242,7 @@ export default function SignUpScreen() {
               <View style={styles.passwordContainer}>
                 <TextInput
                   style={styles.passwordInput}
-                  placeholder="Confirm your password"
+                  placeholder=""
                   placeholderTextColor="#757B85"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -330,18 +330,18 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   subtitle: {
-    color: "#757B85",
+    color: "#E2E6F0",
     fontSize: 14,
   },
   googleButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#1C1C1C",
+    // backgroundColor: "#1C1C1C",
     paddingVertical: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#374151",
+    borderColor: "#3A4D8C",
     marginBottom: 24,
     gap: 12,
   },
@@ -349,9 +349,9 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   googleButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
+    color: "#B0BACB",
+    fontSize: 14,
+    fontWeight: "500",
   },
   divider: {
     flexDirection: "row",
@@ -361,18 +361,18 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#374151",
+    backgroundColor: "#A6B1C6",
   },
   dividerText: {
     color: "#757B85",
     paddingHorizontal: 16,
-    fontSize: 14,
+    fontSize: 16,
   },
   inputContainer: {
     marginBottom: 32,
   },
   inputLabel: {
-    color: "#FFFFFF",
+    color: "#B0BACB",
     fontSize: 16,
     fontWeight: "500",
     marginBottom: 8,
@@ -409,14 +409,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   signUpButton: {
-    backgroundColor: "#4A9DFF",
+    backgroundColor: "#0A66D3",
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: "center",
     marginBottom: 24,
   },
   signUpButtonDisabled: {
-    backgroundColor: "#374151",
+    opacity: 0.6,
   },
   signUpButtonText: {
     color: "#FFFFFF",
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   signUpButtonTextDisabled: {
-    color: "#9CA3AF",
+    color: "#F2F4F8",
   },
   loginContainer: {
     flexDirection: "row",

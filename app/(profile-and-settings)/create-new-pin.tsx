@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../store";
 import { changePin } from "../store/authSlice";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function CreateNewPINScreen() {
   const [newPin, setNewPin] = useState(["", "", "", "", "", ""]);
@@ -100,6 +101,13 @@ export default function CreateNewPINScreen() {
 
     try {
       await dispatch(changePin({ oldPin, newPin: newPinString })).unwrap();
+      // Persist local quick-login PIN so the device can use PIN sign-in
+      try {
+        await AsyncStorage.setItem("auth_pin", newPinString);
+      } catch (e) {
+        console.warn("Failed to persist auth_pin locally", e);
+      }
+
       router.push("/success-pin");
     } catch (error: any) {
       Alert.alert("Error", error || "Failed to change PIN");
