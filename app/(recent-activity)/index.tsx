@@ -46,7 +46,7 @@ interface Activity {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#121212",
   },
   header: {
     flexDirection: "row",
@@ -686,14 +686,14 @@ export default function RecentActivity() {
   const Header = () => (
     <View style={styles.header}>
       <TouchableOpacity onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+        <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
       </TouchableOpacity>
       <Text style={{ color: "#757B85", fontSize: 20, fontWeight: "bold" }}>
         Recent Activity
       </Text>
 
       <View style={{ opacity: 0 }}>
-        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+        <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
       </View>
     </View>
   );

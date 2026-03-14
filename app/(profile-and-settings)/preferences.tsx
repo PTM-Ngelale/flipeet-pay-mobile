@@ -67,7 +67,7 @@ const Preferences = () => {
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Preferences</Text>
           <View style={styles.headerPlaceholder} />
@@ -168,7 +168,7 @@ const Preferences = () => {
                 <Switch
                   value={notificationsEnabled}
                   onValueChange={toggleNotifications}
-                  trackColor={{ false: "#374151", true: "#34D058" }}
+                  trackColor={{ false: "#B0BACB", true: "#34D058" }}
                   thumbColor={notificationsEnabled ? "#FFFFFF" : "#F3F4F6"}
                   ios_backgroundColor="#374151"
                   style={styles.smallSwitch}
@@ -195,7 +195,7 @@ export default Preferences;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#121212",
   },
   scrollView: {
     flex: 1,
@@ -237,14 +237,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   label: {
-    color: "#FFFFFF",
+    color: "#E2E6F0",
     fontSize: 16,
     fontWeight: "500",
   },
   dropdownButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#000000",
+    backgroundColor: "#121212",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 6,
@@ -255,14 +255,14 @@ const styles = StyleSheet.create({
   },
   dropdownText: {
     color: "#E2E6F0",
-    fontSize: 14,
+    fontSize: 16,
     marginRight: 8,
   },
   dropdownList: {
-    backgroundColor: "#000000",
+    backgroundColor: "#121212",
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#374151",
+    borderColor: "#2A2A2A",
     marginTop: 12,
     overflow: "hidden",
   },
@@ -285,8 +285,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   notificationDescription: {
-    color: "#757B85",
-    fontSize: 14,
+    color: "#B0BACB",
+    fontSize: 12,
     marginTop: 2,
   },
   switchContainer: {

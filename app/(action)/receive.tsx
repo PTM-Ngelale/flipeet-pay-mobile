@@ -5,8 +5,8 @@ import BaseIcon from "@/assets/images/base-icon.svg";
 import BinanceIcon from "@/assets/images/binance-icon.svg";
 import QrCodeIcon from "@/assets/images/qr-code-icon.svg";
 import ReceiveUserIcon from "@/assets/images/receive-user-icon.svg";
+import WalletIcon from "@/assets/images/receive-wallet-icon.svg";
 import SolanaIcon from "@/assets/images/solana-icon.svg";
-import WalletIcon from "@/assets/images/wallet-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
@@ -275,11 +275,11 @@ export default function ReceiveScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Receive</Text>
           <View style={{ opacity: 0 }}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </View>
         </View>
         <ScrollView
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: "#757B85",
     fontSize: 20,
-    fontWeight: "bold",
+    fontWeight: 700,
   },
   headerPlaceholder: {
     width: 24,
@@ -445,8 +445,8 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   dropdownItemTitle: {
-    color: "#9CA3AF",
-    fontSize: 14,
+    color: "#E2E6F0",
+    fontSize: 14.5,
   },
   dropdownItemSubtitle: {
     flexDirection: "row",
@@ -455,7 +455,8 @@ const styles = StyleSheet.create({
   },
   dropdownItemSubtitleText: {
     color: "#E2E6F0",
-    fontSize: 14,
+    fontSize: 14.5,
+    fontWeight: "700",
   },
   copiedText: {
     color: "#4A9DFF",

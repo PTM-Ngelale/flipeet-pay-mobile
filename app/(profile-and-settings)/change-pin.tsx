@@ -73,7 +73,7 @@ export default function ChangePINScreen() {
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Change PIN</Text>
           <View style={styles.headerPlaceholder} />

@@ -4,12 +4,13 @@ import { RootState } from "@/app/store";
 import Base from "@/assets/images/networks/base.svg";
 import Bnb from "@/assets/images/networks/bnb.svg";
 import Solana from "@/assets/images/networks/solana.svg";
+import SyncIcon from "@/assets/images/sync-icon.svg";
+import WalletIcon from "@/assets/images/wallet-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -211,7 +212,7 @@ const EmailComponent = () => {
               </View>
               <TextInput
                 style={styles.emailInput}
-                placeholder="Enter email address"
+                placeholder=""
                 placeholderTextColor="#757B85"
                 value={email}
                 onChangeText={handleEmailChange}
@@ -253,8 +254,9 @@ const EmailComponent = () => {
                   <Text style={styles.amountButtonText}>Max</Text>
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={handleSync}>
-                <Ionicons name="sync" size={20} color="#B0BACB" />
+              <TouchableOpacity onPress={handleSync} style={styles.syncButton}>
+                {/* <Ionicons name="sync" size={20} color="#B0BACB" /> */}
+                <SyncIcon />
               </TouchableOpacity>
             </View>
 
@@ -307,15 +309,18 @@ const EmailComponent = () => {
                       <Ionicons name="chevron-down" color={"#4A9DFF"} />
                     </View>
                   </TouchableOpacity>
-                  <View style={styles.balanceContainer}>
-                    <Image
-                      source={require("@/assets/images/wallet-icon.png")}
-                      style={styles.walletIcon}
-                    />
-                    <Text style={styles.balanceText}>
-                      {tokenBalance.toFixed(6)}{" "}
-                      {selectedToken?.symbol || "USDC"}
-                    </Text>
+                  <View style={{ width: "95%" }}>
+                    <View style={styles.balanceContainer}>
+                      {/* <Image
+                        source={require("@/assets/images/wallet-icon.png")}
+                        style={styles.walletIcon}
+                      /> */}
+                      <WalletIcon width={15} height={15} />s
+                      <Text style={styles.balanceText}>
+                        {tokenBalance.toFixed(6)}{" "}
+                        {selectedToken?.symbol || "USDC"}
+                      </Text>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -379,6 +384,7 @@ const styles = StyleSheet.create({
   emailLabel: {
     color: "#B0BACB",
     fontSize: 16,
+    fontWeight: 600,
   },
   favoritesButton: {
     flexDirection: "row",
@@ -431,7 +437,9 @@ const styles = StyleSheet.create({
   },
   amountButtonText: {
     color: "#B0BACB",
-    fontSize: 14,
+    fontSize: 16,
+    paddingHorizontal: 1,
+    paddingVertical: 0,
   },
   section: {
     padding: 16,
@@ -454,6 +462,7 @@ const styles = StyleSheet.create({
     color: "#E2E6F0",
     fontSize: 16,
     marginBottom: 8,
+    fontWeight: 500,
   },
   amountInputContainer: {
     flexDirection: "row",
@@ -461,20 +470,22 @@ const styles = StyleSheet.create({
   },
   currencySymbol: {
     color: "white",
-    fontSize: 24,
+    fontSize: 32,
     marginRight: 4,
     fontWeight: "600",
   },
   amountInput: {
     color: "#fff",
-    fontSize: 24,
+    fontSize: 32,
     padding: 0,
     margin: 0,
     fontWeight: "600",
     minWidth: 120,
   },
   tokenSelector: {
-    backgroundColor: "black",
+    backgroundColor: "#121212",
+    borderColor: "#2A2A2A",
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -495,6 +506,8 @@ const styles = StyleSheet.create({
   balanceContainer: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    alignContent: "center",
   },
   walletIcon: {
     width: 13,
@@ -504,6 +517,7 @@ const styles = StyleSheet.create({
     color: "#E2E6F0",
     fontSize: 12,
     marginLeft: 4,
+    fontWeight: 500,
   },
   tokenIconWrapper: {
     width: 40,
@@ -543,6 +557,14 @@ const styles = StyleSheet.create({
   swapButtonDisabled: {
     backgroundColor: "#3B82F6",
     opacity: 0.4,
+  },
+
+  syncButton: {
+    backgroundColor: "#121212",
+    padding: 7,
+    borderRadius: 6,
+    borderColor: "#2A2A2A",
+    borderWidth: 1,
   },
   swapButtonText: {
     fontSize: 18,

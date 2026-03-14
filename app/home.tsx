@@ -1,3 +1,4 @@
+import EyeIcon from "@/assets/images/eye-icon.svg";
 import HistoryIcon from "@/assets/images/history-icon.svg";
 import ReceiveIcon from "@/assets/images/receive-icon.svg";
 import SendIcon from "@/assets/images/send-icon.svg";
@@ -268,6 +269,7 @@ export default function WalletHomeScreen() {
       <Text style={styles.totalBalance}>TOTAL BALANCE</Text>
       <View style={styles.balanceRow}>
         <Text
+          onPress={toggleBalanceVisibility}
           style={[
             styles.balanceAmount,
             { color: COLORS.textPrimary },
@@ -277,11 +279,24 @@ export default function WalletHomeScreen() {
           {isBalanceVisible ? `$${totalBalanceUSD.toFixed(2)}` : "******"}
         </Text>
         <TouchableOpacity onPress={toggleBalanceVisibility}>
-          <Entypo
-            name={isBalanceVisible ? "eye" : "eye-with-line"}
+          {/* <Entypo
+            name={
+              isBalanceVisible ? (
+                "eye"
+
+              ) : (
+                "eye-with-line"
+              )
+            }
             size={20}
             color={COLORS.icon}
-          />
+          /> */}
+
+          {isBalanceVisible ? (
+            <EyeIcon />
+          ) : (
+            <Entypo name={"eye-with-line"} size={15} color="#B0BACB" />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -362,6 +377,7 @@ export default function WalletHomeScreen() {
               {asset.name}
             </Text>
             <Text
+              onPress={toggleBalanceVisibility}
               style={[
                 styles.tokenBalance,
                 {
@@ -377,6 +393,7 @@ export default function WalletHomeScreen() {
         </View>
         <View style={styles.tokenRight}>
           <Text
+            onPress={toggleBalanceVisibility}
             style={[
               styles.tokenValue,
               {
@@ -391,6 +408,7 @@ export default function WalletHomeScreen() {
               : "******"}
           </Text>
           <Text
+            onPress={toggleBalanceVisibility}
             style={[
               isBalanceVisible
                 ? asset.gain >= 0
@@ -598,8 +616,8 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   actionButtonText: {
-    fontSize: 12,
-    fontWeight: "bold",
+    fontSize: 14,
+    fontWeight: 700,
   },
   tokensHeader: {
     marginVertical: 24,
@@ -645,24 +663,25 @@ const styles = StyleSheet.create({
   tokenName: {
     fontSize: 16,
     fontWeight: "bold",
+    color: "#E2E6F0",
   },
   tokenBalance: {
     color: "#757B85",
-    fontSize: 14,
+    fontSize: 16,
   },
   tokenRight: {
     alignItems: "flex-end",
   },
   tokenValue: {
-    color: "#757B85",
-    fontSize: 12,
+    color: "#E2E6F0",
+    fontSize: 16,
   },
   gainText: {
-    fontSize: 14,
-    color: "#10B981",
+    fontSize: 16,
+    color: "#34D058",
   },
   lossText: {
-    fontSize: 14,
+    fontSize: 16,
     color: "#FF5F5F",
   },
 });

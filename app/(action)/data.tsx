@@ -1,4 +1,5 @@
 // Integrate API: fetch data plans and initialize purchases
+import HistoryIcon from "@/assets/images/history-icon.svg";
 import NineMobileIcon from "@/assets/images/network-providers-icons/9mobile-icon.svg";
 import AirtelIcon from "@/assets/images/network-providers-icons/airtel-icon.svg";
 import GloIcon from "@/assets/images/network-providers-icons/glo-icon.svg";
@@ -7,13 +8,13 @@ import Base from "@/assets/images/networks/base.svg";
 import Bnb from "@/assets/images/networks/bnb.svg";
 import Solana from "@/assets/images/networks/solana.svg";
 import NGNFlag from "@/assets/images/ngn-flag.svg";
+import WalletIcon from "@/assets/images/wallet-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -453,7 +454,9 @@ export default function DataScreen() {
               <Ionicons name="arrow-back" size={22} color="#E2E6F0" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Data</Text>
-            <View style={styles.iconButtonPlaceholder} />
+            <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
+              <HistoryIcon width={25} height={25} />
+            </TouchableOpacity>
           </View>
 
           <Text style={styles.sectionLabel}>Phone number</Text>
@@ -658,10 +661,11 @@ export default function DataScreen() {
                 </TouchableOpacity>
 
                 <View style={styles.balanceContainer}>
-                  <Image
+                  {/* <Image
                     source={require("@/assets/images/wallet-icon.png")}
                     style={styles.walletIcon}
-                  />
+                  /> */}
+                  <WalletIcon width={15} height={15} />
                   <Text style={styles.balanceText}>{balanceLabel}</Text>
                 </View>
               </View>
@@ -688,7 +692,7 @@ export default function DataScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#121212",
     paddingHorizontal: 16,
   },
   scrollView: {
@@ -841,8 +845,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   viewAllText: {
-    color: "#9BA5B6",
-    fontSize: 16,
+    color: "#E2E6F0",
+    fontSize: 14,
+    fontWeight: 500,
   },
   planGrid: {
     flexDirection: "row",
@@ -853,8 +858,8 @@ const styles = StyleSheet.create({
     minHeight: 96,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#2B313D",
-    backgroundColor: "#13161B",
+    borderColor: "#2A2A2A",
+    backgroundColor: "#1C1C1C",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
@@ -869,8 +874,8 @@ const styles = StyleSheet.create({
     minHeight: 110,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#1F2733",
-    backgroundColor: "#0F1418",
+    borderColor: "#1C1C1C",
+    backgroundColor: "#1C1C1C",
     paddingHorizontal: 12,
     paddingVertical: 14,
     paddingTop: 22,
@@ -886,31 +891,31 @@ const styles = StyleSheet.create({
   },
   planCardSelected: {
     borderColor: "#34D058",
-    backgroundColor: "#072017",
+    backgroundColor: "#1C1C1C",
   },
   planBadge: {
     position: "absolute",
     right: 10,
     top: 10,
-    borderRadius: 16,
-    backgroundColor: "#1B9C62",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderRadius: 4,
+    backgroundColor: "#388665",
+    paddingHorizontal: 4,
+    paddingVertical: 3,
     zIndex: 10,
   },
   planBadgeText: {
-    color: "#E9FFF3",
+    color: "#E2E6F0",
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   planTitle: {
-    color: "#E6EBF5",
-    fontSize: 16,
-    fontWeight: "700",
+    color: "#E2E6F0",
+    fontSize: 18,
+    fontWeight: "500",
     marginBottom: 6,
   },
   planSubtitle: {
-    color: "#9AA6B6",
+    color: "#B0BACB",
     fontSize: 12,
     lineHeight: 16,
   },
@@ -919,6 +924,8 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: "#1C1C1C",
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
   },
   sectionRow: {
     flexDirection: "row",
@@ -936,8 +943,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
   },
+
   tokenSelector: {
-    backgroundColor: "black",
+    backgroundColor: "#121212",
+    borderColor: "#2A2A2A",
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -946,6 +956,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
+
   tokenIconWrapper: {
     width: 40,
     height: 40,
@@ -981,23 +992,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   currencySymbol: {
-    color: "white",
-    fontSize: 24,
+    color: "#E2E6F0",
+    fontSize: 32,
     marginRight: 4,
-    fontWeight: "600",
+    fontWeight: "400",
   },
   amountInput: {
-    color: "#fff",
-    fontSize: 24,
+    color: "#E2E6F0",
+    fontSize: 32,
     padding: 0,
     margin: 0,
-    fontWeight: "600",
+    fontWeight: 600,
     minWidth: 120,
   },
   amountSubValue: {
     marginTop: 6,
-    color: "#9DA7B9",
-    fontSize: 16,
+    color: "#B0BACB",
+    fontSize: 14,
     fontWeight: "500",
   },
   balanceContainer: {
@@ -1012,6 +1023,7 @@ const styles = StyleSheet.create({
     color: "#E2E6F0",
     fontSize: 12,
     marginLeft: 4,
+    fontWeight: 500,
   },
   payButton: {
     marginTop: 38,

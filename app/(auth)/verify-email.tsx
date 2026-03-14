@@ -92,7 +92,7 @@ export default function VerifyEmailScreen() {
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           {/* <Text style={styles.headerTitle}>Verify Email</Text> */}
           <View style={styles.headerPlaceholder} />
@@ -109,8 +109,10 @@ export default function VerifyEmailScreen() {
               <VerifyEmailIcon />
               <Text style={styles.title}>Verify your email address</Text>
               <Text style={styles.description}>
-                We've sent a 6-digit code to your email address. Enter it below
-                to verify.
+                {/* We've sent a 6-digit code to your email address. Enter it below
+                to verify. */}
+                Please input the 6 digit code that was sent to your email
+                address to verify your email
               </Text>
 
               <View style={styles.otpContainer}>
@@ -154,7 +156,7 @@ export default function VerifyEmailScreen() {
                 isVerifyDisabled && styles.verifyButtonTextDisabled,
               ]}
             >
-              Verify Email
+              Submit
             </Text>
           </TouchableOpacity>
         </View>
@@ -212,7 +214,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   description: {
-    color: "#757B85",
+    color: "#B0BACB",
     fontSize: 16,
     marginBottom: 40,
     textAlign: "center",
@@ -224,7 +226,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   otpInput: {
-    backgroundColor: "#1C1C1C",
+    backgroundColor: "#2A2A2A",
     color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "600",
@@ -233,35 +235,36 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#374151",
+    // borderColor: "#374151",
   },
   resendContainer: {
     marginBottom: 32,
   },
   resendText: {
-    color: "#757B85",
-    fontSize: 14,
+    color: "#B0BACB",
+    fontSize: 16,
     textAlign: "center",
   },
   resendLink: {
     color: "#4A9DFF",
     fontWeight: "600",
+    fontSize: 16,
   },
   buttonContainer: {
     padding: 20,
     paddingBottom: Platform.OS === "ios" ? 34 : 20,
   },
   verifyButton: {
-    backgroundColor: "#4A9DFF",
+    backgroundColor: "#0056D2",
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: "center",
   },
   verifyButtonDisabled: {
-    backgroundColor: "#374151",
+    opacity: 0.6,
   },
   verifyButtonText: {
-    color: "#FFFFFF",
+    color: "#F2F4F8",
     fontSize: 16,
     fontWeight: "600",
   },

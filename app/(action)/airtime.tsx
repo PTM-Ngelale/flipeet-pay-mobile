@@ -7,6 +7,8 @@ import {
 } from "@/app/constants/api";
 import { useToken } from "@/app/contexts/TokenContext";
 import { RootState } from "@/app/store";
+import CashbackIcon from "@/assets/images/cashback-icon.svg";
+import HistoryIcon from "@/assets/images/history-icon.svg";
 import NineMobileIcon from "@/assets/images/network-providers-icons/9mobile-icon.svg";
 import AirtelIcon from "@/assets/images/network-providers-icons/airtel-icon.svg";
 import GloIcon from "@/assets/images/network-providers-icons/glo-icon.svg";
@@ -15,6 +17,7 @@ import Base from "@/assets/images/networks/base.svg";
 import Bnb from "@/assets/images/networks/bnb.svg";
 import Solana from "@/assets/images/networks/solana.svg";
 import NGNFlag from "@/assets/images/ngn-flag.svg";
+import WalletIcon from "@/assets/images/wallet-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -726,10 +729,13 @@ export default function AirtimeScreen() {
         >
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Airtime</Text>
-            <View style={styles.headerPlaceholder} />
+            {/* <View style={styles.headerPlaceholder} /> */}
+            <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
+              <HistoryIcon width={25} height={25} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.sectionHeaderRow}>
@@ -740,8 +746,8 @@ export default function AirtimeScreen() {
             <View style={styles.phoneSelect}>
               <View style={styles.phoneSelectRow}>
                 <View style={styles.countryTag}>
-                  <NGNFlag width={18} height={12} />
-                  <Ionicons name="chevron-down" size={11} color="#4A9DFF" />
+                  <NGNFlag width={24} />
+                  <Ionicons name="chevron-down" size={11} color="#3388FF" />
                 </View>
                 <Text style={styles.phonePrefix}>+234</Text>
                 <TextInput
@@ -824,7 +830,11 @@ export default function AirtimeScreen() {
                   onPress={() => handleTopUpSelect(item.amount)}
                 >
                   <View style={styles.cashbackBadge}>
-                    <Text style={styles.cashbackLabel}>💵 {item.cashback}</Text>
+                    <Text style={styles.cashbackLabel}>
+                      {/* 💵 */}
+                      <CashbackIcon />
+                      {item.cashback}
+                    </Text>
                   </View>
                   <Text style={styles.topUpAmount}>{item.label}</Text>
                 </TouchableOpacity>
@@ -841,7 +851,7 @@ export default function AirtimeScreen() {
                   <TextInput
                     style={styles.amountInput}
                     placeholder="0.00"
-                    placeholderTextColor="#AAB3C3"
+                    placeholderTextColor="#757B85"
                     value={amountInput}
                     onChangeText={handleAmountChange}
                     keyboardType="decimal-pad"
@@ -883,10 +893,11 @@ export default function AirtimeScreen() {
                 </TouchableOpacity>
 
                 <View style={styles.balanceContainer}>
-                  <Image
+                  {/* <Image
                     source={require("@/assets/images/wallet-icon.png")}
                     style={styles.walletIcon}
-                  />
+                  /> */}
+                  <WalletIcon width={15} height={15} />
                   <Text style={styles.balanceText}>{balanceLabel}</Text>
                 </View>
               </View>
@@ -944,9 +955,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   sectionTitle: {
-    color: "#B9C4D8",
+    color: "#B0BACB",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   phoneSelectContainer: {
     marginTop: 12,
@@ -968,7 +979,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   phonePrefix: {
-    color: "#B0BACB",
+    color: "#757B85",
     fontSize: 14,
     fontWeight: "600",
   },
@@ -982,12 +993,13 @@ const styles = StyleSheet.create({
   countryTag: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
-    backgroundColor: "#111418",
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#262C35",
-    paddingHorizontal: 8,
+    // backgroundColor: "#111418",
+    // borderRadius: 6,
+    // borderWidth: 1,
+    // borderColor: "#262C35",
+    // paddingHorizontal: 8,
     height: 28,
   },
   networkIconContainer: {
@@ -1097,8 +1109,8 @@ const styles = StyleSheet.create({
     minHeight: 82,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#262A33",
-    backgroundColor: "#121419",
+    borderColor: "#2A2A2A",
+    backgroundColor: "#1C1C1C",
     paddingHorizontal: 6,
     paddingVertical: 8,
     justifyContent: "space-between",
@@ -1110,25 +1122,27 @@ const styles = StyleSheet.create({
   },
   cashbackBadge: {
     borderRadius: 6,
-    backgroundColor: "#1B9C62",
-    paddingHorizontal: 6,
+    backgroundColor: "#388665",
+    paddingHorizontal: 4,
     paddingVertical: 2,
   },
   cashbackLabel: {
-    color: "#E8FFF2",
+    color: "#E2E6F0",
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "400",
   },
   topUpAmount: {
-    color: "#E3E9F5",
-    fontSize: 18,
-    fontWeight: "700",
+    color: "#E2E6F0",
+    fontSize: 20,
+    fontWeight: "600",
   },
   amountCard: {
     marginTop: 20,
     padding: 16,
     backgroundColor: "#1C1C1C",
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
   },
   sectionRow: {
     flexDirection: "row",
@@ -1147,7 +1161,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   tokenSelector: {
-    backgroundColor: "black",
+    backgroundColor: "#121212",
+    borderColor: "#2A2A2A",
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -1193,13 +1209,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   currencySymbol: {
-    color: "white",
+    color: "#E2E6F0",
     fontSize: 24,
     marginRight: 4,
-    fontWeight: "600",
+    fontWeight: "400",
   },
   amountInput: {
-    color: "#fff",
+    color: "#E2E6F0",
     fontSize: 24,
     padding: 0,
     margin: 0,
@@ -1216,14 +1232,15 @@ const styles = StyleSheet.create({
   },
   amountSubValue: {
     marginTop: 6,
-    color: "#9DA7B9",
-    fontSize: 16,
+    color: "#B0BACB",
+    fontSize: 14,
     fontWeight: "500",
   },
   balanceText: {
     color: "#E2E6F0",
     fontSize: 12,
     marginLeft: 4,
+    fontWeight: 500,
   },
   payButton: {
     marginTop: 38,

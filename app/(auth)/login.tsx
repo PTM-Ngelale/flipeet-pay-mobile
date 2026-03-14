@@ -220,7 +220,7 @@ export default function LoginScreen() {
                   ]}
                 >
                   {keepLoggedIn && (
-                    <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                    <Ionicons name="checkmark" size={16} color="#000000" />
                   )}
                 </View>
               </View>
@@ -248,7 +248,7 @@ export default function LoginScreen() {
                     isLoginDisabled && styles.loginButtonTextDisabled,
                   ]}
                 >
-                  Log In
+                  Login
                 </Text>
               )}
             </TouchableOpacity>
@@ -257,7 +257,7 @@ export default function LoginScreen() {
             <View style={styles.signUpContainer}>
               <Text style={styles.signUpText}>Don't have an account? </Text>
               <TouchableOpacity onPress={handleSignUp}>
-                <Text style={styles.signUpLink}>Sign up</Text>
+                <Text style={styles.signUpLink}>Sign Up</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -270,7 +270,7 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#121212",
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -291,14 +291,15 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   welcomeText: {
-    color: "#FFFFFF",
-    fontSize: 28,
-    fontWeight: "bold",
+    color: "#E2E6F0",
+    fontSize: 32,
+    fontWeight: 700,
     marginBottom: 8,
   },
   subtitle: {
-    color: "#757B85",
+    color: "#E2E6F0",
     fontSize: 16,
+    fontWeight: 500,
   },
   googleButton: {
     flexDirection: "row",
@@ -314,7 +315,7 @@ const styles = StyleSheet.create({
   },
   googleButtonText: {
     color: "#B0BACB",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "500",
   },
   divider: {
@@ -325,38 +326,36 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#374151",
+    backgroundColor: "#A6B1C6",
   },
   dividerText: {
     color: "#757B85",
     paddingHorizontal: 16,
-    fontSize: 14,
+    fontSize: 16,
   },
   inputContainer: {
     marginBottom: 20,
   },
   inputLabel: {
-    color: "#FFFFFF",
+    color: "#B0BACB",
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: "600",
     marginBottom: 8,
   },
   input: {
-    backgroundColor: "#1C1C1C",
+    backgroundColor: "#2A2A2A",
     color: "#FFFFFF",
     fontSize: 16,
     padding: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#374151",
   },
   passwordContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1C1C1C",
+    backgroundColor: "#2A2A2A",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#374151",
   },
   passwordInput: {
     flex: 1,
@@ -373,7 +372,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   checkboxContainer: {
-    marginRight: 12,
+    marginRight: 8,
   },
   checkbox: {
     width: 20,
@@ -389,8 +388,10 @@ const styles = StyleSheet.create({
     borderColor: "#28A745",
   },
   rememberMeText: {
-    color: "#FFFFFF",
+    color: "#B0BACB",
     fontSize: 14,
+    fontWeight: 400,
+    lineHeight: 0,
   },
   loginButton: {
     backgroundColor: "#0A66D3",
@@ -415,8 +416,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   signUpText: {
-    color: "#757B85",
-    fontSize: 14,
+    color: "#B0BACB",
+    fontSize: 16,
   },
   signUpLink: {
     color: "#4A9DFF",

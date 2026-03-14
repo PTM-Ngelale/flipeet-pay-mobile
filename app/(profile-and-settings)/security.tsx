@@ -31,7 +31,7 @@ const SecurityAndPrivacy = () => {
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Security/Privacy</Text>
           <View style={styles.headerPlaceholder} />
@@ -118,7 +118,7 @@ export default SecurityAndPrivacy;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#121212",
   },
   scrollView: {
     flex: 1,

@@ -77,11 +77,11 @@ const SettingsAndProfile = () => {
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile & Settings</Text>
           <TouchableOpacity onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={24} color="#FFFFFF" />
+            <Ionicons name="log-out-outline" size={24} color="#E2E6F0" />
           </TouchableOpacity>
         </View>
 
@@ -188,7 +188,7 @@ const SettingsAndProfile = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#121212",
   },
   scrollView: {
     flex: 1,
@@ -254,15 +254,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   username: {
-    color: "#FFFFFF",
+    color: "#B0BACB",
     fontSize: 18,
     fontWeight: "600",
     textAlign: "center",
   },
   email: {
     color: "#B0BACB",
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "500",
     textAlign: "center",
   },
   addUsernameButton: {
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   },
   addUsernameText: {
     color: "#4A9DFF",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "500",
   },
   changeUsernameButton: {
@@ -325,12 +325,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   settingsTitle: {
-    color: "#FFFFFF",
+    color: "#E2E6F0",
     fontSize: 16,
     fontWeight: "600",
   },
   settingsDescription: {
-    color: "#757B85",
+    color: "#B0BACB",
     fontSize: 12,
     lineHeight: 18,
   },

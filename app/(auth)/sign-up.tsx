@@ -153,7 +153,7 @@ export default function SignUpScreen() {
         >
           <View style={styles.content}>
             <View style={styles.header}>
-              <Text style={styles.welcomeText}>Get Started</Text>
+              <Text style={styles.welcomeText}>Get started</Text>
               <Text style={styles.subtitle}>
                 Welcome to Flipeet Pay - Let's create your account{" "}
               </Text>
@@ -187,7 +187,7 @@ export default function SignUpScreen() {
             </View>
 
             <View style={{ marginBottom: 30 }}>
-              <Text style={{ color: "#E2E6F0", fontSize: 18, fontWeight: 700 }}>
+              <Text style={{ color: "#E2E6F0", fontSize: 20, fontWeight: 700 }}>
                 Sign up with email
               </Text>
             </View>
@@ -290,7 +290,7 @@ export default function SignUpScreen() {
             <View style={styles.loginContainer}>
               <Text style={styles.loginText}>Have an existing account? </Text>
               <TouchableOpacity onPress={handleLogin}>
-                <Text style={styles.loginLink}>Log in</Text>
+                <Text style={styles.loginLink}>Login</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -303,7 +303,7 @@ export default function SignUpScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#121212",
   },
   keyboardAvoidingView: {
     flex: 1,
@@ -324,20 +324,20 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   welcomeText: {
-    color: "#FFFFFF",
-    fontSize: 28,
+    color: "#E2E6F0",
+    fontSize: 32,
     fontWeight: "bold",
     marginBottom: 8,
   },
   subtitle: {
     color: "#E2E6F0",
     fontSize: 14,
+    fontWeight: "400",
   },
   googleButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    // backgroundColor: "#1C1C1C",
     paddingVertical: 16,
     borderRadius: 8,
     borderWidth: 1,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   googleButtonText: {
     color: "#B0BACB",
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   divider: {
     flexDirection: "row",
@@ -367,6 +367,7 @@ const styles = StyleSheet.create({
     color: "#757B85",
     paddingHorizontal: 16,
     fontSize: 16,
+    fontWeight: "700",
   },
   inputContainer: {
     marginBottom: 32,
@@ -374,25 +375,23 @@ const styles = StyleSheet.create({
   inputLabel: {
     color: "#B0BACB",
     fontSize: 16,
-    fontWeight: "500",
+    fontWeight: "600",
     marginBottom: 8,
   },
   input: {
-    backgroundColor: "#1C1C1C",
+    backgroundColor: "#2A2A2A",
     color: "#FFFFFF",
     fontSize: 16,
     padding: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#374151",
   },
   passwordContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1C1C1C",
+    backgroundColor: "#2A2A2A",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#374151",
   },
   passwordInput: {
     flex: 1,
@@ -421,7 +420,7 @@ const styles = StyleSheet.create({
   signUpButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   signUpButtonTextDisabled: {
     color: "#F2F4F8",
@@ -431,12 +430,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   loginText: {
-    color: "#757B85",
-    fontSize: 14,
+    color: "#B0BACB",
+    fontSize: 16,
   },
   loginLink: {
     color: "#4A9DFF",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
   },
 });

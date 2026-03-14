@@ -114,7 +114,7 @@ export default function PinScreen() {
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{isLoginFlow ? "" : ""}</Text>
           <View style={styles.headerPlaceholder} />

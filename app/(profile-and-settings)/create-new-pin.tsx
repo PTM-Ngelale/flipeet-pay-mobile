@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
@@ -17,7 +18,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../store";
 import { changePin } from "../store/authSlice";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function CreateNewPINScreen() {
   const [newPin, setNewPin] = useState(["", "", "", "", "", ""]);
@@ -132,7 +132,7 @@ export default function CreateNewPINScreen() {
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Create New PIN</Text>
           <View style={styles.headerPlaceholder} />

@@ -1,6 +1,7 @@
-import React, { useRef, useState, useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -13,10 +14,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useDispatch } from "react-redux";
-import { loadAuthState } from "../store/authSlice";
 import pinApi from "../services/pinApi";
+import { loadAuthState } from "../store/authSlice";
 
 export default function PinSignIn() {
   const router = useRouter();
@@ -36,10 +36,7 @@ export default function PinSignIn() {
 
   const join = (arr: string[]) => arr.join("");
 
-  const handleChange = (
-    newArr: string[],
-    index: number,
-  ) => {
+  const handleChange = (newArr: string[], index: number) => {
     setPin(newArr);
     if (newArr[index] && index < 5) refs.current[index + 1]?.focus();
   };
@@ -71,7 +68,12 @@ export default function PinSignIn() {
       const data = body.data || {};
       const credentials = data.credentials || {};
       const token =
-        credentials.accessToken || body.accessToken || body.token || data.accessToken || data.token || null;
+        credentials.accessToken ||
+        body.accessToken ||
+        body.token ||
+        data.accessToken ||
+        data.token ||
+        null;
       const user = body.user || data.user || null;
 
       if (!token) {
@@ -104,13 +106,16 @@ export default function PinSignIn() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBack} style={styles.back}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.title}>Sign in with PIN</Text>
           <View style={{ width: 32 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.hint}>Enter your 6-digit PIN to sign in</Text>
 
           <View style={styles.row}>
@@ -137,7 +142,9 @@ export default function PinSignIn() {
             onPress={handleSubmit}
             disabled={isDisabled || loading}
           >
-            <Text style={styles.submitText}>{loading ? "Signing in..." : "Sign in"}</Text>
+            <Text style={styles.submitText}>
+              {loading ? "Signing in..." : "Sign in"}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>

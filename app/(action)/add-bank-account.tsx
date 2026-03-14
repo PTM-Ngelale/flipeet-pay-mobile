@@ -193,7 +193,7 @@ export default function AddBankAccount() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="close" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.title}>Add Bank Account</Text>
           <View style={styles.placeholder} />
@@ -206,7 +206,7 @@ export default function AddBankAccount() {
             contentContainerStyle={styles.scrollContent}
           >
             {/* Debug info - remove this after testing */}
-            {__DEV__ && (
+            {/* {__DEV__ && (
               <View
                 style={{
                   padding: 10,
@@ -220,7 +220,7 @@ export default function AddBankAccount() {
                   {banksLoading ? "Yes" : "No"} | Token: {token ? "✓" : "✗"}
                 </Text>
               </View>
-            )}
+            )} */}
 
             <View style={styles.fieldContainer}>
               <Text style={styles.label}>Bank Name</Text>
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    color: "#FFFFFF",
+    color: "#B0BACB",
     fontSize: 16,
     fontWeight: "600",
     marginBottom: 8,
@@ -455,9 +455,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#1A1A1A",
-    borderWidth: 1,
-    borderColor: "#333333",
+    backgroundColor: "#2A2A2A",
+    // borderWidth: 1,
+    // borderColor: "#333333",
     borderRadius: 8,
     padding: 16,
   },
@@ -554,9 +554,9 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    backgroundColor: "#1A1A1A",
-    borderWidth: 1,
-    borderColor: "#333333",
+    backgroundColor: "#2A2A2A",
+    // borderWidth: 1,
+    // borderColor: "#333333",
     borderRadius: 8,
     padding: 16,
     color: "#FFFFFF",

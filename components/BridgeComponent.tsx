@@ -1,13 +1,18 @@
 import { apiRequest } from "@/app/constants/api";
+import { useBridgeToken } from "@/app/contexts/BridgeTokenContext";
 import { useToken } from "@/app/contexts/TokenContext";
 import { RootState } from "@/app/store";
 import ExchangeIcon from "@/assets/images/exchange-icon.svg";
+import Base from "@/assets/images/networks/base.svg";
+import Bnb from "@/assets/images/networks/bnb.svg";
+import Solana from "@/assets/images/networks/solana.svg";
+import SyncIcon from "@/assets/images/sync-icon.svg";
+import WalletIcon from "@/assets/images/wallet-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -17,11 +22,6 @@ import {
   View,
 } from "react-native";
 import { useSelector } from "react-redux";
-
-import { useBridgeToken } from "@/app/contexts/BridgeTokenContext";
-import Base from "@/assets/images/networks/base.svg";
-import Bnb from "@/assets/images/networks/bnb.svg";
-import Solana from "@/assets/images/networks/solana.svg";
 
 const BridgeComponent = () => {
   const router = useRouter();
@@ -380,8 +380,9 @@ const BridgeComponent = () => {
           </TouchableOpacity>
         </View>
         <View>
-          <TouchableOpacity onPress={handleSync}>
-            <Ionicons name="sync" size={20} color="#B0BACB" />
+          <TouchableOpacity onPress={handleSync} style={styles.syncButton}>
+            {/* <Ionicons name="sync" size={20} color="#B0BACB" /> */}
+            <SyncIcon />
           </TouchableOpacity>
         </View>
       </View>
@@ -401,7 +402,7 @@ const BridgeComponent = () => {
                   <TextInput
                     style={styles.amountInput}
                     placeholder="0.00"
-                    placeholderTextColor="#FFFFFF"
+                    placeholderTextColor="#757B85"
                     value={payAmount}
                     onChangeText={handlePayAmountChange}
                     keyboardType="numeric"
@@ -442,10 +443,11 @@ const BridgeComponent = () => {
                     </View>
                   </TouchableOpacity>
                   <View style={styles.balanceContainer}>
-                    <Image
+                    {/* <Image
                       source={require("@/assets/images/wallet-icon.png")}
                       style={{ width: 13, height: 13 }}
-                    />
+                    /> */}
+                    <WalletIcon width={15} height={15} />
                     <Text style={styles.balanceText}>
                       {fromBalance.toFixed(6)} {fromToken.symbol}
                     </Text>
@@ -470,7 +472,7 @@ const BridgeComponent = () => {
                   <TextInput
                     style={styles.amountInput}
                     placeholder="0.00"
-                    placeholderTextColor="#E2E6F0"
+                    placeholderTextColor="#757B85"
                     value={receiveAmount}
                     onChangeText={handleReceiveAmountChange}
                     keyboardType="numeric"
@@ -514,10 +516,11 @@ const BridgeComponent = () => {
                     </View>
                   </TouchableOpacity>
                   <View style={styles.balanceContainer}>
-                    <Image
+                    {/* <Image
                       source={require("@/assets/images/wallet-icon.png")}
                       style={{ width: 13, height: 13 }}
-                    />
+                    /> */}
+                    <WalletIcon width={15} height={15} />s
                     <Text style={styles.balanceText}>
                       {toBalance.toFixed(6)} {toToken.symbol}
                     </Text>
@@ -584,6 +587,9 @@ const styles = StyleSheet.create({
   },
   amountButtonText: {
     color: "#B0BACB",
+    fontSize: 16,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
   },
   content: {
     marginTop: 16,
@@ -616,6 +622,15 @@ const styles = StyleSheet.create({
     color: "#E2E6F0",
     fontSize: 16,
     marginBottom: 8,
+    fontWeight: 500,
+  },
+
+  syncButton: {
+    backgroundColor: "#121212",
+    padding: 7,
+    borderRadius: 6,
+    borderColor: "#2A2A2A",
+    borderWidth: 1,
   },
   amountInputContainer: {
     flexDirection: "row",
@@ -634,7 +649,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   tokenSelector: {
-    backgroundColor: "black",
+    backgroundColor: "#121212",
+    borderColor: "#2A2A2A",
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -679,7 +696,8 @@ const styles = StyleSheet.create({
   },
   exchangeRateText: {
     color: "#757B85",
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: 600,
   },
   buttonContainer: {
     marginTop: "auto",

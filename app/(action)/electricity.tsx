@@ -1,14 +1,15 @@
 // Integrate API: load providers, verify meter and initialize purchases
+import HistoryIcon from "@/assets/images/history-icon.svg";
 import Base from "@/assets/images/networks/base.svg";
 import Bnb from "@/assets/images/networks/bnb.svg";
 import Solana from "@/assets/images/networks/solana.svg";
+import WalletIcon from "@/assets/images/wallet-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -402,7 +403,9 @@ export default function ElectricityScreen() {
               <Ionicons name="arrow-back" size={22} color="#E2E6F0" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Electricity</Text>
-            <View style={styles.iconButton} />
+            <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
+              <HistoryIcon width={25} height={25} />
+            </TouchableOpacity>
           </View>
 
           <Text style={[styles.sectionLabel, { marginTop: 6 }]}>
@@ -615,10 +618,11 @@ export default function ElectricityScreen() {
                 </TouchableOpacity>
 
                 <View style={styles.balanceContainer}>
-                  <Image
+                  {/* <Image
                     source={require("@/assets/images/wallet-icon.png")}
                     style={styles.walletIcon}
-                  />
+                  /> */}
+                  <WalletIcon width={15} height={15} />
                   <Text style={styles.balanceText}>{balanceLabel}</Text>
                 </View>
               </View>
@@ -645,7 +649,7 @@ export default function ElectricityScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#000000", paddingHorizontal: 16 },
+  container: { flex: 1, backgroundColor: "#121212", paddingHorizontal: 16 },
   scrollView: { flex: 1 },
   scrollContent: { paddingTop: 8, paddingBottom: 24 },
   header: {
@@ -747,23 +751,22 @@ const styles = StyleSheet.create({
     minHeight: 52,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "#2B313D",
-    backgroundColor: "#13161B",
+    borderColor: "#1C1C1C",
+    backgroundColor: "#2A2A2A",
     paddingHorizontal: 6,
     marginBottom: 10,
     alignItems: "center",
     justifyContent: "center",
   },
   amountPresetSelected: { borderColor: "#34D058", backgroundColor: "#152019" },
-  amountPresetText: { color: "#DBE2EF", fontSize: 18, fontWeight: "600" },
+  amountPresetText: { color: "#E2E6F0", fontSize: 18, fontWeight: "500" },
   amountCard: {
-    marginTop: 12,
-    borderRadius: 16,
+    marginTop: 18,
+    padding: 16,
+    backgroundColor: "#1C1C1C",
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#2A303B",
-    backgroundColor: "#181B21",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderColor: "#2A2A2A",
   },
   sectionRow: {
     flexDirection: "row",
@@ -795,7 +798,9 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   tokenSelector: {
-    backgroundColor: "black",
+    backgroundColor: "#121212",
+    borderColor: "#2A2A2A",
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,

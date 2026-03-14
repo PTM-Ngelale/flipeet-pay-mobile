@@ -360,7 +360,7 @@ export default function ActivityDetailsScreen() {
   const Header = () => (
     <View style={styles.header}>
       <TouchableOpacity onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+        <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
       </TouchableOpacity>
       <Text style={styles.headerTitle}>Transaction Details</Text>
       <View style={styles.spacer} />

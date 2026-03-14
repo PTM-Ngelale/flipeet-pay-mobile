@@ -30,7 +30,7 @@ export default function SavedBankAccounts() {
   console.log("[SavedBankAccounts] savedAccounts:", savedAccounts);
   console.log(
     "[SavedBankAccounts] savedAccounts.length:",
-    savedAccounts.length
+    savedAccounts.length,
   );
   console.log("[SavedBankAccounts] loading:", loading);
 
@@ -66,7 +66,7 @@ export default function SavedBankAccounts() {
     Alert.alert(
       "Delete Bank Account",
       `Are you sure you want to delete account ending with ${accountNumber.slice(
-        -4
+        -4,
       )}?`,
       [
         { text: "Cancel", style: "cancel" },
@@ -79,12 +79,12 @@ export default function SavedBankAccounts() {
               setSelectedAccount(
                 savedAccounts.length > 1
                   ? savedAccounts.find((acc) => acc.id !== accountId) || null
-                  : null
+                  : null,
               );
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -93,7 +93,7 @@ export default function SavedBankAccounts() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.title}>Bank Accounts</Text>
           <View style={styles.placeholder} />
@@ -127,7 +127,7 @@ export default function SavedBankAccounts() {
                   console.log(
                     "[SavedBankAccounts] Rendering account:",
                     account.id,
-                    account.bankName
+                    account.bankName,
                   );
                   return (
                     <TouchableOpacity
@@ -208,7 +208,7 @@ export default function SavedBankAccounts() {
                   onPress={() => {
                     if (menuVisible) {
                       const account = savedAccounts.find(
-                        (acc) => acc.id === menuVisible
+                        (acc) => acc.id === menuVisible,
                       );
                       if (account) {
                         handleDeletePress(account.id, account.accountNumber);

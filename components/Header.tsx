@@ -31,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
     <View style={headerStyles.container}>
       <TouchableOpacity onPress={handleBackPress} style={headerStyles.button}>
         {showBackButton && (
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
         )}
       </TouchableOpacity>
 

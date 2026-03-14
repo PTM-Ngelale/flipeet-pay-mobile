@@ -6,6 +6,8 @@ import Base from "@/assets/images/networks/base.svg";
 import Bnb from "@/assets/images/networks/bnb.svg";
 import Solana from "@/assets/images/networks/solana.svg";
 import NGNFlag from "@/assets/images/ngn-flag.svg";
+import SyncIcon from "@/assets/images/sync-icon.svg";
+import WalletIcon from "@/assets/images/wallet-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -449,7 +451,7 @@ const BankComponent = () => {
           <View style={styles.content}>
             {/* Bank Selection Section */}
             <View style={{ flexDirection: "column", gap: 3, marginBottom: 35 }}>
-              <Text style={{ color: "#B0BACB", fontSize: 16 }}>
+              <Text style={{ color: "#B0BACB", fontSize: 16, fontWeight: 600 }}>
                 Select a Bank
               </Text>
 
@@ -602,7 +604,7 @@ const BankComponent = () => {
                     styles.emailInput,
                     accountName && styles.validAccountInput,
                   ]}
-                  placeholder="Enter account number"
+                  placeholder=""
                   placeholderTextColor="#757B85"
                   value={accountNumber}
                   onChangeText={handleAccountNumberChange}
@@ -666,8 +668,12 @@ const BankComponent = () => {
                 </TouchableOpacity>
               </View>
               <View>
-                <TouchableOpacity onPress={handleSync}>
-                  <Ionicons name="sync" size={20} color="#B0BACB" />
+                <TouchableOpacity
+                  onPress={handleSync}
+                  style={styles.syncButton}
+                >
+                  {/* <Ionicons name="sync" size={20} color="#B0BACB" /> */}
+                  <SyncIcon />
                 </TouchableOpacity>
               </View>
             </View>
@@ -681,7 +687,7 @@ const BankComponent = () => {
                     <TextInput
                       style={styles.amountInput}
                       placeholder="0.00"
-                      placeholderTextColor="#FFFFFF"
+                      placeholderTextColor="#757B85"
                       value={payAmount}
                       onChangeText={handlePayAmountChange}
                       keyboardType="numeric"
@@ -722,10 +728,11 @@ const BankComponent = () => {
                       </View>
                     </TouchableOpacity>
                     <View style={styles.balanceContainer}>
-                      <Image
+                      {/* <Image
                         source={require("@/assets/images/wallet-icon.png")}
                         style={{ width: 13, height: 13 }}
-                      />
+                      /> */}
+                      <WalletIcon width={15} height={15} />s
                       <Text style={styles.balanceText}>
                         {tokenBalance.toFixed(6)}{" "}
                         {selectedToken?.symbol || "USDC"}
@@ -782,6 +789,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+  },
+  syncButton: {
+    backgroundColor: "#121212",
+    padding: 7,
+    borderRadius: 6,
+    borderColor: "#2A2A2A",
+    borderWidth: 1,
   },
   swapButton: {
     paddingVertical: 16,
@@ -840,6 +854,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     color: "#E2E6F0",
     fontSize: 16,
+    fontWeight: 500,
   },
   amountInputContainer: {
     flexDirection: "row",
@@ -857,7 +872,9 @@ const styles = StyleSheet.create({
     margin: 0,
   },
   tokenSelector: {
-    backgroundColor: "black",
+    backgroundColor: "#121212",
+    borderColor: "#2A2A2A",
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -882,6 +899,7 @@ const styles = StyleSheet.create({
     color: "#E2E6F0",
     fontSize: 12,
     marginLeft: 4,
+    fontWeight: 500,
   },
   tokenIconWrapper: {
     width: 40,
@@ -1046,8 +1064,8 @@ const styles = StyleSheet.create({
 
   emailInput: {
     backgroundColor: "#2A2A2A",
-    borderWidth: 1,
-    borderColor: "#333333",
+    // borderWidth: 1,
+    // borderColor: "#333333",
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,

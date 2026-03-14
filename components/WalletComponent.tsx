@@ -4,13 +4,14 @@ import Base from "@/assets/images/networks/base.svg";
 import Bnb from "@/assets/images/networks/bnb.svg";
 import Solana from "@/assets/images/networks/solana.svg";
 import ScanIcon from "@/assets/images/scan-icon.svg";
+import SyncIcon from "@/assets/images/sync-icon.svg";
+import WalletIcon from "@/assets/images/wallet-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -194,7 +195,7 @@ const WalletComponent = () => {
               <View style={styles.walletInputWrapper}>
                 <TextInput
                   style={[styles.emailInput, styles.walletInput]}
-                  placeholder="Enter wallet address"
+                  placeholder=""
                   placeholderTextColor="#757B85"
                   value={walletAddress}
                   onChangeText={handleWalletAddressChange}
@@ -206,7 +207,7 @@ const WalletComponent = () => {
                   style={styles.scanButton}
                   onPress={handleOpenScanner}
                 >
-                  <ScanIcon width={24} height={24} />
+                  <ScanIcon width={28} height={28} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -227,8 +228,12 @@ const WalletComponent = () => {
                 </TouchableOpacity>
               </View>
               <View>
-                <TouchableOpacity onPress={handleSync}>
-                  <Ionicons name="sync" size={20} color="#B0BACB" />
+                <TouchableOpacity
+                  onPress={handleSync}
+                  style={styles.syncButton}
+                >
+                  <SyncIcon />
+                  {/* <Ionicons name="sync" size={20} color="#B0BACB" /> */}
                 </TouchableOpacity>
               </View>
             </View>
@@ -242,7 +247,7 @@ const WalletComponent = () => {
                     <TextInput
                       style={styles.amountInput}
                       placeholder="0.00"
-                      placeholderTextColor="#FFFFFF"
+                      placeholderTextColor="#757B85"
                       value={payAmount}
                       onChangeText={handlePayAmountChange}
                       keyboardType="numeric"
@@ -283,10 +288,11 @@ const WalletComponent = () => {
                       </View>
                     </TouchableOpacity>
                     <View style={styles.balanceContainer}>
-                      <Image
+                      {/* <Image
                         source={require("@/assets/images/wallet-icon.png")}
                         style={{ width: 13, height: 13 }}
-                      />
+                      /> */}
+                      <WalletIcon width={15} height={15} />
                       <Text style={styles.balanceText}>
                         {tokenBalance.toFixed(6)}{" "}
                         {selectedToken?.symbol || "USDC"}
@@ -361,6 +367,13 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  syncButton: {
+    backgroundColor: "#121212",
+    padding: 7,
+    borderRadius: 6,
+    borderColor: "#2A2A2A",
+    borderWidth: 1,
   },
   swapButtonContainer: {
     position: "absolute",
@@ -459,13 +472,14 @@ const styles = StyleSheet.create({
   sectionLabel: {
     color: "#E2E6F0",
     fontSize: 16,
+    fontWeight: 500,
   },
   amountInputContainer: {
     flexDirection: "row",
     alignItems: "center",
   },
   currencySymbol: {
-    color: "white",
+    color: "#E2E6F0",
     fontSize: 32,
     marginRight: 4,
   },
@@ -476,7 +490,9 @@ const styles = StyleSheet.create({
     margin: 0,
   },
   tokenSelector: {
-    backgroundColor: "black",
+    backgroundColor: "#121212",
+    borderColor: "#2A2A2A",
+    borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -486,7 +502,7 @@ const styles = StyleSheet.create({
   },
   tokenName: {
     color: "#E2E6F0",
-    fontWeight: "700",
+    fontWeight: "500",
   },
   tokenNetwork: {
     color: "#757B85",
@@ -501,6 +517,7 @@ const styles = StyleSheet.create({
     color: "#E2E6F0",
     fontSize: 12,
     marginLeft: 4,
+    fontWeight: 500,
   },
   emailInput: {
     backgroundColor: "#2A2A2A",

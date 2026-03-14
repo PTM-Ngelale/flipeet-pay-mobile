@@ -23,7 +23,7 @@ export default function ServicesScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.title}>Services</Text>
           <View style={styles.placeholder} />
@@ -103,7 +103,7 @@ export default function ServicesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#000000",
+    backgroundColor: "#121212",
   },
   header: {
     flexDirection: "row",
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     color: "#757B85",
     maxWidth: 87,
     fontSize: 20,
-    fontWeight: "bold",
+    fontWeight: 500,
   },
   placeholder: {
     width: 24,
@@ -137,8 +137,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sectionTitle: {
-    color: "#5b667a",
-    fontSize: 14,
+    color: "#757B85",
+    fontSize: 16,
     fontWeight: "600",
   },
   billsRow: {
@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   },
   tile: {
     width: "23%",
-    backgroundColor: "#1C1C1C",
+    backgroundColor: "#1A212A",
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: "center",
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   billsTile: {
     width: "23%",
     maxWidth: 87,
-    backgroundColor: "#1C1C1C",
+    backgroundColor: "#1A212A",
     borderRadius: 12,
     paddingVertical: 12,
     alignItems: "center",
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
   },
   tileLabel: {
     color: "#B0BACB",
-    fontSize: 10,
+    fontSize: 14,
     fontWeight: "500",
   },
 });

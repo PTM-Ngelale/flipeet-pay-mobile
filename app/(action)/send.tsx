@@ -2,14 +2,13 @@ import BankIcon from "@/assets/images/toggle-menu-icons/bank-icon.svg";
 import EmailIcon from "@/assets/images/toggle-menu-icons/email-icon.svg";
 import WalletIcon from "@/assets/images/toggle-menu-icons/wallet-icon.svg";
 
+import HistoryIcon from "@/assets/images/history-icon.svg";
 import BankIconHighlighted from "@/assets/images/toggle-menu-icons/bank-highlighted.svg";
 import EmailIconHighlighted from "@/assets/images/toggle-menu-icons/email-highlighted.svg";
 import WalletIconHighlighted from "@/assets/images/toggle-menu-icons/wallet-highlighted.svg";
-
 import BankComponent from "@/components/BankComponent";
 import EmailComponent from "@/components/EmailComponent";
 import WalletComponent from "@/components/WalletComponent";
-import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -65,13 +64,14 @@ export default function SendScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={{ color: "#757B85", fontSize: 20, fontWeight: 700 }}>
             Send
           </Text>
           <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
-            <FontAwesome5 name="history" size={24} color="#B0BACB" />
+            {/* <FontAwesome5 name="history" size={24} color="#B0BACB" /> */}
+            <HistoryIcon width={25} height={25} />
           </TouchableOpacity>
         </View>
 

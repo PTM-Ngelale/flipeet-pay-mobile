@@ -66,11 +66,11 @@ export default function SwapScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Swap</Text>
           <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
-            <HistoryIcon />
+            <HistoryIcon width={25} height={25} />
           </TouchableOpacity>
         </View>
 
@@ -119,7 +119,8 @@ export default function SwapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "black",
+    backgroundColor: "#121212",
+
     padding: 20,
   },
   header: {
@@ -168,12 +169,15 @@ const styles = StyleSheet.create({
   toggleText: {
     fontWeight: "500",
     color: "#757B85",
+    fontSize: 16,
   },
   disabledToggleText: {
     color: "#757B85",
+    fontSize: 16,
   },
   activeToggleText: {
     color: "#E2E6F0",
+    fontSize: 16,
   },
   disabledContent: {
     padding: 24,

@@ -6,12 +6,13 @@ import Base from "@/assets/images/networks/base.svg";
 import Bnb from "@/assets/images/networks/bnb.svg";
 import Solana from "@/assets/images/networks/solana.svg";
 import NGNFlag from "@/assets/images/ngn-flag.svg";
+import SyncIcon from "@/assets/images/sync-icon.svg";
+import WalletIcon from "@/assets/images/wallet-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -278,8 +279,9 @@ const SellComponent = () => {
           </TouchableOpacity>
         </View>
         <View>
-          <TouchableOpacity onPress={handleSync}>
-            <Ionicons name="sync" size={20} color="#B0BACB" />
+          <TouchableOpacity onPress={handleSync} style={styles.syncButton}>
+            {/* <Ionicons name="sync" size={24} color="#B0BACB" /> */}
+            <SyncIcon />
           </TouchableOpacity>
         </View>
       </View>
@@ -300,7 +302,7 @@ const SellComponent = () => {
                   <TextInput
                     style={styles.amountInput}
                     placeholder="0.00"
-                    placeholderTextColor="#FFFFFF"
+                    placeholderTextColor="#757B85"
                     value={payAmount}
                     onChangeText={handlePayAmountChange}
                     keyboardType="numeric"
@@ -338,14 +340,17 @@ const SellComponent = () => {
                     <Ionicons name="chevron-down" color={"#4A9DFF"} />
                   </View>
                 </TouchableOpacity>
-                <View style={styles.balanceContainer}>
-                  <Image
-                    source={require("@/assets/images/wallet-icon.png")}
-                    style={{ width: 13, height: 13 }}
-                  />
-                  <Text style={styles.balanceText}>
-                    {tokenBalance.toFixed(6)} {displayTokenSymbol}
-                  </Text>
+                <View style={{ minWidth: "84%" }}>
+                  <View style={styles.balanceContainer}>
+                    {/* <Image
+                      source={require("@/assets/images/wallet-icon.png")}
+                      style={{ width: 13, height: 13 }}
+                    /> */}
+                    <WalletIcon width={15} height={15} />
+                    <Text style={styles.balanceText}>
+                      {tokenBalance.toFixed(6)} {displayTokenSymbol}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -369,7 +374,7 @@ const SellComponent = () => {
                   <TextInput
                     style={styles.amountInput}
                     placeholder="0.00"
-                    placeholderTextColor="#E2E6F0"
+                    placeholderTextColor="#757B85"
                     value={receiveAmount}
                     onChangeText={handleReceiveAmountChange}
                     keyboardType="numeric"
@@ -488,8 +493,20 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRadius: 6,
   },
+
+  syncButton: {
+    backgroundColor: "#121212",
+    padding: 7,
+    borderRadius: 6,
+    borderColor: "#2A2A2A",
+    borderWidth: 1,
+  },
+
   amountButtonText: {
     color: "#B0BACB",
+    fontSize: 16,
+    paddingHorizontal: 7,
+    paddingVertical: 5,
   },
   content: {
     marginTop: 16,
@@ -521,6 +538,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     color: "#E2E6F0",
     fontSize: 16,
+    fontWeight: 500,
   },
   amountInputContainer: {
     flexDirection: "row",
@@ -538,21 +556,23 @@ const styles = StyleSheet.create({
     margin: 0,
   },
   tokenSelector: {
-    backgroundColor: "black",
+    backgroundColor: "#121212",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    borderColor: "#2A2A2A",
+    borderWidth: 1,
   },
   tokenName: {
     color: "#E2E6F0",
     fontWeight: "700",
   },
   tokenNetwork: {
-    color: "#757B85",
-    fontSize: 12,
+    color: "#E2E6F0",
+    fontSize: 10,
   },
   balanceContainer: {
     flexDirection: "row",
@@ -563,6 +583,7 @@ const styles = StyleSheet.create({
     color: "#E2E6F0",
     fontSize: 12,
     marginLeft: 4,
+    fontWeight: 500,
   },
   exchangeIconContainer: {
     width: "100%",
@@ -609,7 +630,8 @@ const styles = StyleSheet.create({
   },
   exchangeRateText: {
     color: "#757B85",
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: 600,
   },
   limitContainer: {
     padding: 16,
@@ -633,11 +655,13 @@ const styles = StyleSheet.create({
   },
   limitUsed: {
     color: "#34D058",
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: 700,
   },
   limitRemaining: {
     color: "#757B85",
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: 700,
   },
   swapButton: {
     paddingVertical: 16,
@@ -660,11 +684,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-evenly",
-    backgroundColor: "#1A1A1A",
-    borderWidth: 1,
-    borderColor: "#333333",
+    backgroundColor: "#2A2A2A",
     borderRadius: 8,
-    padding: 16,
+    paddingHorizontal: 5,
+    paddingVertical: 11,
   },
   accountInfo: {
     // flex: 1,
@@ -676,8 +699,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   accountNumber: {
-    color: "#757B85",
-    fontSize: 14,
+    color: "#B0BACB",
+    fontSize: 16,
+    fontWeight: 500,
   },
   tokenIconPlaceholder: {
     width: 40,
