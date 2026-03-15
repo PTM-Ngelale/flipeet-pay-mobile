@@ -1,14 +1,17 @@
 import SuccessIcon from "@/assets/images/success-icon.svg";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect } from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 export default function SuccessScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { network } = params;
+
+  const [copied, setCopied] = useState(false);
 
   const asSingleValue = (value: string | string[] | undefined) =>
     Array.isArray(value) ? value[0] : value;
@@ -18,9 +21,19 @@ export default function SuccessScreen() {
     asSingleValue(params.heading) ||
     "Transaction Successful";
   // Minimal UI: avoid showing extra transaction details
-  const description = "";
-  const viewText = "";
-  const txRef = "";
+  const description =
+    (Array.isArray(params.description)
+      ? params.description[0]
+      : params.description) || "";
+  const viewText =
+    (Array.isArray(params.viewText) ? params.viewText[0] : params.viewText) ||
+    "";
+  const txRef =
+    (Array.isArray(params.txRef) ? params.txRef[0] : params.txRef) || "";
+  const meterToken =
+    (Array.isArray(params.meterToken)
+      ? params.meterToken[0]
+      : params.meterToken) || "";
 
   const RECENT_NETWORKS_KEY = "flipeet_recent_networks_v1";
   const MAX_RECENT_NETWORKS = 1;
@@ -71,6 +84,17 @@ export default function SuccessScreen() {
     });
   };
 
+  const handleCopyToken = async () => {
+    if (!meterToken) return;
+    try {
+      await Clipboard.setStringAsync(String(meterToken));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      Alert.alert("Copy failed", "Unable to copy meter token to clipboard.");
+    }
+  };
+
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container}>
@@ -79,6 +103,39 @@ export default function SuccessScreen() {
           <SuccessIcon />
           <View style={styles.textContainer}>
             <Text style={styles.title}>{title}</Text>
+            {description ? (
+              <Text style={styles.description}>{description}</Text>
+            ) : null}
+
+            {meterToken ? (
+              <View style={{ marginTop: 12, alignItems: "center" }}>
+                <Text style={[styles.description, { marginBottom: 8 }]}>
+                  Meter token
+                </Text>
+                <View
+                  style={{
+                    backgroundColor: "#0B1220",
+                    padding: 12,
+                    borderRadius: 8,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minWidth: 220,
+                  }}
+                >
+                  <Text style={{ color: "#E2E6F0", fontWeight: "700" }}>
+                    {meterToken}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={handleCopyToken}
+                  style={{ marginTop: 8 }}
+                >
+                  <Text style={{ color: "#4A9DFF" }}>
+                    {copied ? "Copied" : "Copy token"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
         </View>
 

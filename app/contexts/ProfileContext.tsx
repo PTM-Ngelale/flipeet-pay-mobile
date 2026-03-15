@@ -25,7 +25,7 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({
       if (status !== "granted") {
         Alert.alert(
           "Permission Required",
-          "Sorry, we need camera roll permissions to make this work!"
+          "Sorry, we need camera roll permissions to make this work!",
         );
         return;
       }

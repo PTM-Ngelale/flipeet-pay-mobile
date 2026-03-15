@@ -315,7 +315,7 @@ const EmailComponent = () => {
                         source={require("@/assets/images/wallet-icon.png")}
                         style={styles.walletIcon}
                       /> */}
-                      <WalletIcon width={15} height={15} />s
+                      <WalletIcon width={15} height={15} />
                       <Text style={styles.balanceText}>
                         {tokenBalance.toFixed(6)}{" "}
                         {selectedToken?.symbol || "USDC"}

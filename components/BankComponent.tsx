@@ -732,7 +732,7 @@ const BankComponent = () => {
                         source={require("@/assets/images/wallet-icon.png")}
                         style={{ width: 13, height: 13 }}
                       /> */}
-                      <WalletIcon width={15} height={15} />s
+                      <WalletIcon width={15} height={15} />
                       <Text style={styles.balanceText}>
                         {tokenBalance.toFixed(6)}{" "}
                         {selectedToken?.symbol || "USDC"}

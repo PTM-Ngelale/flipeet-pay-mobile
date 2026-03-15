@@ -344,6 +344,19 @@ export default function ElectricityScreen() {
         res?.reference ||
         `local-${Date.now()}`;
 
+      // Attempt to surface any returned meter token/voucher so the user sees it immediately
+      const possibleToken =
+        res?.data?.token ||
+        res?.data?.voucher ||
+        res?.data?.voucherCode ||
+        res?.data?.meterToken ||
+        res?.data?.vendToken ||
+        res?.data?.pin ||
+        res?.token ||
+        res?.voucher ||
+        res?.voucherCode ||
+        null;
+
       router.push({
         pathname: "/(action)/success-screen",
         params: {
@@ -352,6 +365,7 @@ export default function ElectricityScreen() {
           title: "Electricity Purchase Successful",
           description: `Meter: ${meterNumber} • ${selectedProvider?.name} • ₦${amountNumber.toFixed(2)}`,
           viewText: "View Transaction",
+          meterToken: possibleToken || undefined,
         },
       });
 

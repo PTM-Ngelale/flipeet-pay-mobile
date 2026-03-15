@@ -510,7 +510,57 @@ export default function RecentActivity() {
 
           if (isOutgoing) {
             title = "Sent";
-            description = "Sent funds";
+            // Heuristics to detect commerce purchases and show more specific labels
+            const lowerTypeStr = String(
+              type || tx.transactionType || "",
+            ).toLowerCase();
+            const metadata = tx.metadata || tx.meta || {};
+            const productStr = String(
+              tx.product ||
+                tx.service ||
+                tx.product_name ||
+                metadata.service ||
+                metadata.product ||
+                "",
+            ).toLowerCase();
+            const serviceStr = String(
+              tx.service || metadata.type || "",
+            ).toLowerCase();
+            const phoneTarget =
+              tx.phoneNumber ||
+              tx.msisdn ||
+              tx.recipient ||
+              tx.to ||
+              tx.toNumber ||
+              tx.beneficiary ||
+              "";
+
+            let outgoingDescription = "Sent funds";
+            if (
+              lowerTypeStr.includes("airtime") ||
+              productStr.includes("airtime") ||
+              serviceStr.includes("airtime")
+            ) {
+              outgoingDescription = `Purchased airtime${phoneTarget ? ` to ${phoneTarget}` : ""}`;
+            } else if (
+              lowerTypeStr.includes("electricity") ||
+              productStr.includes("electricity") ||
+              serviceStr.includes("electricity") ||
+              tx.biller
+            ) {
+              outgoingDescription = `Purchased electricity`;
+              if (tx.meter || metadata.meter) {
+                outgoingDescription += ` (${tx.meter || metadata.meter})`;
+              }
+            } else if (
+              lowerTypeStr.includes("data") ||
+              productStr.includes("data") ||
+              serviceStr.includes("data")
+            ) {
+              outgoingDescription = `Purchased data${phoneTarget ? ` to ${phoneTarget}` : ""}`;
+            }
+
+            description = outgoingDescription;
             displayAmount = `-${formatShortAmount(Math.abs(amount))} ${asset}`;
             amountColor = "#FF5F5F";
             badgeIcon =
@@ -595,8 +645,14 @@ export default function RecentActivity() {
     return (
       <TouchableOpacity
         style={[styles.activityItem, isFocused && styles.focusedActivityItem]}
-        onPress={() => {}}
-        disabled
+        onPress={() => {
+          if (activity.txRef) {
+            router.push({
+              pathname: "./activities-details",
+              params: { txRef: activity.txRef },
+            });
+          }
+        }}
       >
         <View style={styles.activityLeft}>
           <View style={styles.activityIconWrapper}>

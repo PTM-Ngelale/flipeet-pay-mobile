@@ -1,9 +1,11 @@
-import UsdcToNgn from "@/assets/images/usdc-ngn.svg";
+import { Header } from "@/components/Header";
 import Ionicons from "@expo/vector-icons/Ionicons";
+import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Image,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +13,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
+import { convertPaymentAmount, getTransactionByTxRef } from "../constants/api";
+import type { RootState } from "../store";
 
 interface ActivityDetails {
   id: string;
@@ -207,101 +212,181 @@ const styles = StyleSheet.create({
   },
 });
 
-// Mock data
-const ACTIVITY_DETAILS: { [key: string]: ActivityDetails } = {
-  "1": {
-    id: "1",
-    type: "swap",
-    title: "Swap successful",
-    description: "USDC to NGN",
-    amount: "-100 USDC",
-    secondaryAmount: "+ N142,500",
-    icon: require("@/assets/images/bnb-chain.png"),
-    date: "June 9",
-    time: "14:30pm",
-    amountColor: "#757B85",
-    status: "successful",
-    network: "BNB Chain",
-    networkIcon: require("@/assets/images/solana.png"),
-    currencyIcon: require("@/assets/images/usdc.png"),
-    transactionHash: "0x7afm3829jf74h58392d5dMM3928dn23",
-    recipient: "0x893a74bC2837f29c7f2E",
-    transactionFee: "0.001 BNB ($0.35)",
-    totalValue: "$100.35",
-    referenceId: "REF-789012",
-  },
-  "2": {
-    id: "2",
-    type: "received",
-    title: "Received",
-    description: "From 7afm...5dMM",
-    amount: "+360 USDC",
-    icon: require("@/assets/images/bnb-chain.png"),
-    date: "June 9",
-    time: "12:15pm",
-    amountColor: "#34D058",
-    status: "successful",
-    network: "BNB Chain",
-    networkIcon: require("@/assets/images/bnb-chain.png"),
-    currencyIcon: require("@/assets/images/usdc.png"),
-    transactionHash: "0x8bcn4830kg85i69303e6eNN4939eo34",
-    sender: "0x7afm3829jf74h58392d5dMM3928",
-    transactionFee: "0.0008 BNB ($0.28)",
-    totalValue: "$360.00",
-    referenceId: "REF-345678",
-  },
-  "3": {
-    id: "3",
-    type: "sent",
-    title: "Sent",
-    description: "To 7afm...5dMM",
-    amount: "-60 USDC",
-    icon: require("@/assets/images/bnb-chain.png"),
-    date: "June 2",
-    time: "16:45pm",
-    amountColor: "#757B85",
-    status: "successful",
-    network: "BNB Chain",
-    networkIcon: require("@/assets/images/bnb-chain.png"),
-    currencyIcon: require("@/assets/images/usdc.png"),
-    transactionHash: "0x9cdo5941lh96j70414f7fOO5040fp45",
-    recipient: "0x7afm3829jf74h58392d5dMM3928",
-    transactionFee: "0.0012 BNB ($0.42)",
-    totalValue: "$60.42",
-    referenceId: "REF-901234",
-  },
-  "4": {
-    id: "4",
-    type: "swap",
-    title: "Swap successful",
-    description: "USDT to USDC",
-    amount: "-200 USDT",
-    secondaryAmount: "+100 USDC",
-    icon: require("@/assets/images/bnb-chain.png"),
-    date: "June 2",
-    time: "10:20 AM",
-    amountColor: "#757B85",
-    status: "pending",
-    network: "BNB Chain",
-    networkIcon: require("@/assets/images/bnb-chain.png"),
-    currencyIcon: require("@/assets/images/usdc.png"),
-    transactionHash: "0xadep6052mi07k81525g8gPP6151gq56",
-    transactionFee: "0.0015 BNB ($0.53)",
-    totalValue: "$200.53",
-    referenceId: "REF-567890",
-  },
-};
+// Activity details are built dynamically from a fetched transaction or Redux state.
 
 export default function ActivityDetailsScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, txRef } = useLocalSearchParams<{ id?: string; txRef?: string }>();
   const [copiedItem, setCopiedItem] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [remoteTx, setRemoteTx] = useState<any | null>(null);
+  const [nairaValue, setNairaValue] = useState<string | null>(null);
+  const token = useSelector((s: RootState) => s.auth.token);
+  const transactions = useSelector((s: RootState) => s.auth.transactions);
 
-  const activity = ACTIVITY_DETAILS[id || "1"];
+  // Resolve source transaction (remote fetch > redux store)
+  const foundTx =
+    (txRef &&
+      (Array.isArray(transactions)
+        ? transactions.find(
+            (t: any) =>
+              String(t.txRef || t.reference || t.id || t._id) === String(txRef),
+          )
+        : null)) ||
+    (id &&
+      (Array.isArray(transactions)
+        ? transactions.find((t: any) => String(t.id || t._id) === String(id))
+        : null));
+
+  const sourceTx = remoteTx || foundTx || null;
+
+  const formatDate = (v: any) => {
+    if (!v) return "Unknown date";
+    const n =
+      typeof v === "number" || /^\\d+$/.test(String(v)) ? Number(v) : null;
+    const d = n ? new Date(n < 1e12 ? n * 1000 : n) : new Date(String(v));
+    if (Number.isNaN(d.getTime())) return "Unknown date";
+    return d.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const formatTime = (v: any) => {
+    if (!v) return "";
+    const n =
+      typeof v === "number" || /^\d+$/.test(String(v)) ? Number(v) : null;
+    const d = n ? new Date(n < 1e12 ? n * 1000 : n) : new Date(String(v));
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  };
+
+  const hydrateActivity = (tx: any) => {
+    if (!tx) return null;
+    const rawDate =
+      tx.createdAt ||
+      tx.created_at ||
+      tx.timestamp ||
+      tx.time ||
+      tx.date ||
+      tx.processedAt ||
+      tx.completedAt ||
+      tx.created;
+    const date = formatDate(rawDate);
+    const time = formatTime(rawDate);
+    const rawAmount = tx.amount != null ? tx.amount : tx.value || 0;
+    const n = Number(rawAmount) || 0;
+    const rounded = Number.isFinite(n)
+      ? n < 0
+        ? -Math.ceil(Math.abs(n))
+        : Math.ceil(Math.abs(n))
+      : n;
+    const asset = tx.asset || tx.currency || tx.symbol || "";
+    const amountStr = `${rounded}${asset ? ` ${asset}` : ""}`.trim();
+    return {
+      id: tx.id || tx._id || tx.transactionId || String(txRef || id || ""),
+      type: String(tx.type || tx.transactionType || "").toLowerCase(),
+      title:
+        tx.title || tx.description || tx.product || tx.service || "Transaction",
+      description: tx.description || tx.note || tx.memo || "",
+      amount: amountStr,
+      secondaryAmount: tx.secondaryAmount || tx.toAmount || tx.fiatAmount,
+      icon: tx.icon || require("@/assets/images/bnb-chain.png"),
+      date,
+      time,
+      amountColor: tx.amountColor || "#757B85",
+      status:
+        tx.status ||
+        (tx.successful ? "successful" : tx.pending ? "pending" : "failed"),
+      network: tx.network || tx.networkName || "",
+      networkIcon: tx.networkIcon || require("@/assets/images/bnb-chain.png"),
+      currencyIcon: tx.currencyIcon || require("@/assets/images/usdc.png"),
+      transactionHash: tx.transactionHash || tx.hash || "",
+      recipient:
+        tx.recipient || tx.to || tx.toAddress || tx.beneficiary || tx.msisdn,
+      sender: tx.sender || tx.from || tx.fromAddress,
+      transactionFee: tx.fee || tx.transactionFee || "",
+      totalValue: tx.totalValue || tx.settledAmount || "",
+      referenceId:
+        tx.txRef || tx.tx_ref || tx.reference || tx.referenceId || tx.id || "",
+      raw: tx,
+    };
+  };
+
+  const activity = hydrateActivity(sourceTx);
+  useEffect(() => {
+    let mounted = true;
+    const fetchTx = async () => {
+      if (!txRef || !token) return;
+      setLoading(true);
+      try {
+        const res = await getTransactionByTxRef(String(txRef), String(token));
+        const data = res?.data || res || null;
+        if (mounted) setRemoteTx(data);
+      } catch (e) {
+        console.log("Failed to fetch transaction by txRef", e);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchTx();
+
+    return () => {
+      mounted = false;
+    };
+  }, [txRef, token]);
+
+  useEffect(() => {
+    let mounted = true;
+    const resolveNaira = async () => {
+      const raw = sourceTx;
+      if (!raw) return;
+      // Prefer explicit fields from backend
+      const explicit =
+        raw.totalValue || raw.fiatAmount || raw.settledAmount || raw.fiat_value;
+      if (explicit) {
+        if (mounted) setNairaValue(String(explicit));
+        return;
+      }
+
+      // Attempt server-side conversion if amount and asset available
+      const amt =
+        raw.amount != null ? Number(raw.amount) : Number(raw.value || 0);
+      const asset = raw.asset || raw.currency || raw.symbol || "";
+      if (!Number.isFinite(amt) || !asset) return;
+
+      try {
+        const res = await convertPaymentAmount({
+          amount: Math.abs(amt),
+          asset: asset.toString(),
+          currency: "NGN",
+        });
+        const d = res?.data || res || null;
+        const value = d?.converted || d?.amount || d?.fiatAmount || null;
+        if (mounted && value) setNairaValue(String(value));
+      } catch (e) {
+        console.log("Failed to convert to NGN", e);
+      }
+    };
+
+    resolveNaira();
+    return () => {
+      mounted = false;
+    };
+  }, [sourceTx]);
 
   // Copy to clipboard function with visual feedback
   const copyToClipboard = async (text: string, itemId: string) => {
-    console.log("Copied to clipboard:", text);
+    try {
+      await Clipboard.setStringAsync(String(text));
+    } catch (e) {
+      console.log("Clipboard error", e);
+    }
     setCopiedItem(itemId);
 
     // Reset after 2 seconds
@@ -332,6 +417,13 @@ export default function ActivityDetailsScreen() {
     return `${address.slice(0, 8)}...${address.slice(-6)}`;
   };
 
+  const truncateRef = (ref: string) => {
+    if (!ref) return "N/A";
+    const s = String(ref);
+    if (s.length <= 12) return s;
+    return `${s.slice(0, 6)}...${s.slice(-4)}`;
+  };
+
   // Helper function to get status color
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -346,28 +438,26 @@ export default function ActivityDetailsScreen() {
     }
   };
 
-  // Download receipt function
-  const downloadReceipt = () => {
-    console.log("Downloading receipt for:", activity.id);
+  // Download / Generate PDF receipt
+  const downloadReceipt = async () => {
+    // Disabled: receipt generation temporarily removed
+    return;
   };
-
-  // Contact support function
+  // Contact support: opens mail app with transaction prefilled
   const contactSupport = () => {
-    console.log("Contacting support for transaction:", activity.id);
+    try {
+      const email = "support@flipeet.com";
+      const subject = encodeURIComponent(
+        `Support request: transaction ${activity.id}`,
+      );
+      const body = encodeURIComponent(
+        `I need help with transaction ${activity.id}`,
+      );
+      Linking.openURL(`mailto:${email}?subject=${subject}&body=${body}`);
+    } catch (e) {
+      console.log("Failed to open mail app", e);
+    }
   };
-
-  // Header Component
-  const Header = () => (
-    <View style={styles.header}>
-      <TouchableOpacity onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
-      </TouchableOpacity>
-      <Text style={styles.headerTitle}>Transaction Details</Text>
-      <View style={styles.spacer} />
-    </View>
-  );
-
-  // Detail Row Component
   const DetailRow = ({
     label,
     value,
@@ -398,9 +488,7 @@ export default function ActivityDetailsScreen() {
           </Text>
         </View>
         {copyable && (
-          <TouchableOpacity
-            onPress={() => copyToClipboard(value, "referenceId")}
-          >
+          <TouchableOpacity onPress={() => copyToClipboard(value, label)}>
             <Ionicons name="copy-outline" size={16} color="#757B85" />
           </TouchableOpacity>
         )}
@@ -412,56 +500,58 @@ export default function ActivityDetailsScreen() {
   const StatusRow = () => (
     <View style={styles.detailRow}>
       <Text style={styles.detailLabel}>Status</Text>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          backgroundColor: "#3886655C",
-          padding: 2,
-          borderRadius: 4,
-        }}
-      >
-        {activity.status === "successful" && (
-          <Ionicons
-            name="checkmark-circle"
-            size={16}
-            color={getStatusColor(activity.status)}
-            style={{ marginRight: 6 }}
-          />
-        )}
-        {activity.status === "pending" && (
-          <Ionicons
-            name="time-outline"
-            size={16}
-            color={getStatusColor(activity.status)}
-            style={{ marginRight: 6 }}
-          />
-        )}
-        {activity.status === "failed" && (
-          <Ionicons
-            name="close-circle"
-            size={16}
-            color={getStatusColor(activity.status)}
-            style={{ marginRight: 6 }}
-          />
-        )}
-        <Text
-          style={[
-            styles.detailValue,
-            { color: getStatusColor(activity.status) },
-          ]}
-        >
-          {activity.status.charAt(0).toUpperCase() + activity.status.slice(1)}
-        </Text>
-      </View>
+      {(() => {
+        const s = activity.status;
+        let bg = "#3886655C";
+        let textColor = "#FFFFFF";
+        let iconName: any = null;
+
+        if (s === "successful") {
+          bg = "#34D058"; // success background
+          textColor = "#E2E6F0"; // success text
+          iconName = "checkmark-circle";
+        } else if (s === "pending") {
+          bg = "#FFB800"; // pending background
+          textColor = "#0B1220"; // pending text (dark)
+          iconName = "time-outline";
+        } else if (s === "failed") {
+          bg = "#FF3B30"; // failed background
+          textColor = "#E2E6F0"; // failed text
+          iconName = "close-circle";
+        }
+
+        return (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              backgroundColor: bg,
+              padding: 6,
+              borderRadius: 6,
+            }}
+          >
+            {iconName && (
+              <Ionicons
+                name={iconName}
+                size={16}
+                color={textColor}
+                style={{ marginRight: 8 }}
+              />
+            )}
+            <Text style={[styles.detailValue, { color: textColor }]}>
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </Text>
+          </View>
+        );
+      })()}
     </View>
   );
 
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container}>
-        <Header />
+        <Header title="Transaction Details" />
 
         <ScrollView
           style={styles.scrollView}
@@ -472,13 +562,28 @@ export default function ActivityDetailsScreen() {
           <View style={styles.transactionHeader}>
             <View style={styles.transactionHeaderContent}>
               <View style={styles.transactionIconContainer}>
-                {/* <Image
-                  source={activity.icon}
-                  resizeMode="contain"
-                  style={styles.transactionIcon}
-                /> */}
-                <UsdcToNgn />
-                <Text style={styles.transactionTitle}>Sell [USDC - NGN]</Text>
+                {activity?.networkIcon ? (
+                  // prefer network icon in header
+                  <Image
+                    source={activity.networkIcon}
+                    resizeMode="contain"
+                    style={styles.transactionIcon}
+                  />
+                ) : activity?.icon && typeof activity.icon === "function" ? (
+                  // @ts-ignore - dynamic SVG component
+                  <activity.icon width={86} height={86} />
+                ) : (
+                  <Image
+                    source={
+                      activity?.icon || require("@/assets/images/bnb-chain.png")
+                    }
+                    resizeMode="contain"
+                    style={styles.transactionIcon}
+                  />
+                )}
+                <Text style={styles.transactionTitle}>
+                  {activity?.title || "Transaction"}
+                </Text>
               </View>
             </View>
           </View>
@@ -486,10 +591,8 @@ export default function ActivityDetailsScreen() {
           {/* Transaction Details */}
           <View style={styles.transactionDetails}>
             {/* Date and Time */}
-            <DetailRow
-              label="Date"
-              value={`${activity.date} | ${activity.time}`}
-            />
+            <DetailRow label="Date" value={activity.date} />
+            <DetailRow label="Time" value={activity.time} />
 
             {/* Status with Checkmark */}
             <StatusRow />
@@ -500,14 +603,7 @@ export default function ActivityDetailsScreen() {
               value={`${activity.amount} `}
             />
 
-            {/* Transaction Fee */}
-            <DetailRow
-              label="Transaction Fee"
-              value={activity.transactionFee}
-            />
-
-            {/* Total Value */}
-            <DetailRow label="Total Value" value={activity.totalValue} />
+            {/* Transaction Fee and Total Value hidden temporarily */}
 
             {/* Network */}
             <View style={styles.networkRow}>
@@ -569,7 +665,7 @@ export default function ActivityDetailsScreen() {
                 >
                   {copiedItem === "referenceId"
                     ? "Copied"
-                    : activity.referenceId}
+                    : truncateRef(activity.referenceId)}
                 </Text>
                 {!copiedItem && (
                   <TouchableOpacity
@@ -583,6 +679,34 @@ export default function ActivityDetailsScreen() {
               </View>
             </View>
           </View>
+
+          {/* If remote transaction contains a meter token/voucher, show it */}
+          {remoteTx &&
+            (() => {
+              const possibleToken =
+                remoteTx.token ||
+                remoteTx.voucher ||
+                remoteTx.meterToken ||
+                remoteTx.pin ||
+                remoteTx.voucherCode ||
+                remoteTx.voucher_pin ||
+                remoteTx.voucher_code ||
+                remoteTx?.metadata?.token ||
+                remoteTx?.data?.token ||
+                null;
+
+              if (!possibleToken) return null;
+
+              return (
+                <View style={{ marginTop: 12 }}>
+                  <DetailRow
+                    label="Meter Token"
+                    value={String(possibleToken)}
+                    copyable={true}
+                  />
+                </View>
+              );
+            })()}
 
           {/* Download Receipt Button */}
           <TouchableOpacity
