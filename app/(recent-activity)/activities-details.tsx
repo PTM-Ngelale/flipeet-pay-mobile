@@ -1,3 +1,6 @@
+import BaseNet from "@/assets/images/networks/base.svg";
+import BnbNet from "@/assets/images/networks/bnb.svg";
+import SolanaNet from "@/assets/images/networks/solana.svg";
 import { Header } from "@/components/Header";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
@@ -16,6 +19,13 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
 import { convertPaymentAmount, getTransactionByTxRef } from "../constants/api";
 import type { RootState } from "../store";
+
+import USDCIcon from "@/assets/images/tokens/usdc.svg";
+import USDTIcon from "@/assets/images/tokens/usdt.svg";
+
+import ReceiveIcon from "@/assets/images/receive-icon.svg";
+import SendIcon from "@/assets/images/send-icon.svg";
+import SwapIcon from "@/assets/images/swap-icon.svg";
 
 interface ActivityDetails {
   id: string;
@@ -84,6 +94,48 @@ const styles = StyleSheet.create({
   transactionIcon: {
     width: 86,
     height: 86,
+  },
+  activityIconWrapper: {
+    width: 40,
+    height: 40,
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  activityIcon: {
+    width: 40,
+    height: 40,
+    marginRight: 12,
+    zIndex: 1,
+  },
+  activityActionBadge: {
+    position: "absolute",
+    right: -6,
+    top: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 16,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#111827",
+    zIndex: 2,
+  },
+  activityNetworkBadge: {
+    position: "absolute",
+    right: -6,
+    bottom: -6,
+    width: 16,
+    height: 16,
+    borderRadius: 16,
+    backgroundColor: "#0B1220",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#111827",
+    zIndex: 2,
   },
   transactionTitle: {
     color: "#B0BACB",
@@ -286,16 +338,103 @@ export default function ActivityDetailsScreen() {
         : Math.ceil(Math.abs(n))
       : n;
     const asset = tx.asset || tx.currency || tx.symbol || "";
+    // icon and badges: pick token/network/action icons similar to RecentActivity
+    const tokenIconMap: Record<string, React.ComponentType<any>> = {
+      usdc: USDCIcon,
+      usdt: USDTIcon,
+    };
+
+    const networkIconMap: Record<string, React.ComponentType<any>> = {
+      solana: SolanaNet,
+      base: BaseNet,
+      "bnb-smart-chain": BnbNet,
+      bnb: BnbNet,
+    };
     const amountStr = `${rounded}${asset ? ` ${asset}` : ""}`.trim();
+    // determine main icon (token icon) and badges/action icons
+    let mainIcon: any = tx.icon || null;
+    try {
+      mainIcon = tokenIconMap[(String(asset) || "").toLowerCase()] || mainIcon;
+    } catch (e) {
+      /* ignore */
+    }
+
+    const typeStr = String(tx.type || tx.transactionType || "").toLowerCase();
+    let actionIcon: any = null;
+    let badgeIcon: any = null;
+
+    if (typeStr.includes("bridge")) {
+      actionIcon = SwapIcon;
+      badgeIcon =
+        networkIconMap[
+          String(tx.toNetwork || tx.to_network || tx.to || "").toLowerCase()
+        ] || null;
+    } else if (typeStr.includes("swap") || typeStr.includes("exchange")) {
+      actionIcon = SwapIcon;
+      badgeIcon =
+        tokenIconMap[String(tx.toAsset || tx.toCurrency || "").toLowerCase()] ||
+        null;
+    } else if (typeStr.includes("sell") || typeStr.includes("offramp")) {
+      actionIcon = SendIcon;
+      badgeIcon =
+        networkIconMap[String(tx.network || "").toLowerCase()] || null;
+    } else {
+      // infer incoming/outgoing
+      const directionRaw = String(
+        tx.direction ||
+          tx.flow ||
+          tx.side ||
+          tx.entryType ||
+          tx.transactionDirection ||
+          "",
+      ).toLowerCase();
+      const isOutgoingByType =
+        typeStr.includes("send") ||
+        typeStr.includes("sent") ||
+        typeStr.includes("withdrawal") ||
+        typeStr.includes("debit") ||
+        typeStr.includes("transfer_out");
+      const isIncomingByType =
+        typeStr.includes("receive") ||
+        typeStr.includes("received") ||
+        typeStr.includes("deposit") ||
+        typeStr.includes("credit") ||
+        typeStr.includes("onramp") ||
+        typeStr.includes("transfer_in");
+      const isOutgoingByDirection =
+        directionRaw.includes("out") ||
+        directionRaw.includes("debit") ||
+        directionRaw.includes("withdraw");
+      const isIncomingByDirection =
+        directionRaw.includes("in") ||
+        directionRaw.includes("credit") ||
+        directionRaw.includes("deposit");
+
+      const isOutgoing =
+        (isOutgoingByType && !isIncomingByType) || isOutgoingByDirection;
+      const isIncoming =
+        (isIncomingByType && !isOutgoingByType) || isIncomingByDirection;
+
+      if (isOutgoing) {
+        actionIcon = SendIcon;
+        badgeIcon =
+          networkIconMap[String(tx.network || "").toLowerCase()] || null;
+      } else if (isIncoming) {
+        actionIcon = ReceiveIcon;
+        badgeIcon =
+          networkIconMap[String(tx.network || "").toLowerCase()] || null;
+      }
+    }
+
     return {
       id: tx.id || tx._id || tx.transactionId || String(txRef || id || ""),
-      type: String(tx.type || tx.transactionType || "").toLowerCase(),
+      type: typeStr,
       title:
         tx.title || tx.description || tx.product || tx.service || "Transaction",
       description: tx.description || tx.note || tx.memo || "",
       amount: amountStr,
       secondaryAmount: tx.secondaryAmount || tx.toAmount || tx.fiatAmount,
-      icon: tx.icon || require("@/assets/images/bnb-chain.png"),
+      icon: mainIcon || require("@/assets/images/bnb-chain.png"),
       date,
       time,
       amountColor: tx.amountColor || "#757B85",
@@ -314,6 +453,8 @@ export default function ActivityDetailsScreen() {
       referenceId:
         tx.txRef || tx.tx_ref || tx.reference || tx.referenceId || tx.id || "",
       raw: tx,
+      actionIcon,
+      badgeIcon,
     };
   };
 
@@ -321,10 +462,17 @@ export default function ActivityDetailsScreen() {
   useEffect(() => {
     let mounted = true;
     const fetchTx = async () => {
-      if (!txRef || !token) return;
+      const authToken = String(token ?? "").trim();
+      if (
+        !txRef ||
+        !authToken ||
+        authToken === "undefined" ||
+        authToken === "null"
+      )
+        return;
       setLoading(true);
       try {
-        const res = await getTransactionByTxRef(String(txRef), String(token));
+        const res = await getTransactionByTxRef(String(txRef), authToken);
         const data = res?.data || res || null;
         if (mounted) setRemoteTx(data);
       } catch (e) {
@@ -358,12 +506,19 @@ export default function ActivityDetailsScreen() {
       const amt =
         raw.amount != null ? Number(raw.amount) : Number(raw.value || 0);
       const asset = raw.asset || raw.currency || raw.symbol || "";
-      if (!Number.isFinite(amt) || !asset) return;
+      const assetStr = String(asset ?? "").trim();
+      if (
+        !Number.isFinite(amt) ||
+        !assetStr ||
+        assetStr.toLowerCase() === "undefined" ||
+        assetStr.toLowerCase() === "null"
+      )
+        return;
 
       try {
         const res = await convertPaymentAmount({
           amount: Math.abs(amt),
-          asset: asset.toString(),
+          asset: assetStr,
           currency: "NGN",
         });
         const d = res?.data || res || null;
@@ -551,7 +706,98 @@ export default function ActivityDetailsScreen() {
   return (
     <SafeAreaProvider>
       <SafeAreaView style={styles.container}>
-        <Header title="Transaction Details" />
+        <Header
+          title="Transaction Details"
+          rightComponent={(() => {
+            const HeaderRight = () => {
+              if (!activity) return <View style={{ width: 24 }} />;
+              return (
+                <View
+                  style={{
+                    width: 36,
+                    height: 36,
+                    position: "relative",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  {typeof activity.icon === "function" ? (
+                    // @ts-ignore
+                    <activity.icon width={24} height={24} />
+                  ) : (
+                    <Image
+                      source={activity.icon}
+                      style={{ width: 24, height: 24 }}
+                      resizeMode="contain"
+                    />
+                  )}
+
+                  {activity.actionIcon ? (
+                    <View
+                      style={{
+                        position: "absolute",
+                        right: -4,
+                        top: -4,
+                        width: 16,
+                        height: 16,
+                        borderRadius: 16,
+                        backgroundColor: "#0B1220",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderWidth: 1,
+                        borderColor: "#111827",
+                        zIndex: 3,
+                      }}
+                    >
+                      {typeof activity.actionIcon === "function" ? (
+                        // @ts-ignore
+                        <activity.actionIcon width={10} height={10} />
+                      ) : (
+                        <Image
+                          source={activity.actionIcon}
+                          style={{ width: 10, height: 10 }}
+                          resizeMode="contain"
+                        />
+                      )}
+                    </View>
+                  ) : null}
+
+                  {activity.badgeIcon ? (
+                    <View
+                      style={{
+                        position: "absolute",
+                        right: -4,
+                        bottom: -4,
+                        width: 14,
+                        height: 14,
+                        borderRadius: 14,
+                        backgroundColor: "#0B1220",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderWidth: 1,
+                        borderColor: "#111827",
+                        zIndex: 3,
+                      }}
+                    >
+                      {typeof activity.badgeIcon === "function" ? (
+                        // @ts-ignore
+                        <activity.badgeIcon width={10} height={10} />
+                      ) : (
+                        <Image
+                          source={activity.badgeIcon}
+                          style={{ width: 10, height: 10 }}
+                          resizeMode="contain"
+                        />
+                      )}
+                    </View>
+                  ) : null}
+                </View>
+              );
+            };
+
+            return <HeaderRight />;
+          })()}
+        />
 
         <ScrollView
           style={styles.scrollView}
@@ -562,25 +808,46 @@ export default function ActivityDetailsScreen() {
           <View style={styles.transactionHeader}>
             <View style={styles.transactionHeaderContent}>
               <View style={styles.transactionIconContainer}>
-                {activity?.networkIcon ? (
-                  // prefer network icon in header
-                  <Image
-                    source={activity.networkIcon}
-                    resizeMode="contain"
-                    style={styles.transactionIcon}
-                  />
-                ) : activity?.icon && typeof activity.icon === "function" ? (
-                  // @ts-ignore - dynamic SVG component
-                  <activity.icon width={86} height={86} />
-                ) : (
-                  <Image
-                    source={
-                      activity?.icon || require("@/assets/images/bnb-chain.png")
-                    }
-                    resizeMode="contain"
-                    style={styles.transactionIcon}
-                  />
-                )}
+                <View style={styles.activityIconWrapper}>
+                  {typeof activity.icon === "function" ? (
+                    // @ts-ignore - dynamic SVG component
+                    <activity.icon width={28} height={28} />
+                  ) : (
+                    <Image
+                      source={activity.icon}
+                      style={styles.activityIcon}
+                      resizeMode="contain"
+                    />
+                  )}
+                  {activity.actionIcon ? (
+                    <View style={styles.activityActionBadge}>
+                      {typeof activity.actionIcon === "function" ? (
+                        // @ts-ignore - dynamic SVG component
+                        <activity.actionIcon width={10} height={10} />
+                      ) : (
+                        <Image
+                          source={activity.actionIcon}
+                          style={{ width: 10, height: 10 }}
+                          resizeMode="contain"
+                        />
+                      )}
+                    </View>
+                  ) : null}
+                  {activity.badgeIcon ? (
+                    <View style={styles.activityNetworkBadge}>
+                      {typeof activity.badgeIcon === "function" ? (
+                        // @ts-ignore - dynamic SVG component
+                        <activity.badgeIcon width={10} height={10} />
+                      ) : (
+                        <Image
+                          source={activity.badgeIcon}
+                          style={{ width: 10, height: 10 }}
+                          resizeMode="contain"
+                        />
+                      )}
+                    </View>
+                  ) : null}
+                </View>
                 <Text style={styles.transactionTitle}>
                   {activity?.title || "Transaction"}
                 </Text>

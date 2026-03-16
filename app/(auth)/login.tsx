@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
     color: "#B0BACB",
     fontSize: 14,
     fontWeight: 400,
-    lineHeight: 0,
+    lineHeight: 18,
   },
   loginButton: {
     backgroundColor: "#0A66D3",
