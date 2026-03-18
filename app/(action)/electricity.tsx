@@ -10,6 +10,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -402,267 +404,281 @@ export default function ElectricityScreen() {
   };
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={22} color="#E2E6F0" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Electricity</Text>
-            <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
-              <HistoryIcon width={25} height={25} />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={[styles.sectionLabel, { marginTop: 6 }]}>
-            Phone Number
-          </Text>
-          <View style={[styles.selectInput, { marginBottom: 14 }]}>
-            <TextInput
-              value={phoneNumber}
-              onChangeText={handlePhoneChange}
-              placeholder="Enter Phone Number"
-              placeholderTextColor="#757B85"
-              keyboardType="phone-pad"
-              style={styles.meterInput}
-            />
-          </View>
-
-          <Text style={[styles.sectionLabel]}>Service Provider</Text>
-          <TouchableOpacity
-            style={styles.selectInput}
-            onPress={() => setShowProviderDropdown((prev) => !prev)}
+    <KeyboardAvoidingView
+      style={styles.keyboardAvoidingView}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+    >
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.container}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
           >
-            <Text
-              style={[
-                styles.placeholder,
-                selectedProvider && styles.selectValueText,
-              ]}
-            >
-              {selectedProvider?.name || "Select a provider"}
+            <View style={styles.header}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => router.back()}
+              >
+                <Ionicons name="arrow-back" size={22} color="#E2E6F0" />
+              </TouchableOpacity>
+              <Text style={styles.headerTitle}>Electricity</Text>
+              <TouchableOpacity
+                onPress={() => router.push("/(recent-activity)")}
+              >
+                <HistoryIcon width={25} height={25} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={[styles.sectionLabel, { marginTop: 6 }]}>
+              Phone Number
             </Text>
-            <View style={styles.rightTag}>
-              <Ionicons
-                name={showProviderDropdown ? "chevron-up" : "chevron-down"}
-                size={14}
-                color="#4A9DFF"
+            <View style={[styles.selectInput, { marginBottom: 14 }]}>
+              <TextInput
+                value={phoneNumber}
+                onChangeText={handlePhoneChange}
+                placeholder="Enter Phone Number"
+                placeholderTextColor="#757B85"
+                keyboardType="phone-pad"
+                style={styles.meterInput}
               />
             </View>
-          </TouchableOpacity>
 
-          {showProviderDropdown && (
-            <View style={styles.dropdownMenu}>
-              {providers.map((provider) => {
-                const key =
-                  provider.id || provider.name || JSON.stringify(provider);
-                const isActive = selectedProvider?.id === provider.id;
-                return (
+            <Text style={[styles.sectionLabel]}>Service Provider</Text>
+            <TouchableOpacity
+              style={styles.selectInput}
+              onPress={() => setShowProviderDropdown((prev) => !prev)}
+            >
+              <Text
+                style={[
+                  styles.placeholder,
+                  selectedProvider && styles.selectValueText,
+                ]}
+              >
+                {selectedProvider?.name || "Select a provider"}
+              </Text>
+              <View style={styles.rightTag}>
+                <Ionicons
+                  name={showProviderDropdown ? "chevron-up" : "chevron-down"}
+                  size={14}
+                  color="#4A9DFF"
+                />
+              </View>
+            </TouchableOpacity>
+
+            {showProviderDropdown && (
+              <View style={styles.dropdownMenu}>
+                {providers.map((provider) => {
+                  const key =
+                    provider.id || provider.name || JSON.stringify(provider);
+                  const isActive = selectedProvider?.id === provider.id;
+                  return (
+                    <TouchableOpacity
+                      key={key}
+                      style={[
+                        styles.dropdownItem,
+                        isActive && styles.dropdownItemActive,
+                      ]}
+                      onPress={() => {
+                        setSelectedProvider(provider);
+                        setShowProviderDropdown(false);
+                        setMeterInfo(null);
+                        const raw = provider.raw || {};
+                        const types =
+                          raw.vendTypes || raw.meterTypes || raw.types || [];
+                        const normalizedTypes = Array.isArray(types)
+                          ? types.map((t: any) => String(t))
+                          : [];
+                        setProviderMeterTypes(normalizedTypes);
+                        setMeterType("Prepaid");
+                      }}
+                    >
+                      <Text style={styles.dropdownText}>{provider.name}</Text>
+                      {isActive && (
+                        <Ionicons name="checkmark" size={15} color="#34D058" />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            <Text style={[styles.sectionLabel, styles.sectionSpacing]}>
+              Meter Number
+            </Text>
+            <View style={styles.selectInput}>
+              <TextInput
+                value={meterNumber}
+                onChangeText={handleMeterChange}
+                placeholder="Enter meter number"
+                placeholderTextColor="#757B85"
+                keyboardType="number-pad"
+                style={styles.meterInput}
+              />
+              <TouchableOpacity
+                style={styles.rightTypePill}
+                onPress={() => setShowMeterTypeDropdown((prev) => !prev)}
+              >
+                <Text style={styles.rightTypeText}>
+                  {meterType || "Select"}
+                </Text>
+                <Ionicons
+                  name={showMeterTypeDropdown ? "chevron-up" : "chevron-down"}
+                  size={12}
+                  color="#4A9DFF"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {showMeterTypeDropdown && (
+              <View style={styles.dropdownMenu}>
+                {(providerMeterTypes.length > 0
+                  ? providerMeterTypes
+                  : METER_TYPES
+                ).map((type) => (
                   <TouchableOpacity
-                    key={key}
+                    key={type}
                     style={[
                       styles.dropdownItem,
-                      isActive && styles.dropdownItemActive,
+                      meterType === type && styles.dropdownItemActive,
                     ]}
                     onPress={() => {
-                      setSelectedProvider(provider);
-                      setShowProviderDropdown(false);
+                      setMeterType(type);
+                      setShowMeterTypeDropdown(false);
                       setMeterInfo(null);
-                      const raw = provider.raw || {};
-                      const types =
-                        raw.vendTypes || raw.meterTypes || raw.types || [];
-                      const normalizedTypes = Array.isArray(types)
-                        ? types.map((t: any) => String(t))
-                        : [];
-                      setProviderMeterTypes(normalizedTypes);
-                      setMeterType("Prepaid");
                     }}
                   >
-                    <Text style={styles.dropdownText}>{provider.name}</Text>
-                    {isActive && (
+                    <Text style={styles.dropdownText}>{String(type)}</Text>
+                    {meterType === type && (
                       <Ionicons name="checkmark" size={15} color="#34D058" />
                     )}
                   </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
+                ))}
+              </View>
+            )}
 
-          <Text style={[styles.sectionLabel, styles.sectionSpacing]}>
-            Meter Number
-          </Text>
-          <View style={styles.selectInput}>
-            <TextInput
-              value={meterNumber}
-              onChangeText={handleMeterChange}
-              placeholder="Enter meter number"
-              placeholderTextColor="#757B85"
-              keyboardType="number-pad"
-              style={styles.meterInput}
-            />
-            <TouchableOpacity
-              style={styles.rightTypePill}
-              onPress={() => setShowMeterTypeDropdown((prev) => !prev)}
-            >
-              <Text style={styles.rightTypeText}>{meterType || "Select"}</Text>
-              <Ionicons
-                name={showMeterTypeDropdown ? "chevron-up" : "chevron-down"}
-                size={12}
-                color="#4A9DFF"
+            {verifyingMeter && (
+              <ActivityIndicator
+                size="small"
+                color="#34D058"
+                style={{ marginTop: 8 }}
               />
-            </TouchableOpacity>
-          </View>
+            )}
+            {meterInfo && !verifyingMeter && (
+              <View style={styles.meterInfoBox}>
+                <Text style={styles.meterInfoName}>{meterInfo.name}</Text>
+              </View>
+            )}
+            {!meterInfo && !verifyingMeter && meterNumber.length > 0 && (
+              <Text style={styles.helperText}>
+                {meterError || "Meter not found or invalid."}
+              </Text>
+            )}
 
-          {showMeterTypeDropdown && (
-            <View style={styles.dropdownMenu}>
-              {(providerMeterTypes.length > 0
-                ? providerMeterTypes
-                : METER_TYPES
-              ).map((type) => (
+            <Text style={[styles.sectionLabel, styles.sectionSpacing]}>
+              Choose amount
+            </Text>
+            <View style={styles.amountGrid}>
+              {AMOUNT_PRESETS.map((item) => (
                 <TouchableOpacity
-                  key={type}
+                  key={item}
                   style={[
-                    styles.dropdownItem,
-                    meterType === type && styles.dropdownItemActive,
+                    styles.amountPreset,
+                    selectedPreset === item && styles.amountPresetSelected,
                   ]}
-                  onPress={() => {
-                    setMeterType(type);
-                    setShowMeterTypeDropdown(false);
-                    setMeterInfo(null);
-                  }}
+                  onPress={() => setAmountValue(item)}
                 >
-                  <Text style={styles.dropdownText}>{String(type)}</Text>
-                  {meterType === type && (
-                    <Ionicons name="checkmark" size={15} color="#34D058" />
-                  )}
+                  <Text style={styles.amountPresetText}>₦{item}</Text>
                 </TouchableOpacity>
               ))}
             </View>
-          )}
 
-          {verifyingMeter && (
-            <ActivityIndicator
-              size="small"
-              color="#34D058"
-              style={{ marginTop: 8 }}
-            />
-          )}
-          {meterInfo && !verifyingMeter && (
-            <View style={styles.meterInfoBox}>
-              <Text style={styles.meterInfoName}>{meterInfo.name}</Text>
-            </View>
-          )}
-          {!meterInfo && !verifyingMeter && meterNumber.length > 0 && (
-            <Text style={styles.helperText}>
-              {meterError || "Meter not found or invalid."}
-            </Text>
-          )}
-
-          <Text style={[styles.sectionLabel, styles.sectionSpacing]}>
-            Choose amount
-          </Text>
-          <View style={styles.amountGrid}>
-            {AMOUNT_PRESETS.map((item) => (
-              <TouchableOpacity
-                key={item}
-                style={[
-                  styles.amountPreset,
-                  selectedPreset === item && styles.amountPresetSelected,
-                ]}
-                onPress={() => setAmountValue(item)}
-              >
-                <Text style={styles.amountPresetText}>₦{item}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.amountCard}>
-            <View style={styles.sectionRow}>
-              <View style={styles.sectionLeft}>
-                <Text style={styles.amountLabel}>Enter amount</Text>
-                <View style={styles.amountInputContainer}>
-                  <Text style={styles.currencySymbol}>₦</Text>
-                  <TextInput
-                    value={amountInput}
-                    onChangeText={handleAmountChange}
-                    placeholder="0.00"
-                    placeholderTextColor="#6D7484"
-                    keyboardType="decimal-pad"
-                    style={styles.amountInput}
-                  />
+            <View style={styles.amountCard}>
+              <View style={styles.sectionRow}>
+                <View style={styles.sectionLeft}>
+                  <Text style={styles.amountLabel}>Enter amount</Text>
+                  <View style={styles.amountInputContainer}>
+                    <Text style={styles.currencySymbol}>₦</Text>
+                    <TextInput
+                      value={amountInput}
+                      onChangeText={handleAmountChange}
+                      placeholder="0.00"
+                      placeholderTextColor="#6D7484"
+                      keyboardType="decimal-pad"
+                      style={styles.amountInput}
+                    />
+                  </View>
+                  <Text style={styles.amountSub}>${usdAmount.toFixed(2)}</Text>
                 </View>
-                <Text style={styles.amountSub}>${usdAmount.toFixed(2)}</Text>
-              </View>
 
-              <View style={styles.sectionRight}>
-                <TouchableOpacity
-                  style={styles.tokenSelector}
-                  onPress={() => router.push("/(action)/token-selector")}
-                >
-                  <View style={styles.tokenIconWrapper}>
-                    {TokenIcon ? (
-                      <TokenIcon width={30} height={30} />
-                    ) : (
-                      <Ionicons name="ellipse" size={24} color="#4A9DFF" />
-                    )}
-                    {displayTokenNetwork &&
-                      (() => {
-                        const Net = getNetworkIcon(displayTokenNetwork);
-                        return Net ? (
-                          <View style={styles.networkBadge}>
-                            <Net width={14} height={14} />
-                          </View>
-                        ) : null;
-                      })()}
-                  </View>
-                  <View>
-                    <Text style={styles.tokenName}>{displayTokenSymbol}</Text>
-                    <Text style={styles.tokenNetwork}>
-                      {shortenNetworkName(displayTokenNetwork)}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-down" size={14} color="#4A9DFF" />
-                </TouchableOpacity>
+                <View style={styles.sectionRight}>
+                  <TouchableOpacity
+                    style={styles.tokenSelector}
+                    onPress={() => router.push("/(action)/token-selector")}
+                  >
+                    <View style={styles.tokenIconWrapper}>
+                      {TokenIcon ? (
+                        <TokenIcon width={30} height={30} />
+                      ) : (
+                        <Ionicons name="ellipse" size={24} color="#4A9DFF" />
+                      )}
+                      {displayTokenNetwork &&
+                        (() => {
+                          const Net = getNetworkIcon(displayTokenNetwork);
+                          return Net ? (
+                            <View style={styles.networkBadge}>
+                              <Net width={14} height={14} />
+                            </View>
+                          ) : null;
+                        })()}
+                    </View>
+                    <View>
+                      <Text style={styles.tokenName}>{displayTokenSymbol}</Text>
+                      <Text style={styles.tokenNetwork}>
+                        {shortenNetworkName(displayTokenNetwork)}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-down" size={14} color="#4A9DFF" />
+                  </TouchableOpacity>
 
-                <View style={styles.balanceContainer}>
-                  {/* <Image
+                  <View style={styles.balanceContainer}>
+                    {/* <Image
                     source={require("@/assets/images/wallet-icon.png")}
                     style={styles.walletIcon}
                   /> */}
-                  <WalletIcon width={15} height={15} />
-                  <Text style={styles.balanceText}>{balanceLabel}</Text>
+                    <WalletIcon width={15} height={15} />
+                    <Text style={styles.balanceText}>{balanceLabel}</Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
 
-          {/* Verification is automatic once provider + meter are populated */}
+            {/* Verification is automatic once provider + meter are populated */}
 
-          <TouchableOpacity
-            style={[styles.payButton, !canPay && styles.payButtonDisabled]}
-            onPress={handlePay}
-            disabled={!canPay}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.payButtonText}>Pay</Text>
-            )}
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </SafeAreaProvider>
+            <TouchableOpacity
+              style={[styles.payButton, !canPay && styles.payButtonDisabled]}
+              onPress={handlePay}
+              disabled={!canPay}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.payButtonText}>Pay</Text>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoidingView: {
+    flex: 1,
+    marginTop: 30,
+  },
   container: { flex: 1, backgroundColor: "#121212", paddingHorizontal: 16 },
   scrollView: { flex: 1 },
   scrollContent: { paddingTop: 8, paddingBottom: 24 },

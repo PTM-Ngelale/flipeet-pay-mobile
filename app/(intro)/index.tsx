@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
   ScrollView,
@@ -43,6 +43,7 @@ export default function IntroScreen() {
   const router = useRouter();
   const scrollRef = useRef<ScrollView | null>(null);
   const [pageIndex, setPageIndex] = useState(0);
+  const [autoplay, setAutoplay] = useState(true);
 
   const isLast = pageIndex === SCREENS.length - 1;
 
@@ -53,18 +54,20 @@ export default function IntroScreen() {
     }));
   }, [pageIndex]);
 
-  const handleNext = () => {
-    if (!scrollRef.current) return;
-    const nextIndex = Math.min(pageIndex + 1, SCREENS.length - 1);
-    scrollRef.current.scrollTo({ x: nextIndex * SCREEN_WIDTH, animated: true });
-    setPageIndex(nextIndex);
-  };
-
-  const handleGetStarted = async () => {
+  const handleSignUp = async () => {
+    setAutoplay(false);
     try {
       await AsyncStorage.setItem("flipeet_onboarding_seen_v1", "true");
     } catch (error) {}
-    router.replace("/(auth)/login");
+    router.push("/sign-up");
+  };
+
+  const handleLogin = async () => {
+    setAutoplay(false);
+    try {
+      await AsyncStorage.setItem("flipeet_onboarding_seen_v1", "true");
+    } catch (error) {}
+    router.push("/login");
   };
 
   const handleScroll = (event: any) => {
@@ -74,6 +77,25 @@ export default function IntroScreen() {
       setPageIndex(index);
     }
   };
+
+  // Auto-advance carousel until user interaction
+  useEffect(() => {
+    if (!autoplay) return;
+    const id = setInterval(() => {
+      setPageIndex((prev) => {
+        const next = (prev + 1) % SCREENS.length;
+        if (scrollRef.current) {
+          scrollRef.current.scrollTo({
+            x: next * SCREEN_WIDTH,
+            animated: true,
+          });
+        }
+        return next;
+      });
+    }, 4000);
+
+    return () => clearInterval(id);
+  }, [autoplay]);
 
   return (
     <View style={styles.root}>
@@ -105,12 +127,14 @@ export default function IntroScreen() {
           showsHorizontalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
+          scrollEnabled={false}
         >
-          {SCREENS.map((screen) => (
+          {SCREENS.map((screen, idx) => (
             <View key={screen.title} style={styles.screen}>
               <View style={styles.content}>
                 <Text style={styles.title}>{screen.title}</Text>
                 <Text style={styles.subtitle}>{screen.subtitle}</Text>
+
                 <View style={styles.dotsContainer}>
                   {dots.map((dot) => (
                     <View
@@ -129,28 +153,18 @@ export default function IntroScreen() {
 
         <View style={styles.footer}>
           <View style={styles.buttonColumn}>
-            {!isLast ? (
-              <TouchableOpacity
-                style={[styles.ctaButton, styles.ctaButtonPrimary]}
-                onPress={handleNext}
-              >
-                <Text style={styles.ctaTextPrimary}>Next</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.buttonSpacer} />
-            )}
             <TouchableOpacity
-              style={[
-                styles.ctaButton,
-                isLast ? styles.ctaButtonPrimary : styles.ctaButtonSecondary,
-              ]}
-              onPress={handleGetStarted}
+              style={[styles.ctaButton, styles.ctaButtonPrimary]}
+              onPress={handleSignUp}
             >
-              <Text
-                style={isLast ? styles.ctaTextPrimary : styles.ctaTextSecondary}
-              >
-                Get Started
-              </Text>
+              <Text style={styles.ctaTextPrimary}>Get Started</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.ctaButton, styles.ctaButtonSecondary]}
+              onPress={handleLogin}
+            >
+              <Text style={styles.ctaTextSecondary}>Login</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -181,7 +195,7 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "#121212",
-    opacity: 0.55,
+    opacity: 0.75,
   },
   content: {
     flex: 1,
@@ -191,14 +205,14 @@ const styles = StyleSheet.create({
     paddingBottom: 60,
   },
   title: {
-    color: "#FFFFFF",
-    fontSize: 28,
+    color: "#E2E6F0",
+    fontSize: 32,
     fontWeight: "700",
     lineHeight: 34,
     textAlign: "center",
   },
   subtitle: {
-    color: "#EAF3FF",
+    color: "#E2E6F0",
     fontSize: 16,
     lineHeight: 24,
     textAlign: "center",
@@ -218,7 +232,7 @@ const styles = StyleSheet.create({
   dotsContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 6,
+    gap: 2,
     marginTop: 16,
   },
   dot: {
@@ -242,17 +256,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#0A66D3",
   },
   ctaButtonSecondary: {
-    backgroundColor: "#121212",
+    backgroundColor: "transparent",
     borderWidth: 1,
-    borderColor: "#4A9DFF",
+    borderColor: "#0A66D3",
   },
   ctaTextPrimary: {
-    color: "#FFFFFF",
+    color: "#F2F4F8",
     fontSize: 16,
     fontWeight: "700",
   },
   ctaTextSecondary: {
-    color: "#4A9DFF",
+    color: "#0A66D3",
     fontSize: 16,
     fontWeight: "700",
   },

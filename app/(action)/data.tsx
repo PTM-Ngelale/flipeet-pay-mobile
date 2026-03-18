@@ -15,6 +15,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -439,257 +441,272 @@ export default function DataScreen() {
   };
 
   return (
-    <SafeAreaProvider>
-      <SafeAreaView style={styles.container}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            <TouchableOpacity
-              style={styles.iconButton}
-              onPress={() => router.back()}
-            >
-              <Ionicons name="arrow-back" size={22} color="#E2E6F0" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Data</Text>
-            <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
-              <HistoryIcon width={25} height={25} />
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.sectionLabel}>Phone number</Text>
-
-          <View style={styles.phoneSelectContainer}>
-            <View style={styles.phoneSelect}>
-              <View style={styles.phoneInputRow}>
-                <View style={styles.countryTag}>
-                  <NGNFlag width={18} height={12} />
-                  <Ionicons name="chevron-down" size={11} color="#4A9DFF" />
-                </View>
-                <Text style={styles.phonePrefix}>+234</Text>
-                <TextInput
-                  value={localPhone}
-                  onChangeText={handlePhoneNumberChange}
-                  keyboardType="number-pad"
-                  style={styles.phoneInput}
-                />
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={styles.networkIconContainer}
-              onPress={() => setShowNetworkDropdown((prev) => !prev)}
-            >
-              <View style={styles.networkIconWrapper}>
-                {(() => {
-                  const id = (selectedNetwork?.id || "").toLowerCase();
-                  const Local = providerIconMap[id];
-                  if (Local) return <Local width={18} height={18} />;
-                  return (
-                    <View
-                      style={[
-                        styles.networkDot,
-                        {
-                          backgroundColor: selectedNetwork?.color || "#6C7486",
-                        },
-                      ]}
-                    >
-                      <Text style={styles.networkDotText}>
-                        {(selectedNetwork?.name || "Sel").slice(0, 3)}
-                      </Text>
-                    </View>
-                  );
-                })()}
-                <Text style={styles.networkText}>
-                  {selectedNetwork?.name || "Select"}
-                </Text>
-                <Ionicons
-                  name={showNetworkDropdown ? "chevron-up" : "chevron-down"}
-                  size={12}
-                  color="#4A9DFF"
-                />
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {showNetworkDropdown && (
-            <View style={styles.dropdownMenu}>
-              {NETWORKS.map((network) => {
-                const isActive = selectedNetwork?.id === network.id;
-                return (
-                  <TouchableOpacity
-                    key={network.id}
-                    style={[
-                      styles.dropdownItem,
-                      isActive && styles.dropdownItemActive,
-                    ]}
-                    onPress={() => {
-                      setSelectedNetwork(network);
-                      setShowNetworkDropdown(false);
-                    }}
-                  >
-                    {(() => {
-                      const id = (network.id || "").toLowerCase();
-                      const Local = providerIconMap[id];
-                      if (Local) return <Local width={20} height={20} />;
-                      return (
-                        <View
-                          style={[
-                            styles.dropdownDot,
-                            { backgroundColor: network.color },
-                          ]}
-                        />
-                      );
-                    })()}
-                    <Text style={styles.dropdownText}>{network.name}</Text>
-                    {isActive ? (
-                      <Ionicons name="checkmark" size={15} color="#34D058" />
-                    ) : null}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-
-          {!isPhoneValid && localPhone.length > 0 ? (
-            <Text style={styles.helperText}>
-              Phone number must be 10 digits.
-            </Text>
-          ) : null}
-
-          <View style={styles.planHeaderRow}>
-            <Text style={styles.sectionLabel}>Choose data plan</Text>
-            {dataPlans.length > 4 && (
+    <KeyboardAvoidingView
+      style={styles.keyboardAvoidingView}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+    >
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.container}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.header}>
               <TouchableOpacity
-                onPress={() => setShowAllPlans((prev) => !prev)}
+                style={styles.iconButton}
+                onPress={() => router.back()}
               >
-                <Text style={styles.viewAllText}>
-                  {showAllPlans ? "Show less" : "View all"}
-                </Text>
+                <Ionicons name="arrow-back" size={22} color="#E2E6F0" />
               </TouchableOpacity>
-            )}
-          </View>
+              <Text style={styles.headerTitle}>Data</Text>
+              <TouchableOpacity
+                onPress={() => router.push("/(recent-activity)")}
+              >
+                <HistoryIcon width={25} height={25} />
+              </TouchableOpacity>
+            </View>
 
-          {loadingPlans ? (
-            <View style={styles.planLoader}>
-              <ActivityIndicator color="#4A9DFF" />
-              <Text style={styles.planLoaderText}>Loading data plans...</Text>
-            </View>
-          ) : dataPlans.length === 0 ? (
-            <View style={styles.planLoader}>
-              <Text style={styles.planLoaderText}>
-                No data plans available for this provider.
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.planGrid}>
-              {visiblePlans.map((plan) => {
-                const isSelected = selectedPlanId === plan.id;
-                return (
-                  <TouchableOpacity
-                    key={plan.id}
-                    style={[
-                      styles.planCard,
-                      isSelected && styles.planCardSelected,
-                    ]}
-                    onPress={() => handlePlanSelect(plan)}
-                  >
-                    <View style={styles.planBadge}>
-                      <Text style={styles.planBadgeText}>₦{plan.amount}</Text>
-                    </View>
-                    <Text style={styles.planTitle}>{plan.title}</Text>
-                    <Text style={styles.planSubtitle}>{plan.subtitle1}</Text>
-                    {!!plan.subtitle2 && (
-                      <Text style={styles.planSubtitle}>{plan.subtitle2}</Text>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
+            <Text style={styles.sectionLabel}>Phone number</Text>
 
-          <View style={styles.amountCard}>
-            <View style={styles.sectionRow}>
-              <View style={styles.sectionLeft}>
-                <Text style={styles.amountLabel}>Enter amount</Text>
-                <View style={styles.amountInputContainer}>
-                  <Text style={styles.currencySymbol}>₦</Text>
+            <View style={styles.phoneSelectContainer}>
+              <View style={styles.phoneSelect}>
+                <View style={styles.phoneInputRow}>
+                  <View style={styles.countryTag}>
+                    <NGNFlag width={18} height={12} />
+                    <Ionicons name="chevron-down" size={11} color="#4A9DFF" />
+                  </View>
+                  <Text style={styles.phonePrefix}>+234</Text>
                   <TextInput
-                    value={amountInput}
-                    onChangeText={handleAmountChange}
-                    placeholder="0.00"
-                    placeholderTextColor="#6D7484"
-                    keyboardType="decimal-pad"
-                    style={styles.amountInput}
+                    value={localPhone}
+                    onChangeText={handlePhoneNumberChange}
+                    keyboardType="number-pad"
+                    style={styles.phoneInput}
                   />
                 </View>
-                <Text style={styles.amountSubValue}>
-                  ${usdAmount.toFixed(2)}
-                </Text>
               </View>
 
-              <View style={styles.sectionRight}>
-                <TouchableOpacity
-                  style={styles.tokenSelector}
-                  onPress={() => router.push("/(action)/token-selector")}
-                >
-                  <View style={styles.tokenIconWrapper}>
-                    {TokenIcon ? (
-                      <TokenIcon width={30} height={30} />
-                    ) : (
-                      <Ionicons name="ellipse" size={24} color="#4A9DFF" />
-                    )}
-                    {displayTokenNetwork &&
-                      (() => {
-                        const Net = getNetworkIcon(displayTokenNetwork);
-                        return Net ? (
-                          <View style={styles.networkBadge}>
-                            <Net width={14} height={14} />
-                          </View>
-                        ) : null;
-                      })()}
-                  </View>
-                  <View>
-                    <Text style={styles.tokenName}>{displayTokenSymbol}</Text>
-                    <Text style={styles.tokenNetwork}>
-                      {shortenNetworkName(displayTokenNetwork)}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-down" size={14} color="#4A9DFF" />
-                </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.networkIconContainer}
+                onPress={() => setShowNetworkDropdown((prev) => !prev)}
+              >
+                <View style={styles.networkIconWrapper}>
+                  {(() => {
+                    const id = (selectedNetwork?.id || "").toLowerCase();
+                    const Local = providerIconMap[id];
+                    if (Local) return <Local width={18} height={18} />;
+                    return (
+                      <View
+                        style={[
+                          styles.networkDot,
+                          {
+                            backgroundColor:
+                              selectedNetwork?.color || "#6C7486",
+                          },
+                        ]}
+                      >
+                        <Text style={styles.networkDotText}>
+                          {(selectedNetwork?.name || "Sel").slice(0, 3)}
+                        </Text>
+                      </View>
+                    );
+                  })()}
+                  <Text style={styles.networkText}>
+                    {selectedNetwork?.name || "Select"}
+                  </Text>
+                  <Ionicons
+                    name={showNetworkDropdown ? "chevron-up" : "chevron-down"}
+                    size={12}
+                    color="#4A9DFF"
+                  />
+                </View>
+              </TouchableOpacity>
+            </View>
 
-                <View style={styles.balanceContainer}>
-                  {/* <Image
+            {showNetworkDropdown && (
+              <View style={styles.dropdownMenu}>
+                {NETWORKS.map((network) => {
+                  const isActive = selectedNetwork?.id === network.id;
+                  return (
+                    <TouchableOpacity
+                      key={network.id}
+                      style={[
+                        styles.dropdownItem,
+                        isActive && styles.dropdownItemActive,
+                      ]}
+                      onPress={() => {
+                        setSelectedNetwork(network);
+                        setShowNetworkDropdown(false);
+                      }}
+                    >
+                      {(() => {
+                        const id = (network.id || "").toLowerCase();
+                        const Local = providerIconMap[id];
+                        if (Local) return <Local width={20} height={20} />;
+                        return (
+                          <View
+                            style={[
+                              styles.dropdownDot,
+                              { backgroundColor: network.color },
+                            ]}
+                          />
+                        );
+                      })()}
+                      <Text style={styles.dropdownText}>{network.name}</Text>
+                      {isActive ? (
+                        <Ionicons name="checkmark" size={15} color="#34D058" />
+                      ) : null}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {!isPhoneValid && localPhone.length > 0 ? (
+              <Text style={styles.helperText}>
+                Phone number must be 10 digits.
+              </Text>
+            ) : null}
+
+            <View style={styles.planHeaderRow}>
+              <Text style={styles.sectionLabel}>Choose data plan</Text>
+              {dataPlans.length > 4 && (
+                <TouchableOpacity
+                  onPress={() => setShowAllPlans((prev) => !prev)}
+                >
+                  <Text style={styles.viewAllText}>
+                    {showAllPlans ? "Show less" : "View all"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {loadingPlans ? (
+              <View style={styles.planLoader}>
+                <ActivityIndicator color="#4A9DFF" />
+                <Text style={styles.planLoaderText}>Loading data plans...</Text>
+              </View>
+            ) : dataPlans.length === 0 ? (
+              <View style={styles.planLoader}>
+                <Text style={styles.planLoaderText}>
+                  No data plans available for this provider.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.planGrid}>
+                {visiblePlans.map((plan) => {
+                  const isSelected = selectedPlanId === plan.id;
+                  return (
+                    <TouchableOpacity
+                      key={plan.id}
+                      style={[
+                        styles.planCard,
+                        isSelected && styles.planCardSelected,
+                      ]}
+                      onPress={() => handlePlanSelect(plan)}
+                    >
+                      <View style={styles.planBadge}>
+                        <Text style={styles.planBadgeText}>₦{plan.amount}</Text>
+                      </View>
+                      <Text style={styles.planTitle}>{plan.title}</Text>
+                      <Text style={styles.planSubtitle}>{plan.subtitle1}</Text>
+                      {!!plan.subtitle2 && (
+                        <Text style={styles.planSubtitle}>
+                          {plan.subtitle2}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            <View style={styles.amountCard}>
+              <View style={styles.sectionRow}>
+                <View style={styles.sectionLeft}>
+                  <Text style={styles.amountLabel}>Enter amount</Text>
+                  <View style={styles.amountInputContainer}>
+                    <Text style={styles.currencySymbol}>₦</Text>
+                    <TextInput
+                      value={amountInput}
+                      onChangeText={handleAmountChange}
+                      placeholder="0.00"
+                      placeholderTextColor="#6D7484"
+                      keyboardType="decimal-pad"
+                      style={styles.amountInput}
+                    />
+                  </View>
+                  <Text style={styles.amountSubValue}>
+                    ${usdAmount.toFixed(2)}
+                  </Text>
+                </View>
+
+                <View style={styles.sectionRight}>
+                  <TouchableOpacity
+                    style={styles.tokenSelector}
+                    onPress={() => router.push("/(action)/token-selector")}
+                  >
+                    <View style={styles.tokenIconWrapper}>
+                      {TokenIcon ? (
+                        <TokenIcon width={30} height={30} />
+                      ) : (
+                        <Ionicons name="ellipse" size={24} color="#4A9DFF" />
+                      )}
+                      {displayTokenNetwork &&
+                        (() => {
+                          const Net = getNetworkIcon(displayTokenNetwork);
+                          return Net ? (
+                            <View style={styles.networkBadge}>
+                              <Net width={14} height={14} />
+                            </View>
+                          ) : null;
+                        })()}
+                    </View>
+                    <View>
+                      <Text style={styles.tokenName}>{displayTokenSymbol}</Text>
+                      <Text style={styles.tokenNetwork}>
+                        {shortenNetworkName(displayTokenNetwork)}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-down" size={14} color="#4A9DFF" />
+                  </TouchableOpacity>
+
+                  <View style={styles.balanceContainer}>
+                    {/* <Image
                     source={require("@/assets/images/wallet-icon.png")}
                     style={styles.walletIcon}
                   /> */}
-                  <WalletIcon width={15} height={15} />
-                  <Text style={styles.balanceText}>{balanceLabel}</Text>
+                    <WalletIcon width={15} height={15} />
+                    <Text style={styles.balanceText}>{balanceLabel}</Text>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
 
-          <TouchableOpacity
-            style={[styles.payButton, !canPay && styles.payButtonDisabled]}
-            onPress={handlePay}
-            disabled={!canPay}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Text style={styles.payButtonText}>Pay</Text>
-            )}
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </SafeAreaProvider>
+            <TouchableOpacity
+              style={[styles.payButton, !canPay && styles.payButtonDisabled]}
+              onPress={handlePay}
+              disabled={!canPay}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.payButtonText}>Pay</Text>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+        </SafeAreaView>
+      </SafeAreaProvider>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoidingView: {
+    flex: 1,
+    marginTop: 30,
+  },
   container: {
     flex: 1,
     backgroundColor: "#121212",

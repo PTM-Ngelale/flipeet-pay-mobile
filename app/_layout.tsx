@@ -3,7 +3,8 @@ import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import React, { useEffect } from "react";
+import { StyleSheet, Text, TextInput } from "react-native";
 import "react-native-reanimated";
 import { Provider as ReduxProvider } from "react-redux";
 import { BankAccountProvider } from "../app/contexts/BankAccountContext";
@@ -37,6 +38,46 @@ export default function RootLayout() {
 
   if (!loaded && !error) {
     return null;
+  }
+
+  // Apply global font defaults and dynamic bold mapping
+  try {
+    const defaultTextProps: any = (Text as any).defaultProps || {};
+
+    // Helper: decide fontFamily based on incoming style's fontWeight
+    const resolveFontFamily = (style: any) => {
+      const flat = StyleSheet.flatten(style) || {};
+      if (flat.fontFamily) return flat.fontFamily;
+      const fw = flat.fontWeight;
+      const num = typeof fw === "string" ? parseInt(fw, 10) || 400 : fw || 400;
+      return num > 500 ? "Lato-Bold" : "Lato-Regular";
+    };
+
+    if (!(Text as any)._flipeetFontPatched) {
+      const oldRender = (Text as any).render;
+      (Text as any).render = function render(...args: any[]) {
+        const origin = oldRender.apply(this, args);
+        try {
+          const props = origin?.props || {};
+          const fontFamily = resolveFontFamily(props.style);
+          const newStyle = [props.style, { fontFamily }];
+          return React.cloneElement(origin, { style: newStyle });
+        } catch (e) {
+          return origin;
+        }
+      };
+      (Text as any)._flipeetFontPatched = true;
+    }
+
+    // TextInput: default to regular font
+    const defaultInputProps: any = (TextInput as any).defaultProps || {};
+    defaultInputProps.style = [
+      defaultInputProps.style || {},
+      { fontFamily: "Lato-Regular" },
+    ];
+    (TextInput as any).defaultProps = defaultInputProps;
+  } catch (e) {
+    // swallow — safe fallback if native Text shape differs
   }
 
   return (
