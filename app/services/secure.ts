@@ -8,13 +8,18 @@ export async function getToken(): Promise<string | null> {
   return SecureStore.getItemAsync('authToken');
 }
 
-export async function setPinEnabled(enabled: boolean) {
-  return SecureStore.setItemAsync('pinEnabled', enabled ? 'true' : 'false');
+export async function setPinEnabled(enabled: boolean, email?: string) {
+  await SecureStore.setItemAsync('pinEnabled', enabled ? 'true' : 'false');
+  if (email) await SecureStore.setItemAsync('pinEnabledEmail', email);
 }
 
 export async function isPinEnabled(): Promise<boolean> {
   const v = await SecureStore.getItemAsync('pinEnabled');
   return v === 'true';
+}
+
+export async function getPinEnabledEmail(): Promise<string | null> {
+  return SecureStore.getItemAsync('pinEnabledEmail');
 }
 
 export async function setBiometricsEnabled(enabled: boolean) {
@@ -29,6 +34,7 @@ export async function isBiometricsEnabled(): Promise<boolean> {
 export async function clearAuth() {
   await SecureStore.deleteItemAsync('authToken');
   await SecureStore.deleteItemAsync('pinEnabled');
+  await SecureStore.deleteItemAsync('pinEnabledEmail');
   await SecureStore.deleteItemAsync('biometricsEnabled');
 }
 

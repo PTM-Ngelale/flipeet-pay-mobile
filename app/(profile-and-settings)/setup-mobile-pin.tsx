@@ -68,7 +68,7 @@ export default function SetupMobilePin() {
         const err = await res.json().catch(() => null);
         throw new Error(err?.message || "Verification failed");
       }
-      await secure.setPinEnabled(true);
+      await secure.setPinEnabled(true, email);
       Alert.alert("PIN Created", "You can now sign in using your PIN.", [
         { text: "Done", onPress: () => router.back() },
       ]);

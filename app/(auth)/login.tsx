@@ -47,6 +47,7 @@ export default function LoginScreen() {
   // PIN state
   const [pin, setPin] = useState(["", "", "", "", "", ""]);
   const [storedEmail, setStoredEmail] = useState<string | null>(null);
+  const [pinAvailable, setPinAvailable] = useState(false);
   const [isPinLoading, setIsPinLoading] = useState(false);
   const pinRefs = useRef<Array<TextInput | null>>([]);
 
@@ -54,9 +55,21 @@ export default function LoginScreen() {
   const dispatch = useDispatch<any>();
 
   useEffect(() => {
-    AsyncStorage.getItem("auth_email").then((stored) => {
-      if (stored) setStoredEmail(stored);
-    });
+    (async () => {
+      const stored = await AsyncStorage.getItem("auth_email");
+      if (!stored) return;
+      setStoredEmail(stored);
+
+      try {
+        const res = await pinApi.isPinAvailable(stored);
+        const body = await res.json().catch(() => null);
+        if (res.ok && body?.data?.pinExists === true) {
+          setPinAvailable(true);
+        }
+      } catch {
+        // network error — PIN tab stays hidden
+      }
+    })();
   }, []);
 
   const useProxy = Constants.appOwnership === "expo";
@@ -198,8 +211,8 @@ export default function LoginScreen() {
               <Text style={styles.subtitle}>Log in to your account</Text>
             </View>
 
-            {/* Mode Toggle — only show PIN tab if they have a stored email */}
-            {storedEmail && (
+            {/* Mode Toggle — only show PIN tab if stored email has a PIN set */}
+            {pinAvailable && (
               <View style={styles.modeToggle}>
                 <TouchableOpacity
                   style={[
@@ -376,7 +389,7 @@ export default function LoginScreen() {
                     {pin.map((digit, i) => (
                       <TextInput
                         key={i}
-                        ref={(r) => (pinRefs.current[i] = r)}
+                        ref={(r) => { pinRefs.current[i] = r; }}
                         style={styles.pinInput}
                         keyboardType="number-pad"
                         maxLength={1}
