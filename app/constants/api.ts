@@ -1,92 +1,41 @@
 export const API_ROOT_URL = "https://api.pay.flipeet.io";
 export const API_BASE_URL = `${API_ROOT_URL}/api/v1`;
 
+// ─── Core ─────────────────────────────────────────────────────────────────────
+
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 interface RequestOptions {
   method?: HttpMethod;
-  body?: any;
+  body?: unknown;
   token?: string | null;
   headers?: Record<string, string>;
 }
 
-function findTokenValue(value: any): string | null {
-  if (!value || typeof value !== "object") return null;
-
-  const directKeys = ["accessToken", "token", "jwt", "idToken"];
-  for (const key of directKeys) {
-    if (typeof value[key] === "string" && value[key].trim()) {
-      return value[key].trim();
-    }
-  }
-
-  const nestedKeys = ["data", "credentials", "session", "auth"];
-  for (const key of nestedKeys) {
-    if (value[key]) {
-      const nested = findTokenValue(value[key]);
-      if (nested) return nested;
-    }
-  }
-
-  return null;
+/** Strip "Bearer " prefix so we can always attach it ourselves. */
+export function normalizeAuthToken(token: unknown): string | null {
+  if (!token || typeof token !== "string") return null;
+  const t = token.trim();
+  if (!t || t === "[object Object]") return null;
+  return t.toLowerCase().startsWith("bearer ") ? t.slice(7).trim() : t;
 }
 
-export function normalizeAuthToken(token?: unknown): string | null {
-  if (!token) return null;
-
-  if (typeof token === "object") {
-    const extracted = findTokenValue(token);
-    return extracted || null;
-  }
-
-  let raw = String(token).trim();
-  if (!raw || raw === "[object Object]") return null;
-
-  if (raw.toLowerCase().startsWith("bearer ")) {
-    raw = raw.slice(7).trim();
-  }
-
-  if (raw.startsWith("{") || raw.startsWith("[")) {
-    try {
-      const parsed = JSON.parse(raw);
-      const extracted = findTokenValue(parsed);
-      if (extracted) return extracted;
-    } catch {
-      // ignore parse errors and fall back to raw
-    }
-  }
-
-  return raw;
-}
-
-async function handleResponse(res: Response) {
+async function handleResponse(res: Response): Promise<any> {
   if (!res.ok) {
-    const errorText = await res.text();
-    let errorMessage = errorText;
-    let parsedJson: any = null;
+    const text = await res.text();
+    let body: any = text;
+    let message = text;
     try {
-      parsedJson = JSON.parse(errorText);
-      // Prefer explicit message fields; fall back to full JSON string so callers have context
-      errorMessage =
-        parsedJson.message ||
-        parsedJson.error ||
-        (typeof parsedJson === "object"
-          ? JSON.stringify(parsedJson)
-          : errorText);
+      body = JSON.parse(text);
+      message = body.message || body.error || JSON.stringify(body);
     } catch {
-      // Not JSON, keep raw text
+      // not JSON — keep raw text
     }
-
-    const err = new Error(errorMessage);
-    try {
-      // Attach HTTP status and parsed body for callers that inspect the error object
-      (err as any).status = res.status;
-      (err as any).statusText = res.statusText;
-      (err as any).body = parsedJson ?? errorText;
-    } catch {}
+    const err = new Error(message) as Error & { status: number; body: unknown };
+    err.status = res.status;
+    (err as any).body = body;
     throw err;
   }
-  // Some endpoints may return no body (204, file download, etc.)
   try {
     return await res.json();
   } catch {
@@ -94,7 +43,10 @@ async function handleResponse(res: Response) {
   }
 }
 
-export async function apiRequest(path: string, options: RequestOptions = {}) {
+export async function apiRequest(
+  path: string,
+  options: RequestOptions = {},
+): Promise<any> {
   const { method = "GET", body, token, headers = {} } = options;
 
   const finalHeaders: Record<string, string> = {
@@ -102,14 +54,13 @@ export async function apiRequest(path: string, options: RequestOptions = {}) {
     ...headers,
   };
 
-  // Avoid sending a Content-Type for GET requests (some servers reject it)
   if (method !== "GET") {
     finalHeaders["Content-Type"] = "application/json";
   }
 
-  const normalizedToken = normalizeAuthToken(token);
-  if (normalizedToken) {
-    finalHeaders.Authorization = `Bearer ${normalizedToken}`;
+  const jwt = normalizeAuthToken(token);
+  if (jwt) {
+    finalHeaders.Authorization = `Bearer ${jwt}`;
   }
 
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -117,86 +68,31 @@ export async function apiRequest(path: string, options: RequestOptions = {}) {
     headers: finalHeaders,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
-  const isDiscoPrices = path.toLowerCase().includes("disco/prices");
-  const isFetchMeter =
-    path.toLowerCase().includes("fetchmeter") ||
-    path.toLowerCase().includes("/commerce/electricity/fetchmeter");
-  const resStatus = res.status;
-  const resStatusText = res.statusText;
-  try {
-    // If this is a fetchMeter request and the response is not OK, capture body for debugging
-    if (isFetchMeter && !res.ok) {
-      try {
-        const clone = res.clone();
-        const bodyText = await clone.text();
-        console.warn("[api] fetchMeter failed response", {
-          url: `${API_BASE_URL}${path}`,
-          status: resStatus,
-          statusText: resStatusText,
-          body: bodyText,
-        });
-      } catch (logErr) {
-        // ignore logging errors
-      }
-    }
 
-    const parsed = await handleResponse(res);
-    if (isFetchMeter) {
-      try {
-        console.log("[api] fetchMeter request", {
-          method,
-          url: `${API_BASE_URL}${path}`,
-          hasToken: Boolean(normalizedToken),
-        });
-        console.log("[api] fetchMeter status", {
-          status: resStatus,
-          statusText: resStatusText,
-        });
-        console.log("[api] fetchMeter response", parsed);
-      } catch {}
-    }
-    if (isDiscoPrices) {
-      try {
-        console.log("[api] disco/prices request", {
-          method,
-          url: `${API_BASE_URL}${path}`,
-          hasToken: Boolean(normalizedToken),
-        });
-        console.log("[api] disco/prices response", parsed);
-      } catch {}
-    }
-    return parsed;
-  } catch (err) {
-    if (isDiscoPrices) {
-      try {
-        console.log("[api] disco/prices error", String(err));
-      } catch {}
-    }
-    throw err;
-  }
+  return handleResponse(res);
 }
 
-export async function apiGet(path: string) {
+// Convenience wrappers
+export function apiGet(path: string): Promise<any> {
   return apiRequest(path, { method: "GET" });
 }
 
-export async function apiPost(path: string, body: any) {
+export function apiPost(path: string, body: unknown): Promise<any> {
   return apiRequest(path, { method: "POST", body });
 }
 
-export async function apiGetAuth(path: string, token: string) {
+export function apiGetAuth(path: string, token: string): Promise<any> {
   return apiRequest(path, { method: "GET", token });
 }
 
-// ---------- Health & Logs ----------
+// ─── Health ───────────────────────────────────────────────────────────────────
 
-export async function getHealth() {
-  // /api/health lives one level above /api/v1
-  const res = await fetch(`${API_ROOT_URL}/api/health`, {
-    headers: { "Content-Type": "application/json" },
-  });
+export async function getHealth(): Promise<any> {
+  const res = await fetch(`${API_ROOT_URL}/api/health`);
   return handleResponse(res);
 }
+
+// ─── Logs ─────────────────────────────────────────────────────────────────────
 
 export interface LogsQuery {
   sortBy?: "createdAt" | "updatedAt";
@@ -205,116 +101,124 @@ export interface LogsQuery {
   limit?: number;
 }
 
-export async function getLogs(query: LogsQuery = {}) {
+export function getLogs(query: LogsQuery = {}): Promise<any> {
   const params = new URLSearchParams();
   if (query.sortBy) params.append("sortBy", query.sortBy);
   if (query.orderBy) params.append("orderBy", query.orderBy);
   if (query.page != null) params.append("page", String(query.page));
   if (query.limit != null) params.append("limit", String(query.limit));
-
   const qs = params.toString();
   return apiGet(`/logs${qs ? `?${qs}` : ""}`);
 }
 
-// ---------- Auth (additional helpers, existing flows already integrated) ----------
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 
-export async function mobilePinSignIn(payload: { email: string; pin: number }) {
-  return apiPost(`/auth/mobile/pin/sign-in`, payload);
+export function mobilePinSignIn(payload: {
+  email: string;
+  pin: number;
+}): Promise<any> {
+  return apiPost("/auth/mobile/pin/sign-in", payload);
 }
 
-export async function verifyPinAvailability(email: string) {
+export function verifyPinAvailability(email: string): Promise<any> {
   return apiGet(
     `/auth/mobile/verify-pin-availablility?email=${encodeURIComponent(email)}`,
   );
 }
 
-// ---------- User management helpers ----------
+// ─── User ─────────────────────────────────────────────────────────────────────
 
-export async function requestEmailChangeOtp(email: string, token: string) {
+export function requestEmailChangeOtp(
+  email: string,
+  token: string,
+): Promise<any> {
   return apiRequest(
     `/user/email/otp/request?email=${encodeURIComponent(email)}`,
     { method: "GET", token },
   );
 }
 
-export async function verifyEmailChangeOtp(
+export function verifyEmailChangeOtp(
   payload: { email: string; code: string },
   token: string,
-) {
-  return apiRequest(`/user/email/otp/verify`, {
+): Promise<any> {
+  return apiRequest("/user/email/otp/verify", {
     method: "PATCH",
     body: payload,
     token,
   });
 }
 
-export async function updatePassword(
+export function updatePassword(
   payload: { password: string; repeatPassword: string },
   token: string,
-) {
-  return apiRequest(`/user/password/update`, {
+): Promise<any> {
+  return apiRequest("/user/password/update", {
     method: "PATCH",
     body: payload,
     token,
   });
 }
 
-export async function resetPassword(
+export function resetPassword(
   payload: { password: string; repeatPassword: string },
   token: string,
-) {
-  return apiRequest(`/user/password/reset`, {
+): Promise<any> {
+  return apiRequest("/user/password/reset", {
     method: "PATCH",
     body: payload,
     token,
   });
 }
 
-export async function confirmPasswordReset(
+export function confirmPasswordReset(
   payload: { code: string },
   token: string,
-) {
-  return apiRequest(`/user/password/reset-confirmation`, {
+): Promise<any> {
+  return apiRequest("/user/password/reset-confirmation", {
     method: "PATCH",
     body: payload,
     token,
   });
 }
 
-export async function requestPinChangeOtp(email: string, token: string) {
+export function requestPinChangeOtp(
+  email: string,
+  token: string,
+): Promise<any> {
   return apiRequest(
     `/user/mobile/pin/otp/request?email=${encodeURIComponent(email)}`,
     { method: "GET", token },
   );
 }
 
-export async function verifyPinChangeOtp(
+export function verifyPinChangeOtp(
   payload: { pin: number; code: string },
   token: string,
-) {
-  return apiRequest(`/user/mobile/pin/otp/verify`, {
+): Promise<any> {
+  return apiRequest("/user/mobile/pin/otp/verify", {
     method: "PATCH",
     body: payload,
     token,
   });
 }
 
-export async function updateAvatar(payload: { avatar: string }, token: string) {
-  return apiRequest(`/user/avatar/update`, {
+export function updateAvatar(
+  payload: { avatar: string },
+  token: string,
+): Promise<any> {
+  return apiRequest("/user/avatar/update", {
     method: "POST",
     body: payload,
     token,
   });
 }
 
-export async function deleteUserAccount(token: string) {
-  return apiRequest(`/user/delete`, {
-    method: "DELETE",
-    token,
-  });
+export function deleteUserAccount(token: string): Promise<any> {
+  return apiRequest("/user/delete", { method: "DELETE", token });
 }
 
-// ---------- Transaction helpers ----------
+// ─── Transactions ─────────────────────────────────────────────────────────────
 
 export interface TransactionFilterQuery {
   merchantUUID: string;
@@ -325,22 +229,19 @@ export interface TransactionFilterQuery {
   limit: number;
 }
 
-export async function filterTransactions(
+export function filterTransactions(
   query: TransactionFilterQuery,
   token: string,
-) {
-  const params = new URLSearchParams();
-  params.append("merchantUUID", query.merchantUUID);
-  params.append("asset", query.asset);
-  params.append("status", query.status);
-  params.append("sortBy", query.sortBy);
-  params.append("page", String(query.page));
-  params.append("limit", String(query.limit));
-
-  return apiRequest(`/transaction/filter?${params.toString()}`, {
-    method: "GET",
-    token,
+): Promise<any> {
+  const params = new URLSearchParams({
+    merchantUUID: query.merchantUUID,
+    asset: query.asset,
+    status: query.status,
+    sortBy: query.sortBy,
+    page: String(query.page),
+    limit: String(query.limit),
   });
+  return apiRequest(`/transaction/filter?${params}`, { method: "GET", token });
 }
 
 export interface TransactionStatementsQuery {
@@ -359,22 +260,22 @@ export interface TransactionStatementsQuery {
   limit: number;
 }
 
-export async function getTransactionStatements(
+export function getTransactionStatements(
   query: TransactionStatementsQuery,
   token: string,
-) {
-  const params = new URLSearchParams();
-  params.append("type", query.type);
-  params.append("page", String(query.page));
-  params.append("limit", String(query.limit));
-
-  return apiRequest(`/transaction/statements?${params.toString()}`, {
+): Promise<any> {
+  const params = new URLSearchParams({
+    type: query.type,
+    page: String(query.page),
+    limit: String(query.limit),
+  });
+  return apiRequest(`/transaction/statements?${params}`, {
     method: "GET",
     token,
   });
 }
 
-export async function getTransactionChartData(
+export function getTransactionChartData(
   query: {
     merchantUUID: string;
     period:
@@ -396,145 +297,148 @@ export async function getTransactionChartData(
       | "USD";
   },
   token: string,
-) {
-  const params = new URLSearchParams();
-  params.append("merchantUUID", query.merchantUUID);
-  params.append("period", query.period);
-  params.append("currency", query.currency);
-
-  return apiRequest(`/transaction/chart-data?${params.toString()}`, {
+): Promise<any> {
+  const params = new URLSearchParams({
+    merchantUUID: query.merchantUUID,
+    period: query.period,
+    currency: query.currency,
+  });
+  return apiRequest(`/transaction/chart-data?${params}`, {
     method: "GET",
     token,
   });
 }
 
-export async function getTransactionByTxRef(txRef: string, token: string) {
+export function getTransactionByTxRef(
+  txRef: string,
+  token: string,
+): Promise<any> {
   return apiRequest(`/transaction?txRef=${encodeURIComponent(txRef)}`, {
     method: "GET",
     token,
   });
 }
 
-export async function getTransactionByTxRefPath(txRef: string, token: string) {
+export function getTransactionByTxRefPath(
+  txRef: string,
+  token: string,
+): Promise<any> {
   return apiRequest(`/transaction/${encodeURIComponent(txRef)}`, {
     method: "GET",
     token,
   });
 }
 
-export async function downloadTransactionReceipt(txRef: string, token: string) {
+export function downloadTransactionReceipt(
+  txRef: string,
+  token: string,
+): Promise<any> {
   return apiRequest(`/transaction/${encodeURIComponent(txRef)}/receipt`, {
     method: "GET",
     token,
   });
 }
 
-export async function cancelTransaction(txRef: string, token: string) {
+export function cancelTransaction(txRef: string, token: string): Promise<any> {
   return apiRequest(`/transaction/cancel/${encodeURIComponent(txRef)}`, {
     method: "DELETE",
     token,
   });
 }
 
-export async function convertPaymentAmount(payload: {
+export function convertPaymentAmount(payload: {
   amount: number;
   asset: string;
   currency: string;
-}) {
-  return apiRequest(`/transaction/convert`, {
-    method: "POST",
-    body: payload,
-  });
+}): Promise<any> {
+  return apiRequest("/transaction/convert", { method: "POST", body: payload });
 }
 
-export async function processPayment(payload: {
+export function processPayment(payload: {
   asset: string;
   network: string;
   reference: string;
-}) {
-  return apiRequest(`/transaction/process`, {
+}): Promise<any> {
+  return apiRequest("/transaction/process", { method: "POST", body: payload });
+}
+
+export function fundIndividualWallet(payload: {
+  network: string;
+}): Promise<any> {
+  return apiRequest("/transaction/individual/fund", {
     method: "POST",
     body: payload,
   });
 }
 
-export async function fundIndividualWallet(payload: { network: string }) {
-  return apiRequest(`/transaction/individual/fund`, {
-    method: "POST",
-    body: payload,
-  });
-}
-
-export async function withdrawIndividualWallet(payload: {
+export function withdrawIndividualWallet(payload: {
   amount: number;
   asset: "usdc";
   network: "solana";
   payoutAddress: string;
   favorite: boolean;
-}) {
-  return apiRequest(`/transaction/individual/withdrawal`, {
+}): Promise<any> {
+  return apiRequest("/transaction/individual/withdrawal", {
     method: "POST",
     body: payload,
   });
 }
 
-export async function internalTransfer(payload: {
+export function internalTransfer(payload: {
   email: string;
   amount: number;
   asset: "usdc";
   network: "solana";
   favorite: boolean;
-}) {
-  return apiRequest(`/transaction/internal/transfer`, {
+}): Promise<any> {
+  return apiRequest("/transaction/internal/transfer", {
     method: "POST",
     body: payload,
   });
 }
 
-export async function getBridgeQuota(payload: {
+export function getBridgeQuota(payload: {
   amount: number;
   fromAsset: "usdc";
   toAsset: "usdc";
   fromNetwork: "solana";
   toNetwork: "solana";
-}) {
-  return apiRequest(`/transaction/bridge/quota`, {
+}): Promise<any> {
+  return apiRequest("/transaction/bridge/quota", {
     method: "POST",
     body: payload,
   });
 }
 
-export async function executeBridge(payload: {
+export function executeBridge(payload: {
   amount: number;
   fromAsset: "usdc";
   toAsset: "usdc";
   fromNetwork: "solana";
   toNetwork: "solana";
-}) {
-  return apiRequest(`/transaction/bridge/execute`, {
+}): Promise<any> {
+  return apiRequest("/transaction/bridge/execute", {
     method: "POST",
     body: payload,
   });
 }
 
-// ---------- Ramp helpers ----------
+// ─── Ramp ─────────────────────────────────────────────────────────────────────
 
-export async function getRampCurrencies(
+export function getRampCurrencies(
   params: { provider?: string },
   token: string,
-) {
+): Promise<any> {
   const search = new URLSearchParams();
   if (params.provider) search.append("provider", params.provider);
-  return apiRequest(
-    `/ramp/currencies${search.toString() ? `?${search.toString()}` : ""}`,
-    {
-      method: "GET",
-      token,
-    },
-  );
+  const qs = search.toString();
+  return apiRequest(`/ramp/currencies${qs ? `?${qs}` : ""}`, {
+    method: "GET",
+    token,
+  });
 }
 
-export async function getRampRate(
+export function getRampRate(
   query: {
     amount: number;
     asset: string;
@@ -542,57 +446,41 @@ export async function getRampRate(
     provider: string;
   },
   token: string,
-) {
-  const params = new URLSearchParams();
-  params.append("amount", String(query.amount));
-  params.append("asset", query.asset);
-  params.append("currency", query.currency);
-  params.append("provider", query.provider);
-
-  return apiRequest(`/ramp/rate?${params.toString()}`, {
-    method: "GET",
-    token,
+): Promise<any> {
+  const params = new URLSearchParams({
+    amount: String(query.amount),
+    asset: query.asset,
+    currency: query.currency,
+    provider: query.provider,
   });
+  return apiRequest(`/ramp/rate?${params}`, { method: "GET", token });
 }
 
-export async function getRampBanks(
-  query: {
-    currencyCode: string;
-    provider?: string;
-  },
+export function getRampBanks(
+  query: { currencyCode: string; provider?: string },
   token: string,
-) {
-  const params = new URLSearchParams();
-  params.append("currencyCode", query.currencyCode);
+): Promise<any> {
+  const params = new URLSearchParams({ currencyCode: query.currencyCode });
   if (query.provider) params.append("provider", query.provider);
-
-  return apiRequest(`/ramp/banks?${params.toString()}`, {
-    method: "GET",
-    token,
-  });
+  return apiRequest(`/ramp/banks?${params}`, { method: "GET", token });
 }
 
-export async function getLocalAccounts(
-  query: {
-    currency?: string;
-    provider?: string;
-    sendFeature?: boolean;
-  },
+export function getLocalAccounts(
+  query: { currency?: string; provider?: string; sendFeature?: boolean },
   token: string,
-) {
+): Promise<any> {
   const params = new URLSearchParams();
   if (query.currency) params.append("currency", query.currency);
   if (query.provider) params.append("provider", query.provider);
   if (query.sendFeature != null)
     params.append("sendFeature", String(query.sendFeature));
-
-  return apiRequest(`/ramp/local/accounts?${params.toString()}`, {
+  return apiRequest(`/ramp/local/accounts?${params}`, {
     method: "GET",
     token,
   });
 }
 
-export async function verifyLocalAccount(
+export function verifyLocalAccount(
   payload: {
     accountNumber: string;
     bankCode: string;
@@ -601,15 +489,15 @@ export async function verifyLocalAccount(
     provider: string;
   },
   token: string,
-) {
-  return apiRequest(`/ramp/local/verify-account`, {
+): Promise<any> {
+  return apiRequest("/ramp/local/verify-account", {
     method: "POST",
     body: payload,
     token,
   });
 }
 
-export async function addLocalAccount(
+export function addLocalAccount(
   payload: {
     accountNumber: string;
     accountName: string;
@@ -619,37 +507,34 @@ export async function addLocalAccount(
     provider: string;
   },
   token: string,
-) {
-  return apiRequest(`/ramp/local/add-account`, {
+): Promise<any> {
+  return apiRequest("/ramp/local/add-account", {
     method: "POST",
     body: payload,
     token,
   });
 }
 
-export async function deleteLocalAccount(id: string, token: string) {
+export function deleteLocalAccount(id: string, token: string): Promise<any> {
   return apiRequest(`/ramp/local/account/${encodeURIComponent(id)}`, {
     method: "DELETE",
     token,
   });
 }
 
-export async function getRampWallets(
+export function getRampWallets(
   query: { provider: string; page: number; walletId?: string },
   token: string,
-) {
-  const params = new URLSearchParams();
-  params.append("provider", query.provider);
-  params.append("page", String(query.page));
-  if (query.walletId) params.append("walletId", query.walletId);
-
-  return apiRequest(`/ramp/local/wallets?${params.toString()}`, {
-    method: "GET",
-    token,
+): Promise<any> {
+  const params = new URLSearchParams({
+    provider: query.provider,
+    page: String(query.page),
   });
+  if (query.walletId) params.append("walletId", query.walletId);
+  return apiRequest(`/ramp/local/wallets?${params}`, { method: "GET", token });
 }
 
-export async function getOffRampQuota(
+export function getOffRampQuota(
   payload: {
     amount: number;
     asset: string;
@@ -658,15 +543,15 @@ export async function getOffRampQuota(
     provider: string;
   },
   token: string,
-) {
-  return apiRequest(`/ramp/off/quota`, {
+): Promise<any> {
+  return apiRequest("/ramp/off/quota", {
     method: "POST",
     body: payload,
     token,
   });
 }
 
-export async function initializeOffRamp(
+export function initializeOffRamp(
   payload: {
     localBankId: string;
     amount: number;
@@ -676,15 +561,15 @@ export async function initializeOffRamp(
     provider: string;
   },
   token: string,
-) {
-  return apiRequest(`/ramp/off/initialize`, {
+): Promise<any> {
+  return apiRequest("/ramp/off/initialize", {
     method: "POST",
     body: payload,
     token,
   });
 }
 
-export async function initializeSendOrder(
+export function initializeSendOrder(
   payload: {
     accountNumber: string;
     accountName: string;
@@ -699,73 +584,60 @@ export async function initializeSendOrder(
     provider: string;
   },
   token: string,
-) {
-  return apiRequest(`/ramp/send/initialize`, {
+): Promise<any> {
+  return apiRequest("/ramp/send/initialize", {
     method: "POST",
     body: payload,
     token,
   });
 }
 
-// ---------- Commerce helpers ----------
+// ─── Commerce ─────────────────────────────────────────────────────────────────
 
-export interface AirtimeCompany {
-  id?: string | number;
-  name?: string;
-  code?: string;
-  provider?: string;
-  disco?: string;
-  logo?: string;
-  logoUrl?: string;
+export function getCommerceAirtimeCompanies(token: string): Promise<any> {
+  return apiRequest("/commerce/airtime/companies", { method: "GET", token });
 }
 
-export async function getCommerceAirtimeCompanies(token: string) {
-  return apiRequest(`/commerce/airtime/companies`, {
+export function getCommerceElectricityCompanies(token: string): Promise<any> {
+  return apiRequest("/commerce/electricity/companies", {
     method: "GET",
     token,
   });
 }
 
-export async function getCommerceElectricityCompanies(token: string) {
-  return apiRequest(`/commerce/electricity/companies`, {
-    method: "GET",
-    token,
-  });
-}
-
-export async function initializeCommerceAirtime(
+export function initializeCommerceAirtime(
   payload: {
     provider: string;
     phoneNumber: string;
-    disco?: string;
+    disco: string;
     amount: number;
     asset: string;
     network: string;
   },
   token: string,
-) {
-  return apiRequest(`/commerce/airtime/initialize`, {
+): Promise<any> {
+  return apiRequest("/commerce/airtime/initialize", {
     method: "POST",
     body: payload,
     token,
   });
 }
 
-export async function getCommerceDiscoPrices(
+export function getCommerceDiscoPrices(
   query: { service: "DATA" | "TV"; disco: string },
   token: string,
-) {
-  const params = new URLSearchParams();
-  params.append("service", query.service);
-  params.append("disco", query.disco);
-
-  return apiRequest(`/commerce/disco/prices?${params.toString()}`, {
+): Promise<any> {
+  const params = new URLSearchParams({
+    service: query.service,
+    disco: query.disco,
+  });
+  return apiRequest(`/commerce/disco/prices?${params}`, {
     method: "GET",
     token,
   });
 }
 
-export async function initializeCommerceDataTv(
+export function initializeCommerceDataTv(
   payload: {
     number: string;
     disco: string;
@@ -777,99 +649,98 @@ export async function initializeCommerceDataTv(
     network: string;
   },
   token: string,
-) {
-  return apiRequest(`/commerce/dataTv/initialize`, {
+): Promise<any> {
+  return apiRequest("/commerce/dataTv/initialize", {
     method: "POST",
     body: payload,
     token,
   });
 }
 
-export async function initializeCommerceElectricity(
+export function initializeCommerceElectricity(
   payload: {
-    provider?: string;
-    discoName?: string;
+    discoName: string;
     meterNumber: string;
-    meterType?: string;
-    type?: string;
+    meterType: string;
     amount: number;
     phoneNumber?: string;
     asset: string;
     network: string;
   },
   token: string,
-) {
-  const body: any = {
-    meterNumber: payload.meterNumber,
-    discoName: payload.discoName || payload.provider,
-    amount: payload.amount,
-    type: payload.meterType || payload.type,
-    phoneNumber: payload.phoneNumber,
-    asset: payload.asset,
-    network: payload.network,
-  };
-
-  return apiRequest(`/commerce/electricity/initialize`, {
-    method: "POST",
-    body,
-    token,
-  });
-}
-
-export async function fetchCommerceElectricityMeterInfo(
-  query: { provider: string; meterNumber: string; meterType?: string },
-  token: string,
-) {
-  const params = new URLSearchParams();
-  // Support multiple possible parameter names used by different providers
-  if (query.provider) {
-    params.append("provider", query.provider);
-    params.append("disco", query.provider);
-  }
-  if (query.meterNumber) {
-    params.append("meterNumber", query.meterNumber);
-    params.append("meter", query.meterNumber);
-  }
-  if (query.meterType) {
-    params.append("meterType", query.meterType);
-    params.append("vendType", query.meterType);
-  }
-
-  return apiRequest(`/commerce/electricity/fetchMeter?${params.toString()}`, {
-    method: "GET",
-    token,
-  });
-}
-
-export async function verifyCommerceElectricityMeter(
-  payload: { provider: string; meterNumber: string; meterType?: string },
-  token: string,
-) {
-  return apiRequest(`/commerce/electricity/meter-verification`, {
+): Promise<any> {
+  return apiRequest("/commerce/electricity/initialize", {
     method: "POST",
     body: payload,
     token,
   });
 }
 
-// ---------- Webhook helpers ----------
-
-export async function filterWebhooks(
-  query: { page: number; limit: number; status: "*" | "successful" | "failed" },
+export function fetchCommerceElectricityMeterInfo(
+  query: { provider: string; meterNumber: string; meterType?: string },
   token: string,
-) {
-  const params = new URLSearchParams();
-  params.append("page", String(query.page));
-  params.append("limit", String(query.limit));
-  params.append("status", query.status);
-
-  return apiRequest(`/webhook/filter?${params.toString()}`, {
+): Promise<any> {
+  const params = new URLSearchParams({
+    provider: query.provider,
+    meterNumber: query.meterNumber,
+  });
+  if (query.meterType) params.append("meterType", query.meterType);
+  return apiRequest(`/commerce/electricity/fetchMeter?${params}`, {
     method: "GET",
     token,
   });
 }
 
-export async function resendWebhook(webhookId: string, token: string) {
+export function verifyCommerceElectricityMeter(
+  payload: { provider: string; meterNumber: string; meterType?: string },
+  token: string,
+): Promise<any> {
+  return apiRequest("/commerce/electricity/meter-verification", {
+    method: "POST",
+    body: payload,
+    token,
+  });
+}
+
+export async function uploadProfileImage(
+  imageUri: string,
+  token: string,
+): Promise<any> {
+  const filename = imageUri.split("/").pop() || "profile.jpg";
+  const ext = filename.split(".").pop()?.toLowerCase();
+  const type = ext === "png" ? "image/png" : "image/jpeg";
+
+  const formData = new FormData();
+  formData.append("file", { uri: imageUri, name: filename, type } as any);
+
+  const jwt = normalizeAuthToken(token);
+  const headers: Record<string, string> = {};
+  if (jwt) headers.Authorization = `Bearer ${jwt}`;
+
+  const res = await fetch(`${API_BASE_URL}/user/profile-image/update`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  return handleResponse(res);
+}
+
+// ─── Webhooks ─────────────────────────────────────────────────────────────────
+
+export function filterWebhooks(
+  query: { page: number; limit: number; status: "*" | "successful" | "failed" },
+  token: string,
+): Promise<any> {
+  const params = new URLSearchParams({
+    page: String(query.page),
+    limit: String(query.limit),
+    status: query.status,
+  });
+  return apiRequest(`/webhook/filter?${params}`, { method: "GET", token });
+}
+
+export function resendWebhook(webhookId: string, token: string): Promise<any> {
   return apiRequest(`/webhook/${encodeURIComponent(webhookId)}`, {
     method: "PUT",
     token,

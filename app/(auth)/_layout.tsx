@@ -56,6 +56,27 @@ export default function AuthLayout() {
             statusBarTranslucent: true,
           }}
         />
+        <Stack.Screen
+          name="pin-sign-in"
+          options={{
+            headerShown: false,
+            statusBarTranslucent: true,
+          }}
+        />
+        <Stack.Screen
+          name="request-pin-otp"
+          options={{
+            headerShown: false,
+            statusBarTranslucent: true,
+          }}
+        />
+        <Stack.Screen
+          name="verify-pin-otp"
+          options={{
+            headerShown: false,
+            statusBarTranslucent: true,
+          }}
+        />
       </Stack>
     </>
   );

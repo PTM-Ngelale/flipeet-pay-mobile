@@ -20,6 +20,7 @@
     },
     "android": {
       "package": "com.flipeet.pay",
+      "permissions": ["USE_BIOMETRIC", "USE_FINGERPRINT"],
       "adaptiveIcon": {
         "backgroundColor": "#121212",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

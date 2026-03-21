@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as LocalAuthentication from "expo-local-authentication";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -16,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch } from "react-redux";
 import pinApi from "../services/pinApi";
+import * as secure from "../services/secure";
 import { loadAuthState } from "../store/authSlice";
 
 export default function PinSignIn() {
@@ -26,13 +28,41 @@ export default function PinSignIn() {
   const refs = useRef<Array<TextInput | null>>([]);
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
 
   useEffect(() => {
     (async () => {
       const stored = await AsyncStorage.getItem("auth_email");
       if (stored) setEmail(stored);
+
+      // Check biometrics availability
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (hasHardware && isEnrolled) {
+        setBiometricsAvailable(true);
+        const enabled = await secure.isBiometricsEnabled();
+        if (enabled) {
+          triggerBiometrics();
+        }
+      }
     })();
   }, []);
+
+  const triggerBiometrics = async () => {
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Sign in to Flipeet Pay",
+        fallbackLabel: "Use PIN",
+        cancelLabel: "Cancel",
+      });
+      if (result.success) {
+        await dispatch(loadAuthState()).unwrap();
+        router.replace("/home");
+      }
+    } catch {
+      // Biometrics failed or not available — user falls back to PIN
+    }
+  };
 
   const join = (arr: string[]) => arr.join("");
 
@@ -41,7 +71,22 @@ export default function PinSignIn() {
     if (newArr[index] && index < 5) refs.current[index + 1]?.focus();
   };
 
-  const handleBack = () => router.back();
+  const offerBiometricsSetup = () => {
+    Alert.alert(
+      "Enable Biometrics",
+      "Would you like to use Face ID / fingerprint to sign in next time?",
+      [
+        { text: "Not now", style: "cancel", onPress: () => router.replace("/home") },
+        {
+          text: "Enable",
+          onPress: async () => {
+            await secure.setBiometricsEnabled(true);
+            router.replace("/home");
+          },
+        },
+      ],
+    );
+  };
 
   const handleSubmit = async () => {
     const code = join(pin);
@@ -59,12 +104,10 @@ export default function PinSignIn() {
       const res = await pinApi.pinSignIn(email, parseInt(code, 10));
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        const msg = err?.message || "PIN sign-in failed";
-        throw new Error(msg);
+        throw new Error(err?.message || "PIN sign-in failed");
       }
       const body = await res.json().catch(() => ({}));
 
-      // Try to extract token/user similar to signIn handler
       const data = body.data || {};
       const credentials = data.credentials || {};
       const token =
@@ -76,17 +119,22 @@ export default function PinSignIn() {
         null;
       const user = body.user || data.user || null;
 
-      if (!token) {
-        throw new Error("No auth token returned from server");
-      }
+      if (!token) throw new Error("No auth token returned from server");
 
-      // Persist auth state consistently with existing app
       await AsyncStorage.setItem("auth_token", token);
       if (user) await AsyncStorage.setItem("auth_user", JSON.stringify(user));
       await AsyncStorage.setItem("auth_email", email);
 
-      // Load into redux state
       await dispatch(loadAuthState()).unwrap();
+
+      // Offer biometrics if available but not yet configured
+      if (biometricsAvailable) {
+        const alreadyEnabled = await secure.isBiometricsEnabled();
+        if (!alreadyEnabled) {
+          offerBiometricsSetup();
+          return;
+        }
+      }
 
       router.replace("/home");
     } catch (err: any) {
@@ -105,7 +153,7 @@ export default function PinSignIn() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack} style={styles.back}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
             <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.title}>Sign in with PIN</Text>
@@ -132,6 +180,11 @@ export default function PinSignIn() {
                   next[i] = t.slice(-1);
                   handleChange(next, i);
                 }}
+                onKeyPress={(e) => {
+                  if (e.nativeEvent.key === "Backspace" && !digit && i > 0) {
+                    refs.current[i - 1]?.focus();
+                  }
+                }}
                 secureTextEntry
               />
             ))}
@@ -146,6 +199,16 @@ export default function PinSignIn() {
               {loading ? "Signing in..." : "Sign in"}
             </Text>
           </TouchableOpacity>
+
+          {biometricsAvailable && (
+            <TouchableOpacity
+              style={styles.biometricsButton}
+              onPress={triggerBiometrics}
+            >
+              <Ionicons name="finger-print" size={28} color="#4A9DFF" />
+              <Text style={styles.biometricsText}>Use biometrics</Text>
+            </TouchableOpacity>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -164,7 +227,7 @@ const styles = StyleSheet.create({
   back: { padding: 4 },
   title: { color: "#E2E6F0", fontSize: 18, fontWeight: "700" },
   content: { padding: 20, alignItems: "center" },
-  hint: { color: "#9AA6B6", fontSize: 14, marginBottom: 12 },
+  hint: { color: "#9AA6B6", fontSize: 14, marginBottom: 28 },
   row: { flexDirection: "row", justifyContent: "space-between", width: 280 },
   input: {
     width: 44,
@@ -175,6 +238,8 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "700",
     fontSize: 18,
+    borderWidth: 1,
+    borderColor: "#374151",
   },
   submit: {
     marginTop: 28,
@@ -185,4 +250,14 @@ const styles = StyleSheet.create({
   },
   submitDisabled: { backgroundColor: "#374151" },
   submitText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  biometricsButton: {
+    marginTop: 32,
+    alignItems: "center",
+    gap: 8,
+  },
+  biometricsText: {
+    color: "#4A9DFF",
+    fontSize: 14,
+    fontWeight: "500",
+  },
 });

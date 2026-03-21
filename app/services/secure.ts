@@ -17,9 +17,19 @@ export async function isPinEnabled(): Promise<boolean> {
   return v === 'true';
 }
 
+export async function setBiometricsEnabled(enabled: boolean) {
+  return SecureStore.setItemAsync('biometricsEnabled', enabled ? 'true' : 'false');
+}
+
+export async function isBiometricsEnabled(): Promise<boolean> {
+  const v = await SecureStore.getItemAsync('biometricsEnabled');
+  return v === 'true';
+}
+
 export async function clearAuth() {
   await SecureStore.deleteItemAsync('authToken');
   await SecureStore.deleteItemAsync('pinEnabled');
+  await SecureStore.deleteItemAsync('biometricsEnabled');
 }
 
 export default {
@@ -27,5 +37,7 @@ export default {
   getToken,
   setPinEnabled,
   isPinEnabled,
+  setBiometricsEnabled,
+  isBiometricsEnabled,
   clearAuth,
 };

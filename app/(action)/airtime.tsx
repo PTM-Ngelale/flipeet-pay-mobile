@@ -653,13 +653,16 @@ export default function AirtimeScreen() {
       return;
     }
 
+    // Send local phone format (08012345678) — bread expects this over international
+    const localPhone = normalizedPhone.replace(/^\+234/, "0");
+
     try {
       setIsSubmitting(true);
 
       const payload = {
-        provider: selectedNetwork.provider,
-        phoneNumber: normalizedPhone,
-        disco: selectedNetwork.disco,
+        provider: "bread",
+        phoneNumber: localPhone,
+        disco: selectedNetwork.disco || selectedNetwork.provider,
         amount,
         asset: displayTokenSymbol.toLowerCase(),
         network: normalizeTokenNetwork(displayTokenNetwork),

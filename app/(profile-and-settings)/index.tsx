@@ -27,7 +27,7 @@ const SettingsAndProfile = () => {
   const { profileImage, pickImage } = useProfile();
   const email =
     useSelector((state: RootState) => state.auth.email) || "No email set";
-  const username = useSelector((state: RootState) => state.auth.user?.username);
+  const username = useSelector((state: RootState) => state.auth.user?.name);
 
   const handleLogout = () => {
     dispatch(logout());

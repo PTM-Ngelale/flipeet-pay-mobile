@@ -1,21 +1,27 @@
 /* PIN API helpers */
-const API_BASE = process.env.API_BASE_URL ?? '';
+const API_BASE = 'https://api.pay.flipeet.io';
 
 export interface PinSignInRequestDTO {
   email: string;
   pin: number;
 }
 
-export async function requestPinOtp(email: string) {
+export async function requestPinOtp(email: string, token: string) {
   const url = `${API_BASE}/api/v1/user/mobile/pin/otp/request?email=${encodeURIComponent(email)}`;
-  return fetch(url, { method: 'GET' });
+  return fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }
 
-export async function verifyPinOtp(pin: number, code: string) {
+export async function verifyPinOtp(pin: number, code: string, token: string) {
   const url = `${API_BASE}/api/v1/user/mobile/pin/otp/verify`;
   return fetch(url, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({ pin, code }),
   });
 }

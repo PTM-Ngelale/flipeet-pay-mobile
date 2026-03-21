@@ -85,6 +85,32 @@ const SecurityAndPrivacy = () => {
           </View>
         </View>
 
+        {/* Mobile PIN Setup */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.section}>
+            <View style={styles.row}>
+              <View style={styles.textContainer}>
+                <Text style={styles.label}>Mobile PIN Login</Text>
+                <Text style={styles.description}>
+                  Sign in quickly with a 6-digit PIN
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={{
+                  backgroundColor: "#1A212A",
+                  padding: 10,
+                  borderRadius: 7,
+                }}
+                onPress={() => router.push("/setup-mobile-pin")}
+              >
+                <Text style={{ color: "#4A9DFF", fontWeight: 600 }}>
+                  Set up
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
         {/* PIN Authentication Section */}
         <View style={styles.sectionContainer}>
           <View style={styles.section}>

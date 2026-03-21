@@ -24,7 +24,7 @@ export default function UsernameScreen() {
   const dispatch = useDispatch<any>();
   const loading = useSelector((state: RootState) => state.auth.loading);
   const currentUsername = useSelector(
-    (state: RootState) => state.auth.user?.username,
+    (state: RootState) => state.auth.user?.name,
   );
 
   const handleSaveUsername = async () => {

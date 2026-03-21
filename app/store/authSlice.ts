@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice, current, PayloadAction } from "@reduxjs/toolkit";
 import { apiGet, apiPost } from "../constants/api";
 
 type AuthState = {
@@ -170,8 +170,8 @@ export const updateUsername = createAsyncThunk(
       }
 
       const { apiRequest } = await import("../constants/api");
-      await apiRequest("/user/profile", {
-        method: "PATCH",
+      await apiRequest("/user/usrename/update", {
+        method: "POST",
         body: { username },
         token,
       });
@@ -201,6 +201,31 @@ export const fetchUserProfile = createAsyncThunk(
       return data;
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Failed to fetch profile");
+    }
+  },
+);
+
+export const updateProfileImage = createAsyncThunk(
+  "auth/updateProfileImage",
+  async (imageUri: string, thunkAPI: any) => {
+    try {
+      const state = thunkAPI.getState();
+      const { token } = state.auth;
+
+      if (!token) {
+        return thunkAPI.rejectWithValue("No authentication token");
+      }
+
+      const { uploadProfileImage } = await import("../constants/api");
+      const data = await uploadProfileImage(imageUri, token);
+      console.log("[updateProfileImage] server response:", JSON.stringify(data));
+      return { imageUri, data };
+    } catch (err: any) {
+      console.log("[updateProfileImage] upload error status:", err?.status);
+      console.log("[updateProfileImage] upload error body:", JSON.stringify(err?.body));
+      return thunkAPI.rejectWithValue(
+        err.message || "Failed to update profile image",
+      );
     }
   },
 );
@@ -330,7 +355,7 @@ const authSlice = createSlice({
       state.balances = [];
       state.transactions = [];
       // Clear AsyncStorage
-      AsyncStorage.multiRemove(["auth_token", "auth_user", "auth_email"]);
+      AsyncStorage.multiRemove(["auth_token", "auth_user"]); // keep auth_email so PIN login still works after logout
 
       // Note: Bank account state will be cleared by a separate dispatch
     },
@@ -374,7 +399,19 @@ const authSlice = createSlice({
           const data = payload.data || {};
           const credentials = data.credentials || {};
 
-          state.user = payload.user || data.user || null;
+          const incomingUser = payload.user || data.user || null;
+          if (incomingUser) {
+            // Preserve uploaded avatar if server still returns "default"
+            const existingAvatar = state.user?.avatar;
+            const serverAvatar = incomingUser.avatar;
+            incomingUser.avatar =
+              serverAvatar && serverAvatar !== "default"
+                ? serverAvatar
+                : existingAvatar && existingAvatar !== "default"
+                  ? existingAvatar
+                  : serverAvatar;
+          }
+          state.user = incomingUser;
           state.token =
             credentials.accessToken ||
             payload.accessToken ||
@@ -548,10 +585,9 @@ const authSlice = createSlice({
       })
       .addCase(updateUsername.fulfilled, (state: any, action: any) => {
         state.loading = false;
-        // Update username in user object
         if (state.user) {
-          state.user.username = action.payload.username;
-          AsyncStorage.setItem("auth_user", JSON.stringify(state.user));
+          state.user.name = action.payload.username;
+          AsyncStorage.setItem("auth_user", JSON.stringify(current(state.user)));
         }
       })
       .addCase(updateUsername.rejected, (state: any, action: any) => {
@@ -572,6 +608,24 @@ const authSlice = createSlice({
       })
       .addCase(fetchUserProfile.rejected, (state: any, action: any) => {
         state.loading = false;
+      })
+      .addCase(updateProfileImage.pending, (state: any) => {
+        state.loading = true;
+      })
+      .addCase(updateProfileImage.fulfilled, (state: any, action: any) => {
+        state.loading = false;
+        const serverUrl =
+          action.payload?.data?.data?.url ||
+          action.payload?.data?.url ||
+          action.payload?.imageUri;
+        if (state.user) {
+          state.user.avatar = serverUrl;
+          AsyncStorage.setItem("auth_user", JSON.stringify(current(state.user)));
+        }
+      })
+      .addCase(updateProfileImage.rejected, (state: any, action: any) => {
+        state.loading = false;
+        state.error = action.payload || "Failed to update profile image";
       })
       .addCase(changePin.pending, (state: any) => {
         state.loading = true;

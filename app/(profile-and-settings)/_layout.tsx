@@ -119,6 +119,12 @@ export default function ProfileAndSettingsLayout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen
+          name="setup-mobile-pin"
+          options={{
+            headerShown: false,
+          }}
+        />
       </Stack>
     </>
   );

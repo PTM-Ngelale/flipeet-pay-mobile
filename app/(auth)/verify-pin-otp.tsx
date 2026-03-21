@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -15,7 +15,7 @@ import pinApi from "../services/pinApi";
 import * as secure from "../services/secure";
 
 export default function VerifyPinOtp() {
-  const params = useSearchParams();
+  const params = useLocalSearchParams();
   const router = useRouter();
   const email = (params.email as string) ?? "";
 
@@ -41,7 +41,7 @@ export default function VerifyPinOtp() {
       }
 
       Alert.alert("Success", "PIN set successfully. You can now sign in with your PIN.", [
-        { text: "OK", onPress: () => router.replace("/auth/login") },
+        { text: "OK", onPress: () => router.replace("/(auth)/login") },
       ]);
     } catch (err: any) {
       Alert.alert("Verification failed", err?.message || String(err));

@@ -316,28 +316,19 @@ export default function ElectricityScreen() {
 
     setIsSubmitting(true);
     try {
-      const payload: any = {
-        provider:
-          selectedProvider?.raw?.code ||
-          selectedProvider?.id ||
-          selectedProvider?.name,
+      const payload = {
         discoName:
           selectedProvider?.raw?.disco ||
           selectedProvider?.raw?.discoName ||
-          selectedProvider?.name,
+          selectedProvider?.name ||
+          "",
         meterNumber,
-        meterType: meterType || undefined,
-        type: meterType || undefined,
+        meterType: meterType || "Prepaid",
         amount: amountNumber,
         phoneNumber: phoneNumber || userPhone || undefined,
         asset: (displayTokenSymbol || "usdt").toLowerCase(),
         network: normalizeTokenNetwork(displayTokenNetwork || "solana"),
       };
-
-      // Log payload for easier debugging
-      try {
-        console.log("[electricity] initialize payload", payload);
-      } catch {}
 
       const res = await initializeCommerceElectricity(payload, token);
       const txRef =
