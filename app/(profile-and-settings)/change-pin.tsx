@@ -1,10 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -12,128 +14,202 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
+import pinApi from "../services/pinApi";
+import * as secure from "../services/secure";
+import type { RootState } from "../store";
 
-export default function ChangePINScreen() {
-  const [currentPin, setCurrentPin] = useState(["", "", "", "", "", ""]);
+type Step = "request" | "verify";
+
+export default function ChangePinScreen() {
   const router = useRouter();
-  const inputRefs = useRef<Array<TextInput | null>>([]);
+  const reduxEmail = useSelector((state: RootState) => state.auth.user?.email || state.auth.email);
+  const reduxToken = useSelector((state: RootState) => state.auth.token);
+  const [email, setEmail] = useState(reduxEmail || "");
+  const [token, setToken] = useState(reduxToken || "");
 
-  const handlePinChange = (text: string, index: number) => {
-    if (text.length > 1) {
-      // Handle paste
-      const pastedPin = text.split("").slice(0, 6);
-      const newPin = [...currentPin];
-      pastedPin.forEach((char, i) => {
-        if (i < 6) newPin[i] = char;
-      });
-      setCurrentPin(newPin);
+  useEffect(() => {
+    (async () => {
+      if (!email) {
+        const stored = await AsyncStorage.getItem("auth_email");
+        if (stored) setEmail(stored);
+      }
+      if (!token) {
+        const stored = await AsyncStorage.getItem("auth_token");
+        if (stored) setToken(stored);
+      }
+    })();
+  }, []);
 
-      // Focus last input
-      const lastIndex = Math.min(pastedPin.length - 1, 5);
-      inputRefs.current[lastIndex]?.focus();
+  const [step, setStep] = useState<Step>("request");
+  const [otp, setOtp] = useState("");
+  const [pin, setPin] = useState(["", "", "", "", "", ""]);
+  const [loading, setLoading] = useState(false);
+  const pinRefs = useRef<Array<TextInput | null>>([]);
+
+  const handleRequestOtp = async () => {
+    if (!email) {
+      Alert.alert("Error", "No email found. Please log in again.");
       return;
     }
-
-    const newPin = [...currentPin];
-    newPin[index] = text;
-    setCurrentPin(newPin);
-
-    // Auto focus next input
-    if (text && index < 5) {
-      inputRefs.current[index + 1]?.focus();
+    if (!token) {
+      Alert.alert("Error", "Session expired. Please log in again.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await pinApi.requestPinOtp(email, token);
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.message || "Failed to send OTP");
+      }
+      setStep("verify");
+    } catch (err: any) {
+      Alert.alert("Error", err?.message || "Could not send OTP");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === "Backspace" && !currentPin[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+  const handleVerify = async () => {
+    const pinCode = pin.join("");
+    if (!otp.trim()) {
+      Alert.alert("Error", "Enter the OTP code from your email.");
+      return;
+    }
+    if (pinCode.length !== 6) {
+      Alert.alert("Error", "Enter a 6-digit PIN.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await pinApi.verifyPinOtp(parseInt(pinCode, 10), otp.trim(), token);
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.message || "Verification failed");
+      }
+      await secure.setPinEnabled(true, email);
+      Alert.alert("PIN Changed", "Your sign-in PIN has been updated.", [
+        { text: "Done", onPress: () => router.back() },
+      ]);
+    } catch (err: any) {
+      Alert.alert("Error", err?.message || "Could not update PIN");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleContinue = () => {
-    // Store current PIN and navigate to create new PIN
-    const pinString = currentPin.join("");
-    router.push({
-      pathname: "/create-new-pin",
-      params: { oldPin: pinString },
-    });
+  const handlePinChange = (text: string, index: number) => {
+    const next = [...pin];
+    next[index] = text.slice(-1);
+    setPin(next);
+    if (text && index < 5) pinRefs.current[index + 1]?.focus();
   };
 
-  const isContinueDisabled = currentPin.some((digit) => !digit);
+  const handlePinBackspace = (e: any, index: number) => {
+    if (e.nativeEvent.key === "Backspace" && !pin[index] && index > 0) {
+      pinRefs.current[index - 1]?.focus();
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        style={styles.keyboardAvoidingView}
+        style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
       >
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backButton}
-          >
+          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
             <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Change PIN</Text>
-          <View style={styles.headerPlaceholder} />
+          <View style={{ width: 32 }} />
         </View>
 
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.content}>
-            <View style={styles.inputSection}>
-              <Text style={styles.description}>Enter PIN</Text>
+        <View style={styles.content}>
+          {step === "request" ? (
+            <>
+              <Text style={styles.title}>Change your sign-in PIN</Text>
+              <Text style={styles.description}>
+                We'll send a verification code to your email to confirm it's you
+                before setting a new PIN.
+              </Text>
 
-              <View style={styles.pinContainer}>
-                {currentPin.map((digit, index) => (
+              <View style={styles.emailBox}>
+                <Ionicons name="mail-outline" size={18} color="#757B85" />
+                <Text style={styles.emailText}>{email || "No email found"}</Text>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.button, (!email || !token || loading) && styles.buttonDisabled]}
+                onPress={handleRequestOtp}
+                disabled={!email || !token || loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Send verification code</Text>
+                )}
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.title}>Set your new PIN</Text>
+              <Text style={styles.description}>
+                Enter the code sent to {email}, then choose a new 6-digit PIN.
+              </Text>
+
+              <Text style={styles.label}>Verification code</Text>
+              <TextInput
+                style={styles.otpInput}
+                placeholder="Enter OTP"
+                placeholderTextColor="#757B85"
+                value={otp}
+                onChangeText={setOtp}
+                keyboardType="number-pad"
+                maxLength={8}
+              />
+
+              <Text style={styles.label}>New 6-digit PIN</Text>
+              <View style={styles.pinRow}>
+                {pin.map((digit, i) => (
                   <TextInput
-                    key={index}
-                    ref={(ref) => (inputRefs.current[index] = ref)}
+                    key={i}
+                    ref={(r) => { pinRefs.current[i] = r; }}
                     style={styles.pinInput}
-                    value={digit}
-                    onChangeText={(text) => handlePinChange(text, index)}
-                    onKeyPress={(e) => handleKeyPress(e, index)}
                     keyboardType="number-pad"
                     maxLength={1}
-                    selectTextOnFocus
+                    value={digit}
+                    onChangeText={(t) => handlePinChange(t, i)}
+                    onKeyPress={(e) => handlePinBackspace(e, i)}
                     secureTextEntry
                   />
                 ))}
               </View>
 
-              <TouchableOpacity style={styles.resendContainer}>
-                <Text style={styles.resendText}>
-                  Didn't get the code?{" "}
-                  <Text style={styles.resendLink}>Resend</Text>
-                </Text>
+              <TouchableOpacity
+                style={[
+                  styles.button,
+                  (!otp.trim() || pin.some((d) => !d) || loading) && styles.buttonDisabled,
+                ]}
+                onPress={handleVerify}
+                disabled={!otp.trim() || pin.some((d) => !d) || loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Update PIN</Text>
+                )}
               </TouchableOpacity>
-            </View>
-          </View>
-        </ScrollView>
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              isContinueDisabled && styles.continueButtonDisabled,
-            ]}
-            onPress={handleContinue}
-            disabled={isContinueDisabled}
-          >
-            <Text
-              style={[
-                styles.continueButtonText,
-                isContinueDisabled && styles.continueButtonTextDisabled,
-              ]}
-            >
-              Proceed
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.resendButton}
+                onPress={() => setStep("request")}
+              >
+                <Text style={styles.resendText}>Resend code</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -141,30 +217,7 @@ export default function ChangePINScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#000000",
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  resendContainer: {
-    marginBottom: 32,
-  },
-  resendText: {
-    color: "#757B85",
-    fontSize: 14,
-  },
-  resendLink: {
-    color: "#4A9DFF",
-    fontWeight: "600",
-  },
+  container: { flex: 1, backgroundColor: "#000" },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -172,76 +225,71 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    color: "#757B85",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  headerPlaceholder: {
-    width: 32,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  inputSection: {
-    flex: 1,
-    paddingTop: 40,
-    alignItems: "center",
-  },
+  back: { padding: 4 },
+  headerTitle: { color: "#757B85", fontSize: 18, fontWeight: "600" },
+  content: { flex: 1, padding: 24 },
   title: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 8,
-    textAlign: "center",
+    color: "#E2E6F0",
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 10,
   },
   description: {
-    color: "#757B85",
-    fontSize: 16,
-    marginBottom: 40,
-    textAlign: "center",
+    color: "#9AA6B6",
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 28,
   },
-  pinContainer: {
+  emailBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "#1C1C1C",
+    padding: 14,
+    borderRadius: 8,
+    marginBottom: 28,
+  },
+  emailText: { color: "#B0BACB", fontSize: 14 },
+  label: {
+    color: "#B0BACB",
+    fontSize: 13,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+  otpInput: {
+    backgroundColor: "#1C1C1C",
+    color: "#fff",
+    padding: 14,
+    borderRadius: 8,
+    fontSize: 16,
+    marginBottom: 24,
+    letterSpacing: 4,
+  },
+  pinRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    width: "100%",
-    marginBottom: 32,
+    marginBottom: 28,
   },
   pinInput: {
-    backgroundColor: "#1C1C1C",
-    color: "#FFFFFF",
-    fontSize: 20,
-    fontWeight: "600",
-    textAlign: "center",
-    width: 50,
-    height: 60,
+    width: 44,
+    height: 54,
     borderRadius: 8,
+    backgroundColor: "#1C1C1C",
     borderWidth: 1,
     borderColor: "#374151",
+    textAlign: "center",
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "700",
   },
-  buttonContainer: {
-    padding: 20,
-    paddingBottom: Platform.OS === "ios" ? 34 : 20,
-  },
-  continueButton: {
+  button: {
     backgroundColor: "#4A9DFF",
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: "center",
   },
-  continueButtonDisabled: {
-    backgroundColor: "#374151",
-  },
-  continueButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  continueButtonTextDisabled: {
-    color: "#9CA3AF",
-  },
+  buttonDisabled: { backgroundColor: "#374151" },
+  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  resendButton: { alignItems: "center", marginTop: 16 },
+  resendText: { color: "#4A9DFF", fontSize: 14, fontWeight: "500" },
 });

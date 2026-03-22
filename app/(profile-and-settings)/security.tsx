@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
+import pinApi from "../services/pinApi";
 import { RootState } from "../store";
 
 const SecurityAndPrivacy = () => {
@@ -18,6 +19,17 @@ const SecurityAndPrivacy = () => {
     (state: RootState) =>
       state.auth.user?.email || state.auth.email || "Not set",
   );
+  const [pinExists, setPinExists] = useState(false);
+
+  useEffect(() => {
+    if (!email || email === "Not set") return;
+    pinApi.isPinAvailable(email)
+      .then((res) => res.json().catch(() => null))
+      .then((body) => {
+        if (body?.data?.pinExists === true) setPinExists(true);
+      })
+      .catch(() => {});
+  }, [email]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -62,7 +74,7 @@ const SecurityAndPrivacy = () => {
         </View>
 
         {/* Change PIN Section */}
-        <View style={styles.sectionContainer}>
+        {/* <View style={styles.sectionContainer}>
           <View style={styles.section}>
             <View style={styles.row}>
               <View style={styles.textContainer}>
@@ -83,7 +95,7 @@ const SecurityAndPrivacy = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </View> */}
 
         {/* Mobile PIN Setup */}
         <View style={styles.sectionContainer}>
@@ -101,10 +113,10 @@ const SecurityAndPrivacy = () => {
                   padding: 10,
                   borderRadius: 7,
                 }}
-                onPress={() => router.push("/setup-mobile-pin")}
+                onPress={() => router.push(pinExists ? "/change-pin" : "/setup-mobile-pin")}
               >
                 <Text style={{ color: "#4A9DFF", fontWeight: 600 }}>
-                  Set up
+                  {pinExists ? "Change" : "Set up"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -112,7 +124,7 @@ const SecurityAndPrivacy = () => {
         </View>
 
         {/* PIN Authentication Section */}
-        <View style={styles.sectionContainer}>
+        {/* <View style={styles.sectionContainer}>
           <View style={styles.section}>
             <View style={styles.row}>
               <View style={styles.textContainer}>
@@ -133,7 +145,7 @@ const SecurityAndPrivacy = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </View> */}
       </ScrollView>
     </SafeAreaView>
   );
