@@ -225,8 +225,8 @@ export default function WalletHomeScreen() {
     return Math.ceil(safeValue * factor) / factor;
   };
   const formatBalance = (balance: number, symbol: string) =>
-    `${roundUp(balance, 6).toFixed(6)} ${symbol.toUpperCase()}`;
-  const formatTokenValue = (value: number) => roundUp(value, 2).toFixed(2);
+    `${balance.toFixed(3)} ${symbol.toUpperCase()}`;
+  const formatTokenValue = (value: number) => value.toFixed(3);
 
   // Toggle balance visibility
   const toggleBalanceVisibility = () => {
@@ -276,7 +276,7 @@ export default function WalletHomeScreen() {
             GlobalStyles.textBold,
           ]}
         >
-          {isBalanceVisible ? `$${totalBalanceUSD.toFixed(2)}` : "******"}
+          {isBalanceVisible ? `$${totalBalanceUSD.toFixed(3)}` : "******"}
         </Text>
         <TouchableOpacity onPress={toggleBalanceVisibility}>
           {/* <Entypo

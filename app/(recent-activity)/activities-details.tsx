@@ -708,95 +708,95 @@ export default function ActivityDetailsScreen() {
       <SafeAreaView style={styles.container}>
         <Header
           title="Transaction Details"
-          rightComponent={(() => {
-            const HeaderRight = () => {
-              if (!activity) return <View style={{ width: 24 }} />;
-              return (
-                <View
-                  style={{
-                    width: 36,
-                    height: 36,
-                    position: "relative",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {typeof activity.icon === "function" ? (
-                    // @ts-ignore
-                    <activity.icon width={24} height={24} />
-                  ) : (
-                    <Image
-                      source={activity.icon}
-                      style={{ width: 24, height: 24 }}
-                      resizeMode="contain"
-                    />
-                  )}
+          // rightComponent={(() => {
+          //   const HeaderRight = () => {
+          //     if (!activity) return <View style={{ width: 24 }} />;
+          //     return (
+          //       <View
+          //         style={{
+          //           width: 36,
+          //           height: 36,
+          //           position: "relative",
+          //           alignItems: "center",
+          //           justifyContent: "center",
+          //         }}
+          //       >
+          //         {typeof activity.icon === "function" ? (
+          //           // @ts-ignore
+          //           <activity.icon width={24} height={24} />
+          //         ) : (
+          //           <Image
+          //             source={activity.icon}
+          //             style={{ width: 24, height: 24 }}
+          //             resizeMode="contain"
+          //           />
+          //         )}
 
-                  {activity.actionIcon ? (
-                    <View
-                      style={{
-                        position: "absolute",
-                        right: -4,
-                        top: -4,
-                        width: 16,
-                        height: 16,
-                        borderRadius: 16,
-                        backgroundColor: "#0B1220",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderWidth: 1,
-                        borderColor: "#111827",
-                        zIndex: 3,
-                      }}
-                    >
-                      {typeof activity.actionIcon === "function" ? (
-                        // @ts-ignore
-                        <activity.actionIcon width={10} height={10} />
-                      ) : (
-                        <Image
-                          source={activity.actionIcon}
-                          style={{ width: 10, height: 10 }}
-                          resizeMode="contain"
-                        />
-                      )}
-                    </View>
-                  ) : null}
+          //         {activity.actionIcon ? (
+          //           <View
+          //             style={{
+          //               position: "absolute",
+          //               right: -4,
+          //               top: -4,
+          //               width: 16,
+          //               height: 16,
+          //               borderRadius: 16,
+          //               backgroundColor: "#0B1220",
+          //               alignItems: "center",
+          //               justifyContent: "center",
+          //               borderWidth: 1,
+          //               borderColor: "#111827",
+          //               zIndex: 3,
+          //             }}
+          //           >
+          //             {typeof activity.actionIcon === "function" ? (
+          //               // @ts-ignore
+          //               <activity.actionIcon width={10} height={10} />
+          //             ) : (
+          //               <Image
+          //                 source={activity.actionIcon}
+          //                 style={{ width: 10, height: 10 }}
+          //                 resizeMode="contain"
+          //               />
+          //             )}
+          //           </View>
+          //         ) : null}
 
-                  {activity.badgeIcon ? (
-                    <View
-                      style={{
-                        position: "absolute",
-                        right: -4,
-                        bottom: -4,
-                        width: 14,
-                        height: 14,
-                        borderRadius: 14,
-                        backgroundColor: "#0B1220",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderWidth: 1,
-                        borderColor: "#111827",
-                        zIndex: 3,
-                      }}
-                    >
-                      {typeof activity.badgeIcon === "function" ? (
-                        // @ts-ignore
-                        <activity.badgeIcon width={10} height={10} />
-                      ) : (
-                        <Image
-                          source={activity.badgeIcon}
-                          style={{ width: 10, height: 10 }}
-                          resizeMode="contain"
-                        />
-                      )}
-                    </View>
-                  ) : null}
-                </View>
-              );
-            };
+          //         {activity.badgeIcon ? (
+          //           <View
+          //             style={{
+          //               position: "absolute",
+          //               right: -4,
+          //               bottom: -4,
+          //               width: 14,
+          //               height: 14,
+          //               borderRadius: 14,
+          //               backgroundColor: "#0B1220",
+          //               alignItems: "center",
+          //               justifyContent: "center",
+          //               borderWidth: 1,
+          //               borderColor: "#111827",
+          //               zIndex: 3,
+          //             }}
+          //           >
+          //             {typeof activity.badgeIcon === "function" ? (
+          //               // @ts-ignore
+          //               <activity.badgeIcon width={10} height={10} />
+          //             ) : (
+          //               <Image
+          //                 source={activity.badgeIcon}
+          //                 style={{ width: 10, height: 10 }}
+          //                 resizeMode="contain"
+          //               />
+          //             )}
+          //           </View>
+          //         ) : null}
+          //       </View>
+          //     );
+          //   };
 
-            return <HeaderRight />;
-          })()}
+          //   return <HeaderRight />;
+          // })()}
         />
 
         <ScrollView
