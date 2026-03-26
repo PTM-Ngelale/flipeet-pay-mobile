@@ -40,28 +40,29 @@ export default function PinSignIn() {
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       if (hasHardware && isEnrolled) {
         setBiometricsAvailable(true);
-        const enabled = await secure.isBiometricsEnabled();
-        if (enabled) {
-          triggerBiometrics();
-        }
       }
     })();
   }, []);
 
   const triggerBiometrics = async () => {
-    try {
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: "Sign in to Flipeet Pay",
-        fallbackLabel: "Use PIN",
-        cancelLabel: "Cancel",
-      });
-      if (result.success) {
-        await dispatch(loadAuthState()).unwrap();
-        router.replace("/home");
-      }
-    } catch {
-      // Biometrics failed or not available — user falls back to PIN
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: "Sign in to Flipeet Pay",
+      fallbackLabel: "Use PIN",
+      cancelLabel: "Cancel",
+    });
+    if (!result.success) return;
+
+    const token = await AsyncStorage.getItem("auth_token");
+    if (!token) {
+      Alert.alert(
+        "Session expired",
+        "Please sign in with your PIN or email and password.",
+      );
+      return;
     }
+
+    await dispatch(loadAuthState());
+    router.replace("/home");
   };
 
   const join = (arr: string[]) => arr.join("");
@@ -153,7 +154,7 @@ export default function PinSignIn() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.back}>
+          <TouchableOpacity onPress={() => router.replace("/(auth)/login")} style={styles.back}>
             <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.title}>Sign in with PIN</Text>

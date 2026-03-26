@@ -661,7 +661,7 @@ export function initializeCommerceElectricity(
   payload: {
     discoName: string;
     meterNumber: string;
-    meterType: string;
+    type: string;
     amount: number;
     phoneNumber?: string;
     asset: string;
@@ -692,7 +692,7 @@ export function fetchCommerceElectricityMeterInfo(
 }
 
 export function verifyCommerceElectricityMeter(
-  payload: { provider: string; meterNumber: string; meterType?: string },
+  payload: { electId: string; meterNumber: string },
   token: string,
 ): Promise<any> {
   return apiRequest("/commerce/electricity/meter-verification", {
@@ -700,6 +700,16 @@ export function verifyCommerceElectricityMeter(
     body: payload,
     token,
   });
+}
+
+export function getCommerceTransactionById(
+  txRef: string,
+  token: string,
+): Promise<any> {
+  return apiRequest(
+    `/commerce/transactions/id?txRef=${encodeURIComponent(txRef)}`,
+    { method: "GET", token },
+  );
 }
 
 export async function uploadProfileImage(

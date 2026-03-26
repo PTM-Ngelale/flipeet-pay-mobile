@@ -1,9 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
+import * as LocalAuthentication from "expo-local-authentication";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TouchableOpacity,
   View,
@@ -11,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
 import pinApi from "../services/pinApi";
+import * as secure from "../services/secure";
 import { RootState } from "../store";
 
 const SecurityAndPrivacy = () => {
@@ -20,6 +24,8 @@ const SecurityAndPrivacy = () => {
       state.auth.user?.email || state.auth.email || "Not set",
   );
   const [pinExists, setPinExists] = useState(false);
+  const [biometricsEnabled, setBiometricsEnabled] = useState(false);
+  const [biometricsSupported, setBiometricsSupported] = useState(false);
 
   useEffect(() => {
     if (!email || email === "Not set") return;
@@ -29,7 +35,37 @@ const SecurityAndPrivacy = () => {
         if (body?.data?.pinExists === true) setPinExists(true);
       })
       .catch(() => {});
+
+    (async () => {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (hasHardware && isEnrolled) {
+        setBiometricsSupported(true);
+        const enabled = await secure.isBiometricsEnabled();
+        setBiometricsEnabled(enabled);
+      }
+    })();
   }, [email]);
+
+  const handleBiometricsToggle = async (value: boolean) => {
+    if (value) {
+      // Confirm identity before enabling
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: "Confirm your identity to enable biometric login",
+        cancelLabel: "Cancel",
+      });
+      if (!result.success) return;
+    }
+    await secure.setBiometricsEnabled(value);
+    setBiometricsEnabled(value);
+    Alert.alert(
+      value ? "Biometrics enabled" : "Biometrics disabled",
+      value
+        ? "You can now sign in using Face ID or fingerprint."
+        : "Biometric login has been turned off.",
+      [{ text: "OK" }],
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -122,6 +158,28 @@ const SecurityAndPrivacy = () => {
             </View>
           </View>
         </View>
+
+        {/* Biometric Login */}
+        {biometricsSupported && (
+          <View style={styles.sectionContainer}>
+            <View style={styles.section}>
+              <View style={styles.row}>
+                <View style={styles.textContainer}>
+                  <Text style={styles.label}>Biometric Login</Text>
+                  <Text style={styles.description}>
+                    Sign in with Face ID or fingerprint
+                  </Text>
+                </View>
+                <Switch
+                  value={biometricsEnabled}
+                  onValueChange={handleBiometricsToggle}
+                  trackColor={{ false: "#374151", true: "#0A66D3" }}
+                  thumbColor="#FFFFFF"
+                />
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* PIN Authentication Section */}
         {/* <View style={styles.sectionContainer}>

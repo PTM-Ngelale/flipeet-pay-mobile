@@ -7,7 +7,6 @@ import {
 } from "@/app/constants/api";
 import { useToken } from "@/app/contexts/TokenContext";
 import { RootState } from "@/app/store";
-import CashbackIcon from "@/assets/images/cashback-icon.svg";
 import HistoryIcon from "@/assets/images/history-icon.svg";
 import NineMobileIcon from "@/assets/images/network-providers-icons/9mobile-icon.svg";
 import AirtelIcon from "@/assets/images/network-providers-icons/airtel-icon.svg";
@@ -38,12 +37,12 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
 
 const TOP_UP_OPTIONS = [
-  { amount: 50, label: "₦50", cashback: "₦2.5 Cashback" },
-  { amount: 100, label: "₦100", cashback: "₦5 Cashback" },
-  { amount: 200, label: "₦200", cashback: "₦10 Cashback" },
-  { amount: 500, label: "₦500", cashback: "₦10 Cashback" },
-  { amount: 1000, label: "₦1000", cashback: "₦20 Cashback" },
-  { amount: 2000, label: "₦2000", cashback: "₦40 Cashback" },
+  { amount: 50, label: "₦50" },
+  { amount: 100, label: "₦100" },
+  { amount: 200, label: "₦200" },
+  { amount: 500, label: "₦500" },
+  { amount: 1000, label: "₦1000" },
+  { amount: 2000, label: "₦2000" },
 ];
 
 type NetworkProvider = {
@@ -653,14 +652,14 @@ export default function AirtimeScreen() {
       return;
     }
 
-    // Send local phone format (08012345678) — bread expects this over international
+    // Send local phone format (08012345678) — buypower expects this over international
     const localPhone = normalizedPhone.replace(/^\+234/, "0");
 
     try {
       setIsSubmitting(true);
 
       const payload = {
-        provider: "bread",
+        provider: "buypower",
         phoneNumber: localPhone,
         disco: selectedNetwork.disco || selectedNetwork.provider,
         amount,
@@ -672,6 +671,15 @@ export default function AirtimeScreen() {
         payload,
         normalizedToken,
       );
+
+      if (response?.status !== "success") {
+        Alert.alert(
+          "Purchase failed",
+          response?.message || "Airtime initialization failed.",
+        );
+        return;
+      }
+
       const txRef =
         response?.data?.txRef ||
         response?.data?.reference ||
@@ -845,13 +853,6 @@ export default function AirtimeScreen() {
                     ]}
                     onPress={() => handleTopUpSelect(item.amount)}
                   >
-                    <View style={styles.cashbackBadge}>
-                      <Text style={styles.cashbackLabel}>
-                        {/* 💵 */}
-                        <CashbackIcon />
-                        {item.cashback}
-                      </Text>
-                    </View>
                     <Text style={styles.topUpAmount}>{item.label}</Text>
                   </TouchableOpacity>
                 ))}
@@ -1131,30 +1132,19 @@ const styles = StyleSheet.create({
   },
   topUpCard: {
     width: "31%",
-    minHeight: 82,
+    minHeight: 52,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#2A2A2A",
     backgroundColor: "#1C1C1C",
     paddingHorizontal: 6,
     paddingVertical: 8,
-    justifyContent: "space-between",
+    justifyContent: "center",
     alignItems: "center",
   },
   selectedTopUpCard: {
     borderColor: "#34D058",
     backgroundColor: "#1A2230",
-  },
-  cashbackBadge: {
-    borderRadius: 6,
-    backgroundColor: "#388665",
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-  },
-  cashbackLabel: {
-    color: "#E2E6F0",
-    fontSize: 12,
-    fontWeight: "400",
   },
   topUpAmount: {
     color: "#E2E6F0",

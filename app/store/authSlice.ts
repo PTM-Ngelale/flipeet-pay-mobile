@@ -92,9 +92,20 @@ export const signUp = createAsyncThunk(
 
 export const googleSignIn = createAsyncThunk(
   "auth/googleSignIn",
-  async ({ token }: { token: string }, thunkAPI: any) => {
+  async (
+    {
+      idToken,
+      provider,
+      redirectUri,
+    }: { idToken: string; provider: string; redirectUri: string },
+    thunkAPI: any,
+  ) => {
     try {
-      const data = await apiPost(`/auth/oauth/validate`, { token });
+      const data = await apiPost(`/auth/oauth/validate`, {
+        idToken,
+        provider,
+        redirectUri,
+      });
       return data;
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Google sign in failed");
@@ -488,6 +499,46 @@ const authSlice = createSlice({
         } else {
           state.error = action.payload || String(action.error?.message || "");
         }
+      })
+      .addCase(googleSignIn.pending, (state: any) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(googleSignIn.fulfilled, (state: any, action: any) => {
+        state.loading = false;
+        state.error = null;
+        try {
+          const payload = action.payload || {};
+          const data = payload.data || {};
+          const credentials = data.credentials || {};
+
+          state.user = payload.user || data.user || null;
+          state.token =
+            credentials.accessToken ||
+            payload.accessToken ||
+            payload.token ||
+            data.accessToken ||
+            data.token ||
+            null;
+
+          if (state.token) {
+            AsyncStorage.setItem("auth_token", state.token);
+          }
+          if (state.user) {
+            AsyncStorage.setItem("auth_user", JSON.stringify(state.user));
+          }
+          if (state.user?.email) {
+            state.email = state.user.email;
+            AsyncStorage.setItem("auth_email", state.user.email);
+          }
+        } catch (e) {
+          state.user = null;
+          state.token = null;
+        }
+      })
+      .addCase(googleSignIn.rejected, (state: any, action: any) => {
+        state.loading = false;
+        state.error = action.payload || String(action.error?.message || "Google sign in failed");
       })
       .addCase(loadAuthState.fulfilled, (state: any, action: any) => {
         const { token, user, email } = action.payload;

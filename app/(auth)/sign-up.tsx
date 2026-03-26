@@ -35,7 +35,6 @@ export default function SignUpScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [keepLoggedIn, setKeepLoggedIn] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch<any>();
@@ -268,27 +267,6 @@ export default function SignUpScreen() {
               )}
             </View>
 
-            {/* Keep me logged in (show on all platforms) */}
-            <TouchableOpacity
-              style={styles.rememberMeContainer}
-              onPress={() => setKeepLoggedIn(!keepLoggedIn)}
-            >
-              <View style={styles.checkboxContainer}>
-                <View
-                  style={[
-                    styles.checkbox,
-                    keepLoggedIn && styles.checkboxChecked,
-                  ]}
-                >
-                  {keepLoggedIn && (
-                    <Ionicons name="checkmark" size={16} color="#000000" />
-                  )}
-                </View>
-              </View>
-              <Text style={styles.rememberMeText}>
-                Keep me logged in on this device
-              </Text>
-            </TouchableOpacity>
 
             {/* Sign Up Button */}
             <TouchableOpacity
@@ -424,33 +402,6 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     padding: 16,
-  },
-  rememberMeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  checkboxContainer: {
-    marginRight: 8,
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: "#757B85",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkboxChecked: {
-    backgroundColor: "#28A745",
-    borderColor: "#28A745",
-  },
-  rememberMeText: {
-    color: "#B0BACB",
-    fontSize: 14,
-    fontWeight: "400",
-    lineHeight: 18,
   },
   errorText: {
     color: "#FF6B6B",

@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,11 +13,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 const About = () => {
   const router = useRouter();
-
-  //   const handleWebsitePress = () => {
-
-  //     Linking.openURL("https://www.flipeetpay.com");
-  //   };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -54,7 +50,7 @@ const About = () => {
         <View style={styles.sectionContainer}>
           <TouchableOpacity
             style={styles.section}
-            onPress={() => router.push("/")}
+            onPress={() => router.push("/(profile-and-settings)/terms-of-service")}
           >
             <View style={styles.row}>
               <View style={styles.textContainer}>
@@ -66,7 +62,10 @@ const About = () => {
 
         {/* Visit our Website Section */}
         <View style={styles.sectionContainer}>
-          <TouchableOpacity style={styles.section}>
+          <TouchableOpacity
+            style={styles.section}
+            onPress={() => Linking.openURL("https://flipeet.io/")}
+          >
             <View style={styles.row}>
               <View style={styles.textContainer}>
                 <Text style={styles.label}>Visit our Website</Text>

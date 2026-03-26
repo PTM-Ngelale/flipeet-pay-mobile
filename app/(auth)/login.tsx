@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import Constants from "expo-constants";
+import * as LocalAuthentication from "expo-local-authentication";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import React, { useEffect, useRef, useState } from "react";
@@ -22,6 +23,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch } from "react-redux";
 import pinApi from "../services/pinApi";
+import * as secure from "../services/secure";
 import {
   googleSignIn,
   loadAuthState,
@@ -40,15 +42,16 @@ export default function LoginScreen() {
   const [email, setLocalEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [keepLoggedIn, setKeepLoggedIn] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isEmailLoading, setIsEmailLoading] = useState(false);
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
 
   // PIN state
   const [pin, setPin] = useState(["", "", "", "", "", ""]);
   const [storedEmail, setStoredEmail] = useState<string | null>(null);
   const [pinAvailable, setPinAvailable] = useState(false);
   const [isPinLoading, setIsPinLoading] = useState(false);
+  const [showPinSetupNotice, setShowPinSetupNotice] = useState(false);
   const pinRefs = useRef<Array<TextInput | null>>([]);
 
   const router = useRouter();
@@ -65,9 +68,19 @@ export default function LoginScreen() {
         const body = await res.json().catch(() => null);
         if (res.ok && body?.data?.pinExists === true) {
           setPinAvailable(true);
+        } else if (res.ok) {
+          // Returning user has no PIN set — show the setup notice
+          setShowPinSetupNotice(true);
         }
       } catch {
         // network error — PIN tab stays hidden
+      }
+
+      // Check biometrics
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      if (hasHardware && isEnrolled) {
+        setBiometricsAvailable(true);
       }
     })();
   }, []);
@@ -99,12 +112,9 @@ export default function LoginScreen() {
       const authCode = result.params?.code;
       if (!authCode) throw new Error("Authorization code not returned by Google");
 
-      await dispatch(googleSignIn({ token: authCode })).unwrap();
-      if (keepLoggedIn) {
-        await AsyncStorage.setItem("auth_keep_logged_in", "true");
-      } else {
-        await AsyncStorage.removeItem("auth_keep_logged_in");
-      }
+      await dispatch(
+        googleSignIn({ idToken: authCode, provider: "google", redirectUri }),
+      ).unwrap();
       router.replace("/home");
     } catch (error: any) {
       console.error("Google sign-in failed:", error);
@@ -118,12 +128,56 @@ export default function LoginScreen() {
     }
   };
 
+  const handleBiometrics = async () => {
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: "Sign in to Flipeet Pay",
+      fallbackLabel: "Use password",
+      cancelLabel: "Cancel",
+    });
+    if (!result.success) return;
+
+    const token = await AsyncStorage.getItem("auth_token");
+    if (!token) {
+      Alert.alert(
+        "Session expired",
+        "Please sign in with your email and password.",
+      );
+      return;
+    }
+
+    await dispatch(loadAuthState());
+    router.replace("/home");
+  };
+
   const handleLogin = async () => {
     setIsEmailLoading(true);
     dispatch(setAuthEmail(email));
     try {
       const result = await dispatch(signIn({ email, password })).unwrap();
       console.log("Login successful, result:", result);
+
+      // Offer biometrics setup if device supports it but hasn't been enabled yet
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      const alreadyEnabled = await secure.isBiometricsEnabled();
+      if (hasHardware && isEnrolled && !alreadyEnabled) {
+        Alert.alert(
+          "Enable Biometrics",
+          "Would you like to use Face ID / fingerprint to sign in next time?",
+          [
+            { text: "Not now", style: "cancel", onPress: () => router.replace("/home") },
+            {
+              text: "Enable",
+              onPress: async () => {
+                await secure.setBiometricsEnabled(true);
+                router.replace("/home");
+              },
+            },
+          ],
+        );
+        return;
+      }
+
       router.replace(`/home`);
     } catch (err: any) {
       console.error("Login failed:", err);
@@ -190,6 +244,19 @@ export default function LoginScreen() {
 
   const handleSignUp = () => router.push("/sign-up");
 
+  const handleSetupPin = async () => {
+    const token = await AsyncStorage.getItem("auth_token");
+    if (token) {
+      router.push("/(profile-and-settings)/setup-mobile-pin");
+    } else {
+      Alert.alert(
+        "Login required",
+        "Please log in with your email and password first, then you can set up your PIN.",
+        [{ text: "OK" }],
+      );
+    }
+  };
+
   const isLoginDisabled = !email.trim() || !password.trim();
   const isPinDisabled = pin.some((d) => !d);
 
@@ -251,6 +318,24 @@ export default function LoginScreen() {
 
             {loginMode === "password" ? (
               <>
+                {/* PIN setup notice for returning users without a PIN */}
+                {showPinSetupNotice && (
+                  <TouchableOpacity
+                    style={styles.pinNotice}
+                    onPress={handleSetupPin}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="shield-checkmark-outline" size={20} color="#F59E0B" />
+                    <View style={styles.pinNoticeBody}>
+                      <Text style={styles.pinNoticeTitle}>Set up a sign-in PIN</Text>
+                      <Text style={styles.pinNoticeDesc}>
+                        Log in faster next time with a 6-digit PIN
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color="#F59E0B" />
+                  </TouchableOpacity>
+                )}
+
                 {/* Google Login Button */}
                 <TouchableOpacity
                   style={styles.googleButton}
@@ -323,27 +408,6 @@ export default function LoginScreen() {
                   </View>
                 </View>
 
-                {/* Keep me logged in */}
-                <TouchableOpacity
-                  style={styles.rememberMeContainer}
-                  onPress={() => setKeepLoggedIn(!keepLoggedIn)}
-                >
-                  <View style={styles.checkboxContainer}>
-                    <View
-                      style={[
-                        styles.checkbox,
-                        keepLoggedIn && styles.checkboxChecked,
-                      ]}
-                    >
-                      {keepLoggedIn && (
-                        <Ionicons name="checkmark" size={16} color="#000000" />
-                      )}
-                    </View>
-                  </View>
-                  <Text style={styles.rememberMeText}>
-                    Keep me logged in on this device
-                  </Text>
-                </TouchableOpacity>
 
                 {/* Login Button */}
                 <TouchableOpacity
@@ -367,6 +431,17 @@ export default function LoginScreen() {
                     </Text>
                   )}
                 </TouchableOpacity>
+
+                {/* Biometrics */}
+                {biometricsAvailable && (
+                  <TouchableOpacity
+                    style={styles.biometricsButton}
+                    onPress={handleBiometrics}
+                  >
+                    <Ionicons name="finger-print" size={26} color="#4A9DFF" />
+                    <Text style={styles.biometricsText}>Use biometrics</Text>
+                  </TouchableOpacity>
+                )}
 
                 {/* Sign Up Link */}
                 <View style={styles.signUpContainer}>
@@ -522,31 +597,6 @@ const styles = StyleSheet.create({
   },
   passwordInput: { flex: 1, color: "#FFFFFF", fontSize: 16, padding: 16 },
   eyeIcon: { padding: 16 },
-  rememberMeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  checkboxContainer: { marginRight: 8 },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 2,
-    borderColor: "#757B85",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkboxChecked: {
-    backgroundColor: "#28A745",
-    borderColor: "#28A745",
-  },
-  rememberMeText: {
-    color: "#B0BACB",
-    fontSize: 14,
-    fontWeight: 400,
-    lineHeight: 18,
-  },
   loginButton: {
     backgroundColor: "#0A66D3",
     paddingVertical: 16,
@@ -557,9 +607,42 @@ const styles = StyleSheet.create({
   loginButtonDisabled: { opacity: 0.6 },
   loginButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
   loginButtonTextDisabled: { color: "#F2F4F8" },
+  biometricsButton: {
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 24,
+  },
+  biometricsText: {
+    color: "#4A9DFF",
+    fontSize: 14,
+    fontWeight: "500",
+  },
   signUpContainer: { flexDirection: "row", justifyContent: "center" },
   signUpText: { color: "#B0BACB", fontSize: 16 },
   signUpLink: { color: "#4A9DFF", fontSize: 14, fontWeight: "600" },
+  pinNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1C1405",
+    borderWidth: 1,
+    borderColor: "#78490A",
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 20,
+    gap: 12,
+  },
+  pinNoticeBody: { flex: 1 },
+  pinNoticeTitle: {
+    color: "#F59E0B",
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  pinNoticeDesc: {
+    color: "#9AA6B6",
+    fontSize: 12,
+    lineHeight: 17,
+  },
   // PIN mode
   pinSection: { alignItems: "center", paddingTop: 16 },
   pinAccountLabel: { color: "#757B85", fontSize: 13, marginBottom: 4 },

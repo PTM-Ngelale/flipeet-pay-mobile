@@ -125,6 +125,12 @@ export default function ProfileAndSettingsLayout() {
             headerShown: false,
           }}
         />
+        <Stack.Screen
+          name="terms-of-service"
+          options={{
+            headerShown: false,
+          }}
+        />
       </Stack>
     </>
   );

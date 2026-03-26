@@ -256,13 +256,6 @@ export default function DataScreen() {
   // The API may return plans in `response.data.data` (observed) or `response.data.prices`.
   const parsePlansFromResponse = (response: any) => {
     const rawList = response?.data?.data ?? response?.data?.prices ?? null;
-    try {
-      console.log("[data] parsePlansFromResponse rawList present", {
-        isArray: Array.isArray(rawList),
-        length: rawList?.length,
-      });
-      console.log("[data] parsePlansFromResponse firstItem", rawList?.[0]);
-    } catch {}
 
     if (!Array.isArray(rawList)) return [] as DataPlan[];
 
@@ -293,7 +286,7 @@ export default function DataScreen() {
             item?.meta || item?.extra
               ? String(item?.meta ?? item?.extra)
               : undefined,
-          tariffClass: String(item?.tariffClass || item?.tariff || "default"),
+          tariffClass: String(item?.tariffClass || item?.tariff || item?.code || item?.id || ""),
           disco: String(item?.disco || "").trim(),
           number: String(item?.code || id),
         } as DataPlan;
@@ -398,12 +391,13 @@ export default function DataScreen() {
         const selectedPlan = dataPlans.find(
           (plan) => plan.id === selectedPlanId,
         );
+        const localPhoneFormatted = `0${localPhone}`;
         const payload: any = {
-          number: selectedPlan?.number || undefined,
+          number: localPhoneFormatted,
           tariffClass: selectedPlan?.tariffClass,
-          disco: selectedPlan?.disco || selectedNetwork?.id,
+          disco: (selectedPlan?.disco || selectedNetwork?.id || "").toUpperCase(),
           amount: amountNumber,
-          phoneNumber: normalizedPhone,
+          phoneNumber: localPhoneFormatted,
           type: "DATA",
           asset: (displayTokenSymbol || "usdc").toLowerCase(),
           network: normalizeTokenNetwork(displayTokenNetwork || "solana"),
@@ -415,6 +409,15 @@ export default function DataScreen() {
           res?.txRef ||
           res?.reference ||
           `local-${Date.now()}`;
+
+        const resStatus = String(res?.status || "").toLowerCase();
+        if (resStatus === "failed" || resStatus === "error") {
+          Alert.alert(
+            "Purchase failed",
+            res?.message || "Data initialization failed.",
+          );
+          return;
+        }
 
         router.push({
           pathname: "/(action)/success-screen",
@@ -673,10 +676,6 @@ export default function DataScreen() {
                   </TouchableOpacity>
 
                   <View style={styles.balanceContainer}>
-                    {/* <Image
-                    source={require("@/assets/images/wallet-icon.png")}
-                    style={styles.walletIcon}
-                  /> */}
                     <WalletIcon width={15} height={15} />
                     <Text style={styles.balanceText}>{balanceLabel}</Text>
                   </View>
@@ -899,7 +898,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 6,
     position: "relative",
-    // subtle shadow (iOS) and elevation (Android)
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.18,

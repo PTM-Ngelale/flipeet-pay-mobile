@@ -28,8 +28,10 @@ export default function SetupMobilePin() {
   const [step, setStep] = useState<Step>("request");
   const [otp, setOtp] = useState("");
   const [pin, setPin] = useState(["", "", "", "", "", ""]);
+  const [confirmPin, setConfirmPin] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
   const pinRefs = useRef<Array<TextInput | null>>([]);
+  const confirmPinRefs = useRef<Array<TextInput | null>>([]);
 
   const handleRequestOtp = async () => {
     if (!email) {
@@ -53,12 +55,17 @@ export default function SetupMobilePin() {
 
   const handleVerify = async () => {
     const pinCode = pin.join("");
+    const confirmCode = confirmPin.join("");
     if (!otp.trim()) {
       Alert.alert("Error", "Enter the OTP code from your email.");
       return;
     }
     if (pinCode.length !== 6) {
       Alert.alert("Error", "Enter a 6-digit PIN.");
+      return;
+    }
+    if (pinCode !== confirmCode) {
+      Alert.alert("PINs do not match", "Your PIN and confirmation PIN must be the same.");
       return;
     }
     setLoading(true);
@@ -83,12 +90,30 @@ export default function SetupMobilePin() {
     const next = [...pin];
     next[index] = text.slice(-1);
     setPin(next);
-    if (text && index < 5) pinRefs.current[index + 1]?.focus();
+    if (text && index < 5) {
+      pinRefs.current[index + 1]?.focus();
+    } else if (text && index === 5) {
+      // Auto-advance to confirm PIN
+      confirmPinRefs.current[0]?.focus();
+    }
   };
 
   const handlePinBackspace = (e: any, index: number) => {
     if (e.nativeEvent.key === "Backspace" && !pin[index] && index > 0) {
       pinRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleConfirmPinChange = (text: string, index: number) => {
+    const next = [...confirmPin];
+    next[index] = text.slice(-1);
+    setConfirmPin(next);
+    if (text && index < 5) confirmPinRefs.current[index + 1]?.focus();
+  };
+
+  const handleConfirmPinBackspace = (e: any, index: number) => {
+    if (e.nativeEvent.key === "Backspace" && !confirmPin[index] && index > 0) {
+      confirmPinRefs.current[index - 1]?.focus();
     }
   };
 
@@ -167,14 +192,50 @@ export default function SetupMobilePin() {
                 ))}
               </View>
 
+              <Text style={styles.label}>Confirm PIN</Text>
+              <View style={styles.pinRow}>
+                {confirmPin.map((digit, i) => (
+                  <TextInput
+                    key={i}
+                    ref={(r) => (confirmPinRefs.current[i] = r)}
+                    style={[
+                      styles.pinInput,
+                      confirmPin.every((d) => d) &&
+                        pin.join("") !== confirmPin.join("") &&
+                        styles.pinInputError,
+                    ]}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                    value={digit}
+                    onChangeText={(t) => handleConfirmPinChange(t, i)}
+                    onKeyPress={(e) => handleConfirmPinBackspace(e, i)}
+                    secureTextEntry
+                  />
+                ))}
+              </View>
+              {confirmPin.every((d) => d) &&
+                pin.join("") !== confirmPin.join("") && (
+                  <Text style={styles.mismatchText}>PINs do not match</Text>
+                )}
+
               <TouchableOpacity
                 style={[
                   styles.button,
-                  (!otp.trim() || pin.some((d) => !d) || loading) &&
+                  (!otp.trim() ||
+                    pin.some((d) => !d) ||
+                    confirmPin.some((d) => !d) ||
+                    pin.join("") !== confirmPin.join("") ||
+                    loading) &&
                     styles.buttonDisabled,
                 ]}
                 onPress={handleVerify}
-                disabled={!otp.trim() || pin.some((d) => !d) || loading}
+                disabled={
+                  !otp.trim() ||
+                  pin.some((d) => !d) ||
+                  confirmPin.some((d) => !d) ||
+                  pin.join("") !== confirmPin.join("") ||
+                  loading
+                }
               >
                 {loading ? (
                   <ActivityIndicator size="small" color="#fff" />
@@ -262,6 +323,15 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 18,
     fontWeight: "700",
+  },
+  pinInputError: {
+    borderColor: "#EF4444",
+  },
+  mismatchText: {
+    color: "#EF4444",
+    fontSize: 12,
+    marginTop: -20,
+    marginBottom: 20,
   },
   button: {
     backgroundColor: "#4A9DFF",

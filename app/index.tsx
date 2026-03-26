@@ -17,36 +17,31 @@ export default function Index() {
           return;
         }
 
-        const token = await AsyncStorage.getItem("auth_token");
         const email = await AsyncStorage.getItem("auth_email");
 
-        // Check PIN availability whenever we have an email (with or without token)
+        // Always require PIN or login — never bypass straight to home
         if (email) {
           try {
             const res = await pinApi.isPinAvailable(email);
             if (res.ok) {
               const body = await res.json().catch(() => ({}));
-              const available =
-                body?.data?.available ??
-                body?.data?.isPinSet ??
-                body?.available ??
-                false;
-              if (available) {
+              const hasPinSet =
+                body?.data?.pinExists === true ||
+                body?.data?.available === true ||
+                body?.data?.isPinSet === true ||
+                body?.available === true;
+              if (hasPinSet) {
                 router.replace("/(auth)/pin-sign-in");
                 return;
               }
             }
           } catch {
-            // Network error — fall through
+            // Network error — fall through to login
           }
         }
 
-        if (!token) {
-          router.replace("/(auth)/login");
-          return;
-        }
-
-        router.replace("/home");
+        // No PIN set (or no email) — send to login regardless of token
+        router.replace("/(auth)/login");
       } catch (error) {
         console.warn("Failed to resolve initial route:", error);
         router.replace("/(intro)");

@@ -82,7 +82,7 @@ export default function ElectricityScreen() {
         const raw = res?.data || res?.companies || res || [];
         const parsed = Array.isArray(raw)
           ? raw.map((p: any, i: number) => ({
-              id: String(p.id ?? p.code ?? p.name ?? `provider-${i}`),
+              id: String(p.disco ?? p.id ?? p.code ?? p.name ?? `provider-${i}`),
               name: String(
                 p.name ?? p.displayName ?? p.code ?? JSON.stringify(p),
               ),
@@ -111,30 +111,13 @@ export default function ElectricityScreen() {
     if (!selectedProvider || meterNumber.length < 6) return;
 
     setVerifyingMeter(true);
-    verifyTimer.current = setTimeout(
-      () => verifyWithProviderIdentifiers(),
-      700,
-    );
+    verifyTimer.current = setTimeout(() => verifyMeter(), 700);
     return () => {
       if (verifyTimer.current) clearTimeout(verifyTimer.current);
     };
   }, [meterNumber, selectedProvider, meterType]);
 
-  const buildProviderCandidates = () => {
-    if (!selectedProvider) return [] as string[];
-    const raw = selectedProvider.raw || {};
-    const candidates = [
-      selectedProvider.id,
-      selectedProvider.name,
-      raw.code,
-      raw.disco,
-      raw.provider,
-      raw.id,
-    ];
-    return Array.from(new Set(candidates.filter(Boolean).map(String)));
-  };
-
-  const verifyWithProviderIdentifiers = async () => {
+  const verifyMeter = async () => {
     if (!selectedProvider || meterNumber.length < 6) {
       setVerifyingMeter(false);
       return;
@@ -143,69 +126,33 @@ export default function ElectricityScreen() {
     setMeterInfo(null);
     setVerifyDisabled(true);
     try {
-      const candidates = buildProviderCandidates();
-      let found = false;
-      for (const candidate of candidates.length
-        ? candidates
-        : [selectedProvider.id || selectedProvider.name]) {
-        const params = {
-          provider: candidate,
+      const res = await fetchCommerceElectricityMeterInfo(
+        {
+          provider: selectedProvider.id,
           meterNumber,
           meterType: meterType || undefined,
-        };
-        try {
-          const res = await fetchCommerceElectricityMeterInfo(params, token);
-          const data = res?.data || res;
-          const name =
-            data?.name ||
-            data?.customerName ||
-            data?.customer ||
-            data?.accountName;
-          const address =
-            data?.address || data?.customerAddress || data?.addressLine;
-          if (name) {
-            setMeterInfo({ name, address });
-            setMeterError(null);
-            found = true;
-            break;
-          }
-        } catch (getErr) {
-          console.warn(
-            "[electricity] fetchMeter GET failed for",
-            candidate,
-            getErr,
-          );
-        }
-
-        try {
-          const verifyRes = await verifyCommerceElectricityMeter(params, token);
-          const data = verifyRes?.data || verifyRes;
-          const name =
-            data?.name ||
-            data?.customerName ||
-            data?.customer ||
-            data?.accountName;
-          const address =
-            data?.address || data?.customerAddress || data?.addressLine;
-          if (name) {
-            setMeterInfo({ name, address });
-            setMeterError(null);
-            found = true;
-            break;
-          }
-        } catch (postErr) {
-          console.warn(
-            "[electricity] verify POST failed for",
-            candidate,
-            postErr,
-          );
-        }
-      }
-
-      if (!found) {
+        },
+        token,
+      );
+      const data = res?.data || res;
+      const name =
+        data?.name ||
+        data?.customerName ||
+        data?.customer ||
+        data?.accountName;
+      const address =
+        data?.address || data?.customerAddress || data?.addressLine;
+      if (name) {
+        setMeterInfo({ name, address });
+        setMeterError(null);
+      } else {
         setMeterInfo(null);
         setMeterError("Meter not found or invalid.");
       }
+    } catch (err) {
+      console.warn("[electricity] fetchMeter failed", err);
+      setMeterInfo(null);
+      setMeterError("Meter not found or invalid.");
     } finally {
       setVerifyingMeter(false);
       setVerifyDisabled(false);
@@ -317,13 +264,10 @@ export default function ElectricityScreen() {
     setIsSubmitting(true);
     try {
       const payload = {
-        discoName:
-          selectedProvider?.raw?.disco ||
-          selectedProvider?.raw?.discoName ||
-          selectedProvider?.name ||
-          "",
+        provider: "buypower",
+        discoName: selectedProvider?.id,
         meterNumber,
-        meterType: meterType || "Prepaid",
+        type: (meterType || "Prepaid").toLowerCase(),
         amount: amountNumber,
         phoneNumber: phoneNumber || userPhone || undefined,
         asset: (displayTokenSymbol || "usdt").toLowerCase(),
@@ -337,7 +281,14 @@ export default function ElectricityScreen() {
         res?.reference ||
         `local-${Date.now()}`;
 
-      // Attempt to surface any returned meter token/voucher so the user sees it immediately
+      if (res?.status !== "success") {
+        Alert.alert(
+          "Purchase failed",
+          res?.message || "Electricity initialization failed.",
+        );
+        return;
+      }
+
       const possibleToken =
         res?.data?.token ||
         res?.data?.voucher ||
@@ -367,12 +318,6 @@ export default function ElectricityScreen() {
       setSelectedPreset(null);
       setMeterInfo(null);
     } catch (err: any) {
-      try {
-        console.warn(
-          "[electricity] initialize failed",
-          err && (err.body || err),
-        );
-      } catch (_) {}
       const errMsg =
         (err &&
           (err.message ||
@@ -385,13 +330,6 @@ export default function ElectricityScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const providerIconMap: Record<string, any> = {
-    mtn: null,
-    airtel: null,
-    glo: null,
-    etisalat: null,
   };
 
   return (
@@ -634,18 +572,12 @@ export default function ElectricityScreen() {
                   </TouchableOpacity>
 
                   <View style={styles.balanceContainer}>
-                    {/* <Image
-                    source={require("@/assets/images/wallet-icon.png")}
-                    style={styles.walletIcon}
-                  /> */}
                     <WalletIcon width={15} height={15} />
                     <Text style={styles.balanceText}>{balanceLabel}</Text>
                   </View>
                 </View>
               </View>
             </View>
-
-            {/* Verification is automatic once provider + meter are populated */}
 
             <TouchableOpacity
               style={[styles.payButton, !canPay && styles.payButtonDisabled]}
