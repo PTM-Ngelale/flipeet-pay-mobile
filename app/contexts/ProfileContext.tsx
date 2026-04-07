@@ -26,9 +26,11 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({
 }) => {
   const dispatch = useDispatch<any>();
   const storedAvatar = useSelector((state: RootState) => state.auth.user?.avatar);
+  const storedName = useSelector((state: RootState) => state.auth.user?.name);
+  const storedUsername = useSelector((state: RootState) => state.auth.user?.username);
   const storedProfileImage = storedAvatar && storedAvatar !== "default" ? storedAvatar : null;
 
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(storedUsername || storedName?.trim() || "");
   const [profileImage, setProfileImage] = useState<string | null>(
     storedProfileImage || null,
   );
@@ -38,6 +40,11 @@ export const ProfileProvider: React.FC<{ children: ReactNode }> = ({
       setProfileImage(storedProfileImage);
     }
   }, [storedProfileImage]);
+
+  useEffect(() => {
+    const name = storedUsername || storedName?.trim() || "";
+    setUsername(name);
+  }, [storedUsername, storedName]);
 
   const pickImage = async () => {
     try {

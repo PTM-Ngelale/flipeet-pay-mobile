@@ -247,15 +247,18 @@ export default function WalletHomeScreen() {
           {profileImage ? (
             <Image source={{ uri: profileImage }} style={styles.userAvatar} />
           ) : (
-            // <UserProfile width={48} height={48} />
             <Ionicons name="person-circle-outline" size={35} color="#B0BACB" />
           )}
         </TouchableOpacity>
-        <View>
-          {/* <Text style={[styles.userName, { color: "#B0BACB" }]}>Welcome</Text> */}
-          <Text style={[styles.userName, { color: COLORS.textPrimary }]}>
-            {username ? `@${username}` : ""}
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text style={[styles.welcomeText, { color: COLORS.textSecondary }]}>
+            Welcome,{" "}
           </Text>
+          {username ? (
+            <Text style={[styles.userName, { color: COLORS.textPrimary }]}>
+              {username}
+            </Text>
+          ) : null}
         </View>
       </View>
       <TouchableOpacity onPress={() => router.push("/(recent-activity)")}>
@@ -551,7 +554,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   welcomeText: {
-    fontSize: 12,
+    fontSize: 20,
     fontWeight: "500",
   },
   userName: {

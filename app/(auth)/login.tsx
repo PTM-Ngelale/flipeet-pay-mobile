@@ -76,10 +76,11 @@ export default function LoginScreen() {
         // network error — PIN tab stays hidden
       }
 
-      // Check biometrics
+      // Check biometrics — only show button if device supports it AND user has enabled it
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-      if (hasHardware && isEnrolled) {
+      const biometricsEnabled = await secure.isBiometricsEnabled();
+      if (hasHardware && isEnrolled && biometricsEnabled) {
         setBiometricsAvailable(true);
       }
     })();
@@ -231,7 +232,15 @@ export default function LoginScreen() {
       if (!token) throw new Error("No auth token returned from server");
 
       await AsyncStorage.setItem("auth_token", token);
-      if (user) await AsyncStorage.setItem("auth_user", JSON.stringify(user));
+      if (user) {
+        const existingUserJson = await AsyncStorage.getItem("auth_user");
+        const existingUser = existingUserJson ? JSON.parse(existingUserJson) : null;
+        const existingAvatar = existingUser?.avatar;
+        if (user.avatar === "default" && existingAvatar && existingAvatar !== "default") {
+          user.avatar = existingAvatar;
+        }
+        await AsyncStorage.setItem("auth_user", JSON.stringify(user));
+      }
       await AsyncStorage.setItem("auth_email", storedEmail);
       await dispatch(loadAuthState()).unwrap();
       router.replace("/home");
@@ -528,27 +537,33 @@ const styles = StyleSheet.create({
   },
   modeToggle: {
     flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#1C1C1C",
-    borderRadius: 10,
-    padding: 4,
+    borderRadius: 8,
+    padding: 8,
+    gap: 12,
     marginBottom: 28,
   },
   modeTab: {
     flex: 1,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     alignItems: "center",
-    borderRadius: 8,
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
+    borderRadius: 6,
   },
   modeTabActive: {
-    backgroundColor: "#0A66D3",
+    backgroundColor: "#2A2A2A",
   },
   modeTabText: {
     color: "#757B85",
-    fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   modeTabTextActive: {
-    color: "#FFFFFF",
+    color: "#E2E6F0",
   },
   googleButton: {
     flexDirection: "row",

@@ -35,10 +35,11 @@ export default function PinSignIn() {
       const stored = await AsyncStorage.getItem("auth_email");
       if (stored) setEmail(stored);
 
-      // Check biometrics availability
+      // Check biometrics — only show button if device supports it AND user has enabled it
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-      if (hasHardware && isEnrolled) {
+      const biometricsEnabled = await secure.isBiometricsEnabled();
+      if (hasHardware && isEnrolled && biometricsEnabled) {
         setBiometricsAvailable(true);
       }
     })();
@@ -77,7 +78,11 @@ export default function PinSignIn() {
       "Enable Biometrics",
       "Would you like to use Face ID / fingerprint to sign in next time?",
       [
-        { text: "Not now", style: "cancel", onPress: () => router.replace("/home") },
+        {
+          text: "Not now",
+          style: "cancel",
+          onPress: () => router.replace("/home"),
+        },
         {
           text: "Enable",
           onPress: async () => {
@@ -123,7 +128,15 @@ export default function PinSignIn() {
       if (!token) throw new Error("No auth token returned from server");
 
       await AsyncStorage.setItem("auth_token", token);
-      if (user) await AsyncStorage.setItem("auth_user", JSON.stringify(user));
+      if (user) {
+        const existingUserJson = await AsyncStorage.getItem("auth_user");
+        const existingUser = existingUserJson ? JSON.parse(existingUserJson) : null;
+        const existingAvatar = existingUser?.avatar;
+        if (user.avatar === "default" && existingAvatar && existingAvatar !== "default") {
+          user.avatar = existingAvatar;
+        }
+        await AsyncStorage.setItem("auth_user", JSON.stringify(user));
+      }
       await AsyncStorage.setItem("auth_email", email);
 
       await dispatch(loadAuthState()).unwrap();
@@ -154,7 +167,10 @@ export default function PinSignIn() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.replace("/(auth)/login")} style={styles.back}>
+          <TouchableOpacity
+            onPress={() => router.replace("/(auth)/login")}
+            style={styles.back}
+          >
             <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
           <Text style={styles.title}>Sign in with PIN</Text>

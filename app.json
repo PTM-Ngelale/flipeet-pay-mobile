@@ -38,6 +38,14 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/flipeet-logo.png",
+          "color": "#0A66D3",
+          "defaultChannel": "default"
+        }
+      ],
       "./plugins/withGoogleSignIn.js",
       [
         "expo-font",

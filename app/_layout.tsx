@@ -1,9 +1,20 @@
 import AuthErrorModal from "@/components/ui/AuthErrorModal";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import * as Notifications from "expo-notifications";
+import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
+
+// Controls how notifications are displayed when the app is in the foreground
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 import { StyleSheet, Text, TextInput } from "react-native";
 import "react-native-reanimated";
 import { Provider as ReduxProvider } from "react-redux";
@@ -29,12 +40,42 @@ export default function RootLayout() {
     "Lato-Regular": require("@/assets/fonts/Lato-Regular.ttf"),
     "Lato-Bold": require("@/assets/fonts/Lato-Bold.ttf"),
   });
+  const router = useRouter();
+  const notificationListener = useRef<Notifications.EventSubscription | null>(null);
+  const responseListener = useRef<Notifications.EventSubscription | null>(null);
 
   useEffect(() => {
     if (loaded || error) {
       SplashScreen.hideAsync();
     }
   }, [loaded, error]);
+
+  useEffect(() => {
+    // Fires when a notification arrives while the app is open
+    notificationListener.current = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        console.log("[notifications] Received:", notification.request.content.title);
+      },
+    );
+
+    // Fires when the user taps a notification (app in background or closed)
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data as Record<string, any>;
+        if (data?.screen) {
+          router.push(data.screen);
+        } else {
+          // Default: open home
+          router.push("/home");
+        }
+      },
+    );
+
+    return () => {
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
+    };
+  }, []);
 
   if (!loaded && !error) {
     return null;

@@ -181,7 +181,7 @@ export const updateUsername = createAsyncThunk(
       }
 
       const { apiRequest } = await import("../constants/api");
-      await apiRequest("/user/usrename/update", {
+      await apiRequest("/user/username/update", {
         method: "POST",
         body: { username },
         token,
@@ -274,7 +274,7 @@ export const changePin = createAsyncThunk(
         );
       }
 
-      const data = await response.json();
+      await response.json();
       return { success: true };
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Failed to change PIN");
@@ -312,7 +312,7 @@ export const changeEmail = createAsyncThunk(
         );
       }
 
-      const data = await response.json();
+      await response.json();
       return { email: newEmail };
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Failed to change email");
@@ -360,6 +360,7 @@ const authSlice = createSlice({
       state.email = null;
       state.user = null;
       state.token = null;
+
       state.pin = null;
       state.error = null;
       state.loading = false;
@@ -430,7 +431,6 @@ const authSlice = createSlice({
             data.accessToken ||
             data.token ||
             null;
-
           // Persist to AsyncStorage
           if (state.token) {
             AsyncStorage.setItem("auth_token", state.token);
@@ -520,7 +520,6 @@ const authSlice = createSlice({
             data.accessToken ||
             data.token ||
             null;
-
           if (state.token) {
             AsyncStorage.setItem("auth_token", state.token);
           }
@@ -615,7 +614,7 @@ const authSlice = createSlice({
           state.balances = payload.data || payload || [];
         }
       })
-      .addCase(fetchUserBalances.rejected, (state: any, action: any) => {
+      .addCase(fetchUserBalances.rejected, (state: any) => {
         state.balancesLoading = false;
       })
       .addCase(fetchTransactions.pending, (state: any) => {
@@ -628,7 +627,7 @@ const authSlice = createSlice({
         state.transactions =
           payload.data || payload.transactions || payload || [];
       })
-      .addCase(fetchTransactions.rejected, (state: any, action: any) => {
+      .addCase(fetchTransactions.rejected, (state: any) => {
         state.transactionsLoading = false;
       })
       .addCase(updateUsername.pending, (state: any) => {
@@ -637,6 +636,7 @@ const authSlice = createSlice({
       .addCase(updateUsername.fulfilled, (state: any, action: any) => {
         state.loading = false;
         if (state.user) {
+          state.user.username = action.payload.username;
           state.user.name = action.payload.username;
           AsyncStorage.setItem("auth_user", JSON.stringify(current(state.user)));
         }
@@ -657,7 +657,7 @@ const authSlice = createSlice({
           AsyncStorage.setItem("auth_user", JSON.stringify(state.user));
         }
       })
-      .addCase(fetchUserProfile.rejected, (state: any, action: any) => {
+      .addCase(fetchUserProfile.rejected, (state: any) => {
         state.loading = false;
       })
       .addCase(updateProfileImage.pending, (state: any) => {

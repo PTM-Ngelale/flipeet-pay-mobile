@@ -43,6 +43,7 @@ export default {
   getToken,
   setPinEnabled,
   isPinEnabled,
+  getPinEnabledEmail,
   setBiometricsEnabled,
   isBiometricsEnabled,
   clearAuth,
