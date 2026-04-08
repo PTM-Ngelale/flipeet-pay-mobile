@@ -1,8 +1,10 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
+import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useState } from "react";
-import { Share, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { shareAsync } from "expo-sharing";
+import { useCallback, useRef, useState } from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
@@ -13,6 +15,7 @@ export default function QRScreen() {
   const networkParam = (params.network as string) || "Solana";
   const networkName = networkParam || "Solana";
   const [copied, setCopied] = useState(false);
+  const qrRef = useRef<any>(null);
 
   const truncateAddress = useCallback((address: string) => {
     if (address.length <= 16) return address;
@@ -26,17 +29,23 @@ export default function QRScreen() {
   }, [qrData]);
 
   const handleShare = useCallback(async () => {
-    if (!qrData) {
-      return;
-    }
+    if (!qrData || !qrRef.current) return;
     try {
-      await Share.share({
-        message: qrData,
+      qrRef.current.toDataURL(async (base64: string) => {
+        const fileUri = FileSystem.cacheDirectory + `qr-${Date.now()}.png`;
+        await FileSystem.writeAsStringAsync(fileUri, base64, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await shareAsync(fileUri, {
+          mimeType: "image/png",
+          dialogTitle: `${networkName} Wallet Address`,
+          UTI: "public.png",
+        });
       });
     } catch (error) {
-      console.error("Failed to share address:", error);
+      console.error("Failed to share QR code:", error);
     }
-  }, [qrData]);
+  }, [qrData, networkName]);
 
   return (
     <SafeAreaProvider>
@@ -64,7 +73,7 @@ export default function QRScreen() {
 
             <View style={styles.qrImageContainer}>
               {qrData ? (
-                <QRCode value={qrData} size={280} />
+                <QRCode value={qrData} size={280} getRef={(ref) => (qrRef.current = ref)} />
               ) : (
                 <Ionicons name="alert-circle" size={48} color="#757B85" />
               )}

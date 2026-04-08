@@ -694,6 +694,11 @@ const BankComponent = () => {
                       returnKeyType="done"
                     />
                   </View>
+                  {receiveAmount ? (
+                    <Text style={styles.amountSubValue}>
+                      ₦{receiveAmount}
+                    </Text>
+                  ) : null}
                 </View>
                 <View style={styles.sectionRight}>
                   <View>
@@ -870,6 +875,12 @@ const styles = StyleSheet.create({
     fontSize: 32,
     padding: 0,
     margin: 0,
+  },
+  amountSubValue: {
+    marginTop: 6,
+    color: "#B0BACB",
+    fontSize: 14,
+    fontWeight: "500",
   },
   tokenSelector: {
     backgroundColor: "#121212",

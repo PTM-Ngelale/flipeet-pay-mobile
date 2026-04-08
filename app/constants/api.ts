@@ -346,12 +346,11 @@ export function cancelTransaction(txRef: string, token: string): Promise<any> {
   });
 }
 
-export function convertPaymentAmount(payload: {
-  amount: number;
-  asset: string;
-  currency: string;
-}): Promise<any> {
-  return apiRequest("/transaction/convert", { method: "POST", body: payload });
+export function convertPaymentAmount(
+  payload: { amount: number; asset: string; currency: string },
+  token?: string | null,
+): Promise<any> {
+  return apiRequest("/transaction/convert", { method: "POST", body: payload, token });
 }
 
 export function processPayment(payload: {

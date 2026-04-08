@@ -4,7 +4,9 @@ import SolanaNet from "@/assets/images/networks/solana.svg";
 import { Header } from "@/components/Header";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import * as Clipboard from "expo-clipboard";
+import * as Print from "expo-print";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { shareAsync } from "expo-sharing";
 import { useEffect, useState } from "react";
 import {
   Image,
@@ -25,6 +27,9 @@ import USDTIcon from "@/assets/images/tokens/usdt.svg";
 
 import ReceiveIcon from "@/assets/images/receive-icon.svg";
 import SendIcon from "@/assets/images/send-icon.svg";
+import AirtimeIcon from "@/assets/images/services-icons/airtime.svg";
+import DataIcon from "@/assets/images/services-icons/data.svg";
+import ElectricityIcon from "@/assets/images/services-icons/electricity.svg";
 import SwapIcon from "@/assets/images/swap-icon.svg";
 
 interface ActivityDetails {
@@ -353,13 +358,32 @@ export default function ActivityDetailsScreen() {
     const amountStr = `${rounded}${asset ? ` ${asset}` : ""}`.trim();
     // determine main icon (token icon) and badges/action icons
     let mainIcon: any = tx.icon || null;
-    try {
-      mainIcon = tokenIconMap[(String(asset) || "").toLowerCase()] || mainIcon;
-    } catch (e) {
-      /* ignore */
-    }
 
     const typeStr = String(tx.type || tx.transactionType || "").toLowerCase();
+    const metadata = tx.metadata || tx.meta || {};
+    const productStr = String(
+      tx.product || tx.service || metadata.service || metadata.product || "",
+    ).toLowerCase();
+
+    // Service icons take priority over token icons
+    if (typeStr.includes("airtime") || productStr.includes("airtime")) {
+      mainIcon = AirtimeIcon;
+    } else if (typeStr.includes("data") || productStr.includes("data")) {
+      mainIcon = DataIcon;
+    } else if (
+      typeStr.includes("electricity") ||
+      productStr.includes("electricity") ||
+      tx.biller
+    ) {
+      mainIcon = ElectricityIcon;
+    } else {
+      try {
+        mainIcon =
+          tokenIconMap[(String(asset) || "").toLowerCase()] || mainIcon;
+      } catch (e) {
+        /* ignore */
+      }
+    }
     let actionIcon: any = null;
     let badgeIcon: any = null;
 
@@ -467,7 +491,8 @@ export default function ActivityDetailsScreen() {
         !txRef ||
         !authToken ||
         authToken === "undefined" ||
-        authToken === "null"
+        authToken === "null" ||
+        authToken.length < 10
       )
         return;
       setLoading(true);
@@ -507,11 +532,14 @@ export default function ActivityDetailsScreen() {
         raw.amount != null ? Number(raw.amount) : Number(raw.value || 0);
       const asset = raw.asset || raw.currency || raw.symbol || "";
       const assetStr = String(asset ?? "").trim();
+      const assetLower = assetStr.toLowerCase();
       if (
         !Number.isFinite(amt) ||
         !assetStr ||
-        assetStr.toLowerCase() === "undefined" ||
-        assetStr.toLowerCase() === "null"
+        assetLower === "undefined" ||
+        assetLower === "null" ||
+        assetLower === "" ||
+        !["usdc", "usdt"].includes(assetLower)
       )
         return;
 
@@ -520,7 +548,7 @@ export default function ActivityDetailsScreen() {
           amount: Math.abs(amt),
           asset: assetStr,
           currency: "NGN",
-        });
+        }, token);
         const d = res?.data || res || null;
         const value = d?.converted || d?.amount || d?.fiatAmount || null;
         if (mounted && value) setNairaValue(String(value));
@@ -595,8 +623,88 @@ export default function ActivityDetailsScreen() {
 
   // Download / Generate PDF receipt
   const downloadReceipt = async () => {
-    // Disabled: receipt generation temporarily removed
-    return;
+    if (!activity) return;
+
+    const statusColor =
+      activity.status === "successful"
+        ? "#34D058"
+        : activity.status === "pending"
+          ? "#FFB800"
+          : "#FF3B30";
+
+    const rows = [
+      ["Date", activity.date],
+      ["Time", activity.time],
+      [
+        "Status",
+        activity.status.charAt(0).toUpperCase() + activity.status.slice(1),
+      ],
+      ["Amount", activity.amount],
+      ...(activity.secondaryAmount
+        ? [["Secondary Amount", activity.secondaryAmount]]
+        : []),
+      ...(activity.network ? [["Network", activity.network]] : []),
+      ...(activity.recipient ? [["Recipient", activity.recipient]] : []),
+      ...(activity.sender ? [["Sender", activity.sender]] : []),
+      ...(activity.transactionFee ? [["Fee", activity.transactionFee]] : []),
+      ...(activity.totalValue ? [["Total Value", activity.totalValue]] : []),
+      ...(nairaValue ? [["NGN Value", `₦${nairaValue}`]] : []),
+      ["Reference ID", activity.referenceId],
+      ...(activity.transactionHash
+        ? [["Tx Hash", activity.transactionHash]]
+        : []),
+    ];
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; background: #fff; color: #111; padding: 40px; }
+            .logo { font-size: 24px; font-weight: bold; color: #4A9DFF; margin-bottom: 4px; }
+            .subtitle { font-size: 13px; color: #757B85; margin-bottom: 32px; }
+            .title { font-size: 20px; font-weight: bold; margin-bottom: 24px; }
+            table { width: 100%; border-collapse: collapse; }
+            tr:nth-child(even) { background: #F7F8FA; }
+            td { padding: 12px 16px; font-size: 14px; border-bottom: 1px solid #E5E7EB; }
+            td:first-child { color: #757B85; width: 40%; }
+            td:last-child { font-weight: 600; color: #111; text-align: right; }
+            .status { color: ${statusColor}; }
+            .footer { margin-top: 40px; font-size: 12px; color: #9CA3AF; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="logo">Flipeet Pay</div>
+          <div class="subtitle">Transaction Receipt</div>
+          <div class="title">${activity.title}</div>
+          <table>
+            ${rows
+              .map(
+                ([label, value]) =>
+                  `<tr>
+                    <td>${label}</td>
+                    <td class="${label === "Status" ? "status" : ""}">${value}</td>
+                  </tr>`,
+              )
+              .join("")}
+          </table>
+          <div class="footer">Generated by Flipeet Pay · ${new Date().toLocaleString()}</div>
+        </body>
+      </html>
+    `;
+
+    try {
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      await shareAsync(uri, {
+        mimeType: "application/pdf",
+        dialogTitle: "Share Receipt",
+        UTI: "com.adobe.pdf",
+      });
+    } catch (e) {
+      console.log("Receipt generation failed", e);
+    }
   };
   // Contact support: opens mail app with transaction prefilled
   const contactSupport = () => {

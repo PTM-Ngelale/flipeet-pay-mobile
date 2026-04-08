@@ -80,6 +80,11 @@ interface ActionButton {
 export default function WalletHomeScreen() {
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
+
+  useEffect(() => {
+    setAvatarLoaded(false);
+  }, [profileImage]);
   const router = useRouter();
   const { username, profileImage } = useProfile();
   const dispatch = useDispatch<AppDispatch>();
@@ -245,7 +250,16 @@ export default function WalletHomeScreen() {
           onPress={() => router.push("/(profile-and-settings)")}
         >
           {profileImage ? (
-            <Image source={{ uri: profileImage }} style={styles.userAvatar} />
+            <View style={styles.userAvatar}>
+              {!avatarLoaded && (
+                <Ionicons name="person-circle" size={35} color="#2A2A2A" style={{ position: "absolute" }} />
+              )}
+              <Image
+                source={{ uri: profileImage }}
+                style={[styles.userAvatar, !avatarLoaded && { opacity: 0 }]}
+                onLoad={() => setAvatarLoaded(true)}
+              />
+            </View>
           ) : (
             <Ionicons name="person-circle-outline" size={35} color="#B0BACB" />
           )}
@@ -553,6 +567,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 5,
     alignItems: "center",
+  },
+  avatarSkeleton: {
+    position: "absolute",
+    backgroundColor: "#2A2A2A",
   },
   userAvatar: {
     width: 35,

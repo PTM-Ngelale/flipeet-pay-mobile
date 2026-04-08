@@ -5,7 +5,7 @@ import SecurityIcon from "@/assets/images/settings-icons/security-icon.svg";
 import SupportIcon from "@/assets/images/settings-icons/support-icon.svg";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import {
   Image,
   ScrollView,
@@ -25,6 +25,7 @@ const SettingsAndProfile = () => {
   const router = useRouter();
   const dispatch = useDispatch<any>();
   const { profileImage, pickImage, username } = useProfile();
+  const [avatarLoaded, setAvatarLoaded] = useState(false);
   const email =
     useSelector((state: RootState) => state.auth.email) || "No email set";
   // const username = useSelector((state: RootState) => state.auth.user?.name);
@@ -102,12 +103,17 @@ const SettingsAndProfile = () => {
                 <EditIcon width={30} height={30} />
               </View>
               {profileImage ? (
-                <Image
-                  source={{ uri: profileImage }}
-                  style={{ width: 100, height: 100, borderRadius: 50 }}
-                />
+                <View style={{ width: 100, height: 100 }}>
+                  {!avatarLoaded && (
+                    <Ionicons name="person-circle" size={100} color="#2A2A2A" style={{ position: "absolute" }} />
+                  )}
+                  <Image
+                    source={{ uri: profileImage }}
+                    style={{ width: 100, height: 100, borderRadius: 50, opacity: avatarLoaded ? 1 : 0 }}
+                    onLoad={() => setAvatarLoaded(true)}
+                  />
+                </View>
               ) : (
-                // <UserProfile width={100} height={100} />
                 <Ionicons
                   name="person-circle-outline"
                   size={100}
