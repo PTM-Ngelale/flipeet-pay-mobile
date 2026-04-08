@@ -250,14 +250,20 @@ export default function WalletHomeScreen() {
             <Ionicons name="person-circle-outline" size={35} color="#B0BACB" />
           )}
         </TouchableOpacity>
-        <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View>
           <Text style={[styles.welcomeText, { color: COLORS.textSecondary }]}>
-            Welcome,{" "}
+            Welcome{username ? ` ${username}` : ""}
           </Text>
-          {username ? (
-            <Text style={[styles.userName, { color: COLORS.textPrimary }]}>
-              {username}
-            </Text>
+          {!username ? (
+            <TouchableOpacity
+              onPress={() => router.push("/(profile-and-settings)/username")}
+            >
+              <Text
+                style={{ color: "#4A9DFF", fontSize: 12, fontWeight: "500" }}
+              >
+                + Set a username
+              </Text>
+            </TouchableOpacity>
           ) : null}
         </View>
       </View>

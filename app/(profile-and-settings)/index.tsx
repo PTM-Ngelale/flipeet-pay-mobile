@@ -123,7 +123,7 @@ const SettingsAndProfile = () => {
             {/* Username section */}
             {username ? (
               <>
-                <Text style={styles.username}>{username}</Text>
+                <Text style={styles.username}>@{username}</Text>
 
                 <Text style={styles.email}>{email}</Text>
 
