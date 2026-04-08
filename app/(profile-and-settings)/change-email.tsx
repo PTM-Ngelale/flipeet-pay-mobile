@@ -2,6 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,17 +14,32 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
+import { requestEmailChangeOtp } from "../constants/api";
+import { RootState } from "../store";
 
-export default function AddEmailScreen() {
+export default function ChangeEmailScreen() {
   const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const token = useSelector((state: RootState) => state.auth.token);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!email.trim()) return;
-    router.push("/verify-email");
+    setIsLoading(true);
+    try {
+      await requestEmailChangeOtp(email.trim(), token!);
+      router.push(
+        `/(profile-and-settings)/verify-email?email=${encodeURIComponent(email.trim())}`,
+      );
+    } catch (err: any) {
+      Alert.alert("Failed to send code", err?.message || "Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const isContinueDisabled = !email.trim();
+  const isContinueDisabled = !email.trim() || isLoading;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -38,7 +55,7 @@ export default function AddEmailScreen() {
           >
             <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add New Email</Text>
+          <Text style={styles.headerTitle}>Change Email</Text>
           <View style={styles.headerPlaceholder} />
         </View>
 
@@ -50,9 +67,10 @@ export default function AddEmailScreen() {
         >
           <View style={styles.content}>
             <View style={styles.inputSection}>
+              <Text style={styles.label}>New Email Address</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter email address"
+                placeholder="Enter new email address"
                 placeholderTextColor="#757B85"
                 value={email}
                 onChangeText={setEmail}
@@ -61,6 +79,9 @@ export default function AddEmailScreen() {
                 keyboardType="email-address"
                 autoComplete="email"
               />
+              <Text style={styles.hint}>
+                A verification code will be sent to this email address.
+              </Text>
             </View>
           </View>
         </ScrollView>
@@ -74,14 +95,18 @@ export default function AddEmailScreen() {
             onPress={handleContinue}
             disabled={isContinueDisabled}
           >
-            <Text
-              style={[
-                styles.continueButtonText,
-                isContinueDisabled && styles.continueButtonTextDisabled,
-              ]}
-            >
-              Verify Email
-            </Text>
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text
+                style={[
+                  styles.continueButtonText,
+                  isContinueDisabled && styles.continueButtonTextDisabled,
+                ]}
+              >
+                Send Verification Code
+              </Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -126,19 +151,13 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   inputSection: {
-    flex: 1,
     paddingTop: 40,
   },
-  title: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "bold",
+  label: {
+    color: "#B0BACB",
+    fontSize: 14,
+    fontWeight: "600",
     marginBottom: 8,
-  },
-  description: {
-    color: "#757B85",
-    fontSize: 16,
-    marginBottom: 32,
   },
   input: {
     backgroundColor: "#1C1C1C",
@@ -146,20 +165,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     padding: 16,
     borderRadius: 8,
-    marginBottom: 32,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#2A2A2A",
+  },
+  hint: {
+    color: "#757B85",
+    fontSize: 13,
   },
   buttonContainer: {
     padding: 20,
     paddingBottom: Platform.OS === "ios" ? 34 : 20,
   },
   continueButton: {
-    backgroundColor: "#4A9DFF",
+    backgroundColor: "#0A66D3",
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: "center",
   },
   continueButtonDisabled: {
-    backgroundColor: "#374151",
+    opacity: 0.6,
   },
   continueButtonText: {
     color: "#FFFFFF",
@@ -167,6 +192,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   continueButtonTextDisabled: {
-    color: "#9CA3AF",
+    color: "#F2F4F8",
   },
 });

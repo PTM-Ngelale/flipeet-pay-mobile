@@ -1,8 +1,10 @@
 import VerifyEmailIcon from "@/assets/images/verify-email.svg";
 import { Ionicons } from "@expo/vector-icons";
+import * as LocalAuthentication from "expo-local-authentication";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,13 +16,16 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch } from "react-redux";
-import { verifyOtp } from "../store/authSlice";
+import * as secure from "../services/secure";
+import { requestOtp, verifyOtp } from "../store/authSlice";
 
 export default function VerifyEmailScreen() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const router = useRouter();
   const params = useLocalSearchParams();
-  const flow = (params.flow as string) || ""; // 'signup' or undefined
+  const flow = (params.flow as string) || ""; // 'signup' or 'login'
   const email = (params.email as string) || "";
   const inputRefs = useRef<Array<TextInput | null>>([]);
   const dispatch = useDispatch<any>();
@@ -56,29 +61,64 @@ export default function VerifyEmailScreen() {
 
   const handleVerify = async () => {
     if (!email) {
-      // email missing - go back
       router.back();
       return;
     }
     const code = otp.join("");
+    setIsSubmitting(true);
     try {
       await dispatch(verifyOtp({ email, code })).unwrap();
-      console.log("Email verified successfully");
 
       if (flow === "signup") {
-        // After successful signup verification, go to login screen
         router.replace("/login");
       } else if (flow === "login") {
-        router.push("/pin?flow=login");
+        // Offer biometrics setup if supported but not yet enabled
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+        const alreadyEnabled = await secure.isBiometricsEnabled();
+        if (hasHardware && isEnrolled && !alreadyEnabled) {
+          Alert.alert(
+            "Enable Biometrics",
+            "Would you like to use Face ID / fingerprint to sign in next time?",
+            [
+              { text: "Not now", style: "cancel", onPress: () => router.replace("/home") },
+              {
+                text: "Enable",
+                onPress: async () => {
+                  await secure.setBiometricsEnabled(true);
+                  router.replace("/home");
+                },
+              },
+            ],
+          );
+        } else {
+          router.replace("/home");
+        }
       } else {
         router.back();
       }
-    } catch (err) {
-      console.warn("verify failed", err);
+    } catch (err: any) {
+      Alert.alert("Verification Failed", err?.message || "Invalid or expired code. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const isVerifyDisabled = otp.some((digit) => !digit);
+  const handleResend = async () => {
+    if (!email || isResending) return;
+    setIsResending(true);
+    try {
+      const type = flow === "login" ? "login" : "signup";
+      await dispatch(requestOtp({ email, type })).unwrap();
+      Alert.alert("Code Sent", "A new verification code has been sent to your email.");
+    } catch (err: any) {
+      Alert.alert("Failed to resend", err?.message || "Please try again.");
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  const isVerifyDisabled = otp.some((digit) => !digit) || isSubmitting;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -131,10 +171,10 @@ export default function VerifyEmailScreen() {
                 ))}
               </View>
 
-              <TouchableOpacity style={styles.resendContainer}>
+              <TouchableOpacity style={styles.resendContainer} onPress={handleResend} disabled={isResending}>
                 <Text style={styles.resendText}>
                   Didn't get the code?{" "}
-                  <Text style={styles.resendLink}>Resend</Text>
+                  <Text style={styles.resendLink}>{isResending ? "Sending..." : "Resend"}</Text>
                 </Text>
               </TouchableOpacity>
             </View>
@@ -156,7 +196,7 @@ export default function VerifyEmailScreen() {
                 isVerifyDisabled && styles.verifyButtonTextDisabled,
               ]}
             >
-              Submit
+              {isSubmitting ? "Verifying..." : "Submit"}
             </Text>
           </TouchableOpacity>
         </View>

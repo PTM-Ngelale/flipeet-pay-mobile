@@ -27,6 +27,7 @@ import * as secure from "../services/secure";
 import {
   googleSignIn,
   loadAuthState,
+  requestOtp,
   setEmail as setAuthEmail,
   signIn,
 } from "../store/authSlice";
@@ -154,32 +155,16 @@ export default function LoginScreen() {
     setIsEmailLoading(true);
     dispatch(setAuthEmail(email));
     try {
-      const result = await dispatch(signIn({ email, password })).unwrap();
-      console.log("Login successful, result:", result);
+      await dispatch(signIn({ email, password })).unwrap();
 
-      // Offer biometrics setup if device supports it but hasn't been enabled yet
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-      const alreadyEnabled = await secure.isBiometricsEnabled();
-      if (hasHardware && isEnrolled && !alreadyEnabled) {
-        Alert.alert(
-          "Enable Biometrics",
-          "Would you like to use Face ID / fingerprint to sign in next time?",
-          [
-            { text: "Not now", style: "cancel", onPress: () => router.replace("/home") },
-            {
-              text: "Enable",
-              onPress: async () => {
-                await secure.setBiometricsEnabled(true);
-                router.replace("/home");
-              },
-            },
-          ],
-        );
-        return;
+      // Send login OTP for 2FA
+      try {
+        await dispatch(requestOtp({ email, type: "login" })).unwrap();
+      } catch {
+        // OTP request failed — still proceed to verify screen so user can retry
       }
 
-      router.replace(`/home`);
+      router.push(`/(auth)/verify-email?email=${encodeURIComponent(email)}&flow=login`);
     } catch (err: any) {
       console.error("Login failed:", err);
     } finally {

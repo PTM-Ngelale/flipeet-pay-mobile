@@ -93,7 +93,18 @@ const SecurityAndPrivacy = () => {
                 <Text style={styles.label}>Email</Text>
                 <Text style={styles.description}>{email}</Text>
               </View>
-              {/* Change email button temporarily removed */}
+              <TouchableOpacity
+                style={{
+                  backgroundColor: "#1A212A",
+                  padding: 10,
+                  borderRadius: 7,
+                }}
+                onPress={() => router.push("/(profile-and-settings)/change-email")}
+              >
+                <Text style={{ color: "#4A9DFF", fontWeight: "600" }}>
+                  Change
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>

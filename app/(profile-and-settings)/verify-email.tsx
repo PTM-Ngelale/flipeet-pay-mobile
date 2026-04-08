@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,23 +13,30 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useDispatch, useSelector } from "react-redux";
+import { requestEmailChangeOtp, verifyEmailChangeOtp } from "../constants/api";
+import { RootState } from "../store";
+import { logout } from "../store/authSlice";
 
 export default function VerifyEmailScreen() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const email = (params.email as string) || "";
   const inputRefs = useRef<Array<TextInput | null>>([]);
+  const token = useSelector((state: RootState) => state.auth.token);
+  const dispatch = useDispatch<any>();
 
   const handleOtpChange = (text: string, index: number) => {
     if (text.length > 1) {
-      // Handle paste
       const pastedOtp = text.split("").slice(0, 6);
       const newOtp = [...otp];
       pastedOtp.forEach((char, i) => {
         if (i < 6) newOtp[i] = char;
       });
       setOtp(newOtp);
-
-      // Focus last input
       const lastIndex = Math.min(pastedOtp.length - 1, 5);
       inputRefs.current[lastIndex]?.focus();
       return;
@@ -38,7 +46,6 @@ export default function VerifyEmailScreen() {
     newOtp[index] = text;
     setOtp(newOtp);
 
-    // Auto focus next input
     if (text && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -50,12 +57,37 @@ export default function VerifyEmailScreen() {
     }
   };
 
-  const handleVerify = () => {
-    // Verification logic would go here
-    router.push("/success-email");
+  const handleVerify = async () => {
+    const code = otp.join("");
+    setIsSubmitting(true);
+    try {
+      await verifyEmailChangeOtp({ email, code }, token!);
+      dispatch(logout());
+      router.replace("/(profile-and-settings)/success-email");
+    } catch (err: any) {
+      Alert.alert(
+        "Verification Failed",
+        err?.message || "Invalid or expired code. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const isVerifyDisabled = otp.some((digit) => !digit);
+  const handleResend = async () => {
+    if (isResending) return;
+    setIsResending(true);
+    try {
+      await requestEmailChangeOtp(email, token!);
+      Alert.alert("Code Sent", "A new verification code has been sent to your email.");
+    } catch (err: any) {
+      Alert.alert("Failed to resend", err?.message || "Please try again.");
+    } finally {
+      setIsResending(false);
+    }
+  };
+
+  const isVerifyDisabled = otp.some((digit) => !digit) || isSubmitting;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -84,8 +116,9 @@ export default function VerifyEmailScreen() {
           <View style={styles.content}>
             <View style={styles.inputSection}>
               <Text style={styles.description}>
-                We've sent a 6-digit code to your email address. Enter it below
-                to verify.
+                We've sent a 6-digit code to{" "}
+                <Text style={styles.emailHighlight}>{email}</Text>. Enter it
+                below to verify.
               </Text>
 
               <View style={styles.otpContainer}>
@@ -104,10 +137,16 @@ export default function VerifyEmailScreen() {
                 ))}
               </View>
 
-              <TouchableOpacity style={styles.resendContainer}>
+              <TouchableOpacity
+                style={styles.resendContainer}
+                onPress={handleResend}
+                disabled={isResending}
+              >
                 <Text style={styles.resendText}>
                   Didn't get the code?{" "}
-                  <Text style={styles.resendLink}>Resend</Text>
+                  <Text style={styles.resendLink}>
+                    {isResending ? "Sending..." : "Resend"}
+                  </Text>
                 </Text>
               </TouchableOpacity>
             </View>
@@ -129,7 +168,7 @@ export default function VerifyEmailScreen() {
                 isVerifyDisabled && styles.verifyButtonTextDisabled,
               ]}
             >
-              Submit
+              {isSubmitting ? "Verifying..." : "Submit"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -178,17 +217,15 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 40,
   },
-  title: {
-    color: "#FFFFFF",
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 8,
-    textAlign: "center",
-  },
   description: {
     color: "#757B85",
     fontSize: 16,
     marginBottom: 40,
+    lineHeight: 24,
+  },
+  emailHighlight: {
+    color: "#B0BACB",
+    fontWeight: "600",
   },
   otpContainer: {
     flexDirection: "row",

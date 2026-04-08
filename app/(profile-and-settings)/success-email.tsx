@@ -7,7 +7,7 @@ export default function SuccessEmail() {
   const router = useRouter();
 
   const handleClose = () => {
-    router.push("/");
+    router.replace("/login");
   };
 
   return (
@@ -17,7 +17,8 @@ export default function SuccessEmail() {
         <View style={styles.content}>
           <SuccessIcon />
           <View style={styles.textContainer}>
-            <Text style={styles.title}>New Email Added</Text>
+            <Text style={styles.title}>Email Changed</Text>
+            <Text style={styles.description}>Please log in with your new email address.</Text>
           </View>
         </View>
 

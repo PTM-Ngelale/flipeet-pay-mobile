@@ -31,19 +31,12 @@ const initialState: AuthState = {
 export const requestOtp = createAsyncThunk(
   "auth/requestOtp",
   async (
-    { email, type }: { email: string; type: "signup" | "login" },
+    { email }: { email: string; type: "signup" | "login" },
     thunkAPI: any,
   ) => {
     try {
-      if (type === "signup") {
-        // GET /auth/otp/request?email=...
-        await apiGet(`/auth/otp/request?email=${encodeURIComponent(email)}`);
-      } else {
-        // GET /auth/otp/authenticator?email=...
-        await apiGet(
-          `/auth/otp/authenticator?email=${encodeURIComponent(email)}`,
-        );
-      }
+      // Both signup and login use the same OTP request endpoint
+      await apiGet(`/auth/otp/request?email=${encodeURIComponent(email)}`);
       return { email };
     } catch (err: any) {
       return thunkAPI.rejectWithValue(err.message || "Failed to request OTP");
