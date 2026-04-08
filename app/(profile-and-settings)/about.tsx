@@ -36,7 +36,7 @@ const About = () => {
         <View style={styles.sectionContainer}>
           <TouchableOpacity
             style={styles.section}
-            onPress={() => router.push("/")}
+            onPress={() => router.push("/(profile-and-settings)/privacy-policy")}
           >
             <View style={styles.row}>
               <View style={styles.textContainer}>

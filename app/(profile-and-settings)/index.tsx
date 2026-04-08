@@ -8,6 +8,7 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   Image,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -54,7 +55,7 @@ const SettingsAndProfile = () => {
     {
       title: "Support",
       description: "Chat with a Flipeet Representative",
-      onPress: () => router.push("/support"),
+      onPress: () => Linking.openURL("mailto:support@flipeet.io"),
       icon: SupportIcon,
     },
     {
