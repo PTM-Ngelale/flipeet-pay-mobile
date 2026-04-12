@@ -9,13 +9,8 @@ export default function Index() {
   useEffect(() => {
     const resolveInitialRoute = async () => {
       try {
-        const raw = await AsyncStorage.getItem("flipeet_onboarding_seen_v1");
-        const hasSeen = raw === "true";
-
-        if (!hasSeen) {
-          router.replace("/(intro)");
-          return;
-        }
+        router.replace("/(intro)");
+        return;
 
         const email = await AsyncStorage.getItem("auth_email");
 
