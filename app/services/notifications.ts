@@ -1,17 +1,13 @@
+// Push notifications are temporarily disabled.
+// Restore this file when re-enabling push notification support.
+
+/*
 import Constants from "expo-constants";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { apiRequest } from "../constants/api";
 
-/**
- * Requests permission and registers the device for push notifications.
- * Sends the Expo Push Token to the backend so it can target this device.
- *
- * Call this once after a successful login/auth restore, passing the auth token.
- */
 export async function registerForPushNotifications(authToken: string): Promise<string | null> {
-  // Push notifications don't work in Expo Go on physical devices for FCM/APNs,
-  // but Expo Push Token works in development builds and production.
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
 
@@ -24,7 +20,6 @@ export async function registerForPushNotifications(authToken: string): Promise<s
     return null;
   }
 
-  // Android requires a notification channel
   if (Platform.OS === "android") {
     await Notifications.setNotificationChannelAsync("default", {
       name: "Default",
@@ -45,7 +40,6 @@ export async function registerForPushNotifications(authToken: string): Promise<s
 
   const { data: pushToken } = await Notifications.getExpoPushTokenAsync({ projectId });
 
-  // Send token to backend so it can send notifications to this device
   try {
     await apiRequest("/user/push-token", {
       method: "POST",
@@ -53,9 +47,11 @@ export async function registerForPushNotifications(authToken: string): Promise<s
       token: authToken,
     });
   } catch (err) {
-    // Non-fatal — backend may not have this endpoint yet
     console.warn("[notifications] Could not register push token with backend:", err);
   }
 
   return pushToken;
 }
+*/
+
+export {};

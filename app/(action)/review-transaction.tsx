@@ -41,6 +41,7 @@ export default function ReviewTransactionScreen() {
     recipientType, // 'wallet', 'email', or 'bank'
     bankName,
     accountNumber,
+    localBankId,
   } = params;
 
   // Calculate transaction fee (can be dynamic from API later)
@@ -194,28 +195,21 @@ export default function ReviewTransactionScreen() {
           );
         }
       } else if (recipientType === "bank") {
-        // For bank transfers, still use direct fetch as this uses ramp endpoint
-        // This could be migrated to a separate thunk if needed
-        const { bankName, bankCode, accountNumber, accountName } = params;
-
         const payload = {
-          accountNumber,
-          accountName,
-          bankCode,
-          bankName,
+          localBankId: String(localBankId),
           amount: parseFloat(payAmount as string),
           asset: (payCurrency as string).toLowerCase(),
           rate: parseFloat(exchangeRate as string),
           network: normalizedNetwork,
-          currency: receiveCurrency,
-          favorite: false,
-          provider: "bread",
+          currency: String(receiveCurrency),
+          country: "NG",
+          provider: "switch",
         };
 
-        console.log("Sending bank transaction:", payload);
+        console.log("Sending off-ramp transaction:", payload);
 
         const response = await fetch(
-          "https://api.pay.flipeet.io/api/v1/ramp/send/initialize",
+          "https://api.pay.flipeet.io/api/v1/ramp/off/initialize",
           {
             method: "POST",
             headers: {

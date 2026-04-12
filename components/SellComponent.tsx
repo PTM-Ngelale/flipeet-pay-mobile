@@ -200,6 +200,7 @@ const SellComponent = () => {
           exchangeRate: exchangeRate ? exchangeRate.toString() : "0",
           recipient: `${selectedAccount.accountName} - ${selectedAccount.accountNumber}`,
           recipientType: "bank",
+          localBankId: selectedAccount.id,
           bankName: selectedAccount.bankName,
           bankCode: selectedAccount.bankCode,
           accountNumber: selectedAccount.accountNumber,

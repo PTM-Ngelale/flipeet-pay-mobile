@@ -26,7 +26,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
 import { useProfile } from "./contexts/ProfileContext";
 import type { AppDispatch, RootState } from "./store";
-import { fetchUserBalances } from "./store/authSlice";
+import { fetchUserBalances, fetchUserProfile } from "./store/authSlice";
 
 type IconComponentType = React.ComponentType<{ size?: number; color?: string }>;
 
@@ -96,12 +96,18 @@ export default function WalletHomeScreen() {
   );
   const token = useSelector((state: RootState) => state.auth.token);
 
-  // Fetch balances on mount and when token becomes available
+  // Fetch balances and profile on mount and when token becomes available
   useEffect(() => {
     if (token) {
       dispatch(fetchUserBalances());
+      dispatch(fetchUserProfile());
     }
   }, [dispatch, token]);
+
+  useEffect(() => {
+    console.log("[Profile] username:", username);
+    console.log("[Profile] profileImage:", profileImage);
+  }, [username, profileImage]);
   // Map API balances to assets with proper icons
   const assets = useMemo<Asset[]>(() => {
     if (!balances || !Array.isArray(balances) || balances.length === 0) {
@@ -192,7 +198,10 @@ export default function WalletHomeScreen() {
   // Pull to refresh handler
   const onRefresh = async () => {
     setRefreshing(true);
-    await dispatch(fetchUserBalances());
+    await Promise.all([
+      dispatch(fetchUserBalances()),
+      dispatch(fetchUserProfile()),
+    ]);
     setRefreshing(false);
   };
 
