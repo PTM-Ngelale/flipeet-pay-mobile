@@ -2,15 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as LocalAuthentication from "expo-local-authentication";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+  Image,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -20,22 +18,50 @@ import pinApi from "../services/pinApi";
 import * as secure from "../services/secure";
 import { loadAuthState } from "../store/authSlice";
 
+const BLUE = "#4A9DFF";
+const PIN_LENGTH = 6;
+
+const KEYPAD_ROWS = [
+  ["1", "2", "3"],
+  ["4", "5", "6"],
+  ["7", "8", "9"],
+  ["biometrics", "0", "delete"],
+];
+
+const capitalize = (s: string) =>
+  s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+
 export default function PinSignIn() {
   const router = useRouter();
   const dispatch = useDispatch<any>();
 
-  const [pin, setPin] = useState(["", "", "", "", "", ""]);
-  const refs = useRef<Array<TextInput | null>>([]);
+  const [pin, setPin] = useState<string[]>([]);
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [biometricsAvailable, setBiometricsAvailable] = useState(false);
 
   useEffect(() => {
     (async () => {
-      const stored = await AsyncStorage.getItem("auth_email");
-      if (stored) setEmail(stored);
+      const storedEmail = await AsyncStorage.getItem("auth_email");
+      if (storedEmail) setEmail(storedEmail);
 
-      // Check biometrics — only show button if device supports it AND user has enabled it
+      const userJson = await AsyncStorage.getItem("auth_user");
+      if (userJson) {
+        try {
+          const user = JSON.parse(userJson);
+          const name =
+            user.username ||
+            user.firstName ||
+            user.name ||
+            storedEmail?.split("@")[0] ||
+            "";
+          setUsername(name);
+        } catch {}
+      } else if (storedEmail) {
+        setUsername(storedEmail.split("@")[0]);
+      }
+
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       const biometricsEnabled = await secure.isBiometricsEnabled();
@@ -44,6 +70,21 @@ export default function PinSignIn() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (pin.length === PIN_LENGTH && !loading) {
+      handleSubmit(pin.join(""));
+    }
+  }, [pin]);
+
+  const handleKeyPress = (key: string) => {
+    if (loading) return;
+    if (key === "delete") {
+      setPin((prev) => prev.slice(0, -1));
+    } else if (pin.length < PIN_LENGTH) {
+      setPin((prev) => [...prev, key]);
+    }
+  };
 
   const triggerBiometrics = async () => {
     const result = await LocalAuthentication.authenticateAsync({
@@ -61,16 +102,8 @@ export default function PinSignIn() {
       );
       return;
     }
-
     await dispatch(loadAuthState());
     router.replace("/home");
-  };
-
-  const join = (arr: string[]) => arr.join("");
-
-  const handleChange = (newArr: string[], index: number) => {
-    setPin(newArr);
-    if (newArr[index] && index < 5) refs.current[index + 1]?.focus();
   };
 
   const offerBiometricsSetup = () => {
@@ -94,17 +127,12 @@ export default function PinSignIn() {
     );
   };
 
-  const handleSubmit = async () => {
-    const code = join(pin);
-    if (code.length !== 6) {
-      Alert.alert("Invalid PIN", "Enter your 6-digit PIN.");
-      return;
-    }
+  const handleSubmit = async (code: string) => {
     if (!email) {
-      Alert.alert("Missing email", "Please enter your account email.");
+      Alert.alert("Missing email", "Please sign in with email first.");
+      setPin([]);
       return;
     }
-
     setLoading(true);
     try {
       const res = await pinApi.pinSignIn(email, parseInt(code, 10));
@@ -113,7 +141,6 @@ export default function PinSignIn() {
         throw new Error(err?.message || "PIN sign-in failed");
       }
       const body = await res.json().catch(() => ({}));
-
       const data = body.data || {};
       const credentials = data.credentials || {};
       const token =
@@ -130,18 +157,22 @@ export default function PinSignIn() {
       await AsyncStorage.setItem("auth_token", token);
       if (user) {
         const existingUserJson = await AsyncStorage.getItem("auth_user");
-        const existingUser = existingUserJson ? JSON.parse(existingUserJson) : null;
+        const existingUser = existingUserJson
+          ? JSON.parse(existingUserJson)
+          : null;
         const existingAvatar = existingUser?.avatar;
-        if (user.avatar === "default" && existingAvatar && existingAvatar !== "default") {
+        if (
+          user.avatar === "default" &&
+          existingAvatar &&
+          existingAvatar !== "default"
+        ) {
           user.avatar = existingAvatar;
         }
         await AsyncStorage.setItem("auth_user", JSON.stringify(user));
       }
       await AsyncStorage.setItem("auth_email", email);
-
       await dispatch(loadAuthState()).unwrap();
 
-      // Offer biometrics if available but not yet configured
       if (biometricsAvailable) {
         const alreadyEnabled = await secure.isBiometricsEnabled();
         if (!alreadyEnabled) {
@@ -149,132 +180,218 @@ export default function PinSignIn() {
           return;
         }
       }
-
       router.replace("/home");
     } catch (err: any) {
       Alert.alert("Sign-in failed", err?.message || String(err));
+      setPin([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const isDisabled = pin.some((d) => !d) || !email;
-
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.ka}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => router.replace("/(auth)/login")}
-            style={styles.back}
-          >
-            <Ionicons name="arrow-back" size={24} color="#E2E6F0" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Sign in with PIN</Text>
-          <View style={{ width: 32 }} />
-        </View>
+      {/* Logo */}
+      <View style={styles.logoWrap}>
+        <Image
+          source={require("@/assets/images/flipeet-logo.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
 
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text style={styles.hint}>Enter your 6-digit PIN to sign in</Text>
+      {/* Greeting */}
+      <View style={styles.greetingWrap}>
+        <Text style={styles.greeting}>
+          Hello{username ? `, ${capitalize(username)}` : ""}
+        </Text>
+        <Text style={styles.subtitle}>Enter your Passcode to Unlock</Text>
+      </View>
 
-          <View style={styles.row}>
-            {pin.map((digit, i) => (
-              <TextInput
-                key={`p-${i}`}
-                ref={(r) => (refs.current[i] = r)}
-                style={styles.input}
-                keyboardType="number-pad"
-                maxLength={1}
-                value={digit}
-                onChangeText={(t) => {
-                  const next = [...pin];
-                  next[i] = t.slice(-1);
-                  handleChange(next, i);
-                }}
-                onKeyPress={(e) => {
-                  if (e.nativeEvent.key === "Backspace" && !digit && i > 0) {
-                    refs.current[i - 1]?.focus();
-                  }
-                }}
-                secureTextEntry
-              />
-            ))}
+      {/* PIN dot boxes */}
+      <View style={styles.dotsRow}>
+        {Array.from({ length: PIN_LENGTH }).map((_, i) => (
+          <View key={i} style={styles.dotBox}>
+            <View style={[styles.dot, i < pin.length && styles.dotFilled]} />
           </View>
+        ))}
+      </View>
 
-          <TouchableOpacity
-            style={[styles.submit, isDisabled && styles.submitDisabled]}
-            onPress={handleSubmit}
-            disabled={isDisabled || loading}
-          >
-            <Text style={styles.submitText}>
-              {loading ? "Signing in..." : "Sign in"}
-            </Text>
-          </TouchableOpacity>
+      {/* Forgot Passcode / Loading indicator */}
+      {loading ? (
+        <View style={styles.loadingRow}>
+          <ActivityIndicator size="small" color={BLUE} />
+          <Text style={styles.loadingText}>Signing you in…</Text>
+        </View>
+      ) : (
+        <TouchableOpacity
+          onPress={() => router.push("/(auth)/request-pin-otp")}
+          style={styles.forgotWrap}
+        >
+          <Text style={styles.forgotText}>Forgot Passcode?</Text>
+        </TouchableOpacity>
+      )}
 
-          {biometricsAvailable && (
-            <TouchableOpacity
-              style={styles.biometricsButton}
-              onPress={triggerBiometrics}
-            >
-              <Ionicons name="finger-print" size={28} color="#4A9DFF" />
-              <Text style={styles.biometricsText}>Use biometrics</Text>
-            </TouchableOpacity>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+      <View style={{ flex: 1 }} />
+
+      {/* Keypad */}
+      <View style={[styles.keypad, loading && styles.keypadDisabled]}>
+        {KEYPAD_ROWS.map((row, ri) => (
+          <View key={ri} style={styles.keyRow}>
+            {row.map((key) => {
+              if (key === "biometrics") {
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[
+                      styles.keyButton,
+                      styles.keyButtonGhost,
+                      !biometricsAvailable && styles.keyButtonInvisible,
+                    ]}
+                    onPress={triggerBiometrics}
+                    disabled={!biometricsAvailable || loading}
+                  >
+                    <Ionicons name="finger-print" size={30} color={BLUE} />
+                  </TouchableOpacity>
+                );
+              }
+              if (key === "delete") {
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.keyButton, styles.keyButtonGhost]}
+                    onPress={() => handleKeyPress("delete")}
+                    disabled={loading}
+                  >
+                    <Ionicons name="backspace-outline" size={26} color="#E2E6F0" />
+                  </TouchableOpacity>
+                );
+              }
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={styles.keyButton}
+                  onPress={() => handleKeyPress(key)}
+                  disabled={loading}
+                >
+                  <Text style={styles.keyText}>{key}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ))}
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#000" },
-  ka: { flex: 1 },
-  header: {
-    flexDirection: "row",
+  container: {
+    flex: 1,
+    backgroundColor: "#000000",
     alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
+    paddingBottom: 16,
   },
-  back: { padding: 4 },
-  title: { color: "#E2E6F0", fontSize: 18, fontWeight: "700" },
-  content: { padding: 20, alignItems: "center" },
-  hint: { color: "#9AA6B6", fontSize: 14, marginBottom: 28 },
-  row: { flexDirection: "row", justifyContent: "space-between", width: 280 },
-  input: {
-    width: 44,
+  logoWrap: {
+    marginTop: 32,
+    marginBottom: 24,
+    alignItems: "center",
+  },
+  logo: {
+    width: 56,
     height: 56,
-    borderRadius: 10,
-    backgroundColor: "#0B1220",
-    textAlign: "center",
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 18,
+  },
+  greetingWrap: {
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 32,
+  },
+  greeting: {
+    fontSize: 30,
+    fontWeight: "800",
+    color: "#E2E6F0",
+  },
+  subtitle: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: BLUE,
+  },
+  dotsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 20,
+    paddingHorizontal: 24,
+  },
+  dotBox: {
+    flex: 1,
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: "#1C1C1C",
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: "#374151",
   },
-  submit: {
-    marginTop: 28,
-    backgroundColor: "#4A9DFF",
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 8,
+  dot: {
+    width: 11,
+    height: 11,
+    borderRadius: 6,
+    backgroundColor: "#374151",
   },
-  submitDisabled: { backgroundColor: "#374151" },
-  submitText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  biometricsButton: {
-    marginTop: 32,
+  dotFilled: {
+    backgroundColor: BLUE,
+  },
+  loadingRow: {
+    marginTop: 4,
+    flexDirection: "row",
     alignItems: "center",
     gap: 8,
   },
-  biometricsText: {
-    color: "#4A9DFF",
-    fontSize: 14,
+  loadingText: {
+    color: BLUE,
+    fontSize: 15,
     fontWeight: "500",
+  },
+  forgotWrap: {
+    marginTop: 4,
+  },
+  keypadDisabled: {
+    opacity: 0.35,
+  },
+  forgotText: {
+    color: BLUE,
+    fontSize: 15,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  },
+  keypad: {
+    width: "100%",
+    paddingHorizontal: 20,
+    gap: 10,
+  },
+  keyRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  keyButton: {
+    flex: 1,
+    height: 68,
+    borderRadius: 14,
+    backgroundColor: "#1C1C1C",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  keyButtonGhost: {
+    backgroundColor: "transparent",
+  },
+  keyButtonInvisible: {
+    opacity: 0,
+    pointerEvents: "none",
+  },
+  keyText: {
+    fontSize: 22,
+    fontWeight: "600",
+    color: "#E2E6F0",
   },
 });

@@ -4,6 +4,7 @@ import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import Animated, { BounceIn, FadeInUp } from "react-native-reanimated";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 export default function SuccessScreen() {
@@ -100,8 +101,10 @@ export default function SuccessScreen() {
       <SafeAreaView style={styles.container}>
         {/* Main Content - Centered */}
         <View style={styles.content}>
-          <SuccessIcon />
-          <View style={styles.textContainer}>
+          <Animated.View entering={BounceIn.delay(150).duration(900)}>
+            <SuccessIcon />
+          </Animated.View>
+          <Animated.View entering={FadeInUp.delay(600).duration(500)} style={styles.textContainer}>
             <Text style={styles.title}>{title}</Text>
             {description ? (
               <Text style={styles.description}>{description}</Text>
@@ -136,15 +139,15 @@ export default function SuccessScreen() {
                 </TouchableOpacity>
               </View>
             ) : null}
-          </View>
+          </Animated.View>
         </View>
 
         {/* Close Button at Bottom */}
-        <View style={styles.buttonContainer}>
+        <Animated.View entering={FadeInUp.delay(850).duration(400)} style={styles.buttonContainer}>
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
             <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </SafeAreaView>
     </SafeAreaProvider>
   );

@@ -1,13 +1,11 @@
 import GoogleLogo from "@/assets/images/google-logo.svg";
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import Constants from "expo-constants";
-import * as LocalAuthentication from "expo-local-authentication";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -22,11 +20,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch } from "react-redux";
-import pinApi from "../services/pinApi";
-import * as secure from "../services/secure";
 import {
   googleSignIn,
-  loadAuthState,
   requestOtp,
   setEmail as setAuthEmail,
   signIn,
@@ -34,58 +29,15 @@ import {
 
 WebBrowser.maybeCompleteAuthSession();
 
-type LoginMode = "password" | "pin";
-
 export default function LoginScreen() {
-  const [loginMode, setLoginMode] = useState<LoginMode>("password");
-
-  // Email/password state
   const [email, setLocalEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isEmailLoading, setIsEmailLoading] = useState(false);
-  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
-
-  // PIN state
-  const [pin, setPin] = useState(["", "", "", "", "", ""]);
-  const [storedEmail, setStoredEmail] = useState<string | null>(null);
-  const [pinAvailable, setPinAvailable] = useState(false);
-  const [isPinLoading, setIsPinLoading] = useState(false);
-  const [showPinSetupNotice, setShowPinSetupNotice] = useState(false);
-  const pinRefs = useRef<Array<TextInput | null>>([]);
 
   const router = useRouter();
   const dispatch = useDispatch<any>();
-
-  useEffect(() => {
-    (async () => {
-      const stored = await AsyncStorage.getItem("auth_email");
-      if (!stored) return;
-      setStoredEmail(stored);
-
-      try {
-        const res = await pinApi.isPinAvailable(stored);
-        const body = await res.json().catch(() => null);
-        if (res.ok && body?.data?.pinExists === true) {
-          setPinAvailable(true);
-        } else if (res.ok) {
-          // Returning user has no PIN set — show the setup notice
-          setShowPinSetupNotice(true);
-        }
-      } catch {
-        // network error — PIN tab stays hidden
-      }
-
-      // Check biometrics — only show button if device supports it AND user has enabled it
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-      const biometricsEnabled = await secure.isBiometricsEnabled();
-      if (hasHardware && isEnrolled && biometricsEnabled) {
-        setBiometricsAvailable(true);
-      }
-    })();
-  }, []);
 
   const useProxy = Constants.appOwnership === "expo";
   const redirectUri = AuthSession.makeRedirectUri({
@@ -103,8 +55,6 @@ export default function LoginScreen() {
     scopes: ["profile", "email", "openid"],
   });
 
-  console.log(redirectUri);
-
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     try {
@@ -112,14 +62,14 @@ export default function LoginScreen() {
       if (result.type !== "success") return;
 
       const authCode = result.params?.code;
-      if (!authCode) throw new Error("Authorization code not returned by Google");
+      if (!authCode)
+        throw new Error("Authorization code not returned by Google");
 
       await dispatch(
         googleSignIn({ idToken: authCode, provider: "google", redirectUri }),
       ).unwrap();
       router.replace("/home");
     } catch (error: any) {
-      console.error("Google sign-in failed:", error);
       Alert.alert(
         "Authentication Failed",
         error?.message || "Failed to sign in with Google. Please try again.",
@@ -130,41 +80,21 @@ export default function LoginScreen() {
     }
   };
 
-  const handleBiometrics = async () => {
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: "Sign in to Flipeet Pay",
-      fallbackLabel: "Use password",
-      cancelLabel: "Cancel",
-    });
-    if (!result.success) return;
-
-    const token = await AsyncStorage.getItem("auth_token");
-    if (!token) {
-      Alert.alert(
-        "Session expired",
-        "Please sign in with your email and password.",
-      );
-      return;
-    }
-
-    await dispatch(loadAuthState());
-    router.replace("/home");
-  };
-
   const handleLogin = async () => {
     setIsEmailLoading(true);
     dispatch(setAuthEmail(email));
     try {
       await dispatch(signIn({ email, password })).unwrap();
 
-      // Send login OTP for 2FA
       try {
         await dispatch(requestOtp({ email, type: "login" })).unwrap();
       } catch {
-        // OTP request failed — still proceed to verify screen so user can retry
+        // OTP request failed — still proceed so user can retry on verify screen
       }
 
-      router.push(`/(auth)/verify-email?email=${encodeURIComponent(email)}&flow=login`);
+      router.push(
+        `/(auth)/verify-email?email=${encodeURIComponent(email)}&flow=login`,
+      );
     } catch (err: any) {
       console.error("Login failed:", err);
     } finally {
@@ -172,87 +102,7 @@ export default function LoginScreen() {
     }
   };
 
-  const handlePinChange = (text: string, index: number) => {
-    const next = [...pin];
-    next[index] = text.slice(-1);
-    setPin(next);
-    if (text && index < 5) pinRefs.current[index + 1]?.focus();
-  };
-
-  const handlePinBackspace = (e: any, index: number) => {
-    if (e.nativeEvent.key === "Backspace" && !pin[index] && index > 0) {
-      pinRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handlePinLogin = async () => {
-    const code = pin.join("");
-    if (code.length !== 6) {
-      Alert.alert("Invalid PIN", "Enter your 6-digit PIN.");
-      return;
-    }
-    if (!storedEmail) {
-      Alert.alert("No account found", "Please sign in with email first.");
-      return;
-    }
-    setIsPinLoading(true);
-    try {
-      const res = await pinApi.pinSignIn(storedEmail, parseInt(code, 10));
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error(err?.message || "PIN sign-in failed");
-      }
-      const body = await res.json().catch(() => ({}));
-      const data = body.data || {};
-      const credentials = data.credentials || {};
-      const token =
-        credentials.accessToken ||
-        body.accessToken ||
-        body.token ||
-        data.accessToken ||
-        data.token ||
-        null;
-      const user = body.user || data.user || null;
-
-      if (!token) throw new Error("No auth token returned from server");
-
-      await AsyncStorage.setItem("auth_token", token);
-      if (user) {
-        const existingUserJson = await AsyncStorage.getItem("auth_user");
-        const existingUser = existingUserJson ? JSON.parse(existingUserJson) : null;
-        const existingAvatar = existingUser?.avatar;
-        if (user.avatar === "default" && existingAvatar && existingAvatar !== "default") {
-          user.avatar = existingAvatar;
-        }
-        await AsyncStorage.setItem("auth_user", JSON.stringify(user));
-      }
-      await AsyncStorage.setItem("auth_email", storedEmail);
-      await dispatch(loadAuthState()).unwrap();
-      router.replace("/home");
-    } catch (err: any) {
-      Alert.alert("Sign-in failed", err?.message || String(err));
-    } finally {
-      setIsPinLoading(false);
-    }
-  };
-
-  const handleSignUp = () => router.push("/sign-up");
-
-  const handleSetupPin = async () => {
-    const token = await AsyncStorage.getItem("auth_token");
-    if (token) {
-      router.push("/(profile-and-settings)/setup-mobile-pin");
-    } else {
-      Alert.alert(
-        "Login required",
-        "Please log in with your email and password first, then you can set up your PIN.",
-        [{ text: "OK" }],
-      );
-    }
-  };
-
   const isLoginDisabled = !email.trim() || !password.trim();
-  const isPinDisabled = pin.some((d) => !d);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -272,222 +122,100 @@ export default function LoginScreen() {
               <Text style={styles.subtitle}>Log in to your account</Text>
             </View>
 
-            {/* Mode Toggle — only show PIN tab if stored email has a PIN set */}
-            {pinAvailable && (
-              <View style={styles.modeToggle}>
+            {/* Google Login */}
+            <TouchableOpacity
+              style={styles.googleButton}
+              onPress={handleGoogleLogin}
+              disabled={isGoogleLoading || !request}
+            >
+              {isGoogleLoading ? (
+                <ActivityIndicator size="small" color="#000000" />
+              ) : (
+                <>
+                  <GoogleLogo />
+                  <Text style={styles.googleButtonText}>Login with Google</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Email Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Enter Email</Text>
+              <TextInput
+                style={styles.input}
+                placeholderTextColor="#757B85"
+                value={email}
+                onChangeText={setLocalEmail}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                autoComplete="email"
+              />
+            </View>
+
+            {/* Password Input */}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Enter Password</Text>
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  style={styles.passwordInput}
+                  placeholderTextColor="#757B85"
+                  value={password}
+                  onChangeText={setPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  secureTextEntry={!showPassword}
+                  autoComplete="password"
+                />
                 <TouchableOpacity
-                  style={[
-                    styles.modeTab,
-                    loginMode === "password" && styles.modeTabActive,
-                  ]}
-                  onPress={() => setLoginMode("password")}
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
                 >
-                  <Text
-                    style={[
-                      styles.modeTabText,
-                      loginMode === "password" && styles.modeTabTextActive,
-                    ]}
-                  >
-                    Email & Password
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.modeTab,
-                    loginMode === "pin" && styles.modeTabActive,
-                  ]}
-                  onPress={() => setLoginMode("pin")}
-                >
-                  <Text
-                    style={[
-                      styles.modeTabText,
-                      loginMode === "pin" && styles.modeTabTextActive,
-                    ]}
-                  >
-                    PIN
-                  </Text>
+                  <Ionicons
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color="#757B85"
+                  />
                 </TouchableOpacity>
               </View>
-            )}
+            </View>
 
-            {loginMode === "password" ? (
-              <>
-                {/* PIN setup notice for returning users without a PIN */}
-                {showPinSetupNotice && (
-                  <TouchableOpacity
-                    style={styles.pinNotice}
-                    onPress={handleSetupPin}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="shield-checkmark-outline" size={20} color="#F59E0B" />
-                    <View style={styles.pinNoticeBody}>
-                      <Text style={styles.pinNoticeTitle}>Set up a sign-in PIN</Text>
-                      <Text style={styles.pinNoticeDesc}>
-                        Log in faster next time with a 6-digit PIN
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color="#F59E0B" />
-                  </TouchableOpacity>
-                )}
-
-                {/* Google Login Button */}
-                <TouchableOpacity
-                  style={styles.googleButton}
-                  onPress={handleGoogleLogin}
-                  disabled={isGoogleLoading || !request}
-                >
-                  {isGoogleLoading ? (
-                    <ActivityIndicator size="small" color="#000000" />
-                  ) : (
-                    <>
-                      <GoogleLogo />
-                      <Text style={styles.googleButtonText}>Login with Google</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-
-                <View style={styles.divider}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>OR</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-
-                <View style={{ marginBottom: 30 }}>
-                  <Text style={{ color: "#E2E6F0", fontSize: 20, fontWeight: 700 }}>
-                    Login with email
-                  </Text>
-                </View>
-
-                {/* Email Input */}
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Enter Email</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder=""
-                    placeholderTextColor="#757B85"
-                    value={email}
-                    onChangeText={setLocalEmail}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    keyboardType="email-address"
-                    autoComplete="email"
-                  />
-                </View>
-
-                {/* Password Input */}
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Enter Password</Text>
-                  <View style={styles.passwordContainer}>
-                    <TextInput
-                      style={styles.passwordInput}
-                      placeholder=""
-                      placeholderTextColor="#757B85"
-                      value={password}
-                      onChangeText={setPassword}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      secureTextEntry={!showPassword}
-                      autoComplete="password"
-                    />
-                    <TouchableOpacity
-                      onPress={() => setShowPassword(!showPassword)}
-                      style={styles.eyeIcon}
-                    >
-                      <Ionicons
-                        name={showPassword ? "eye-off" : "eye"}
-                        size={20}
-                        color="#757B85"
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-
-                {/* Login Button */}
-                <TouchableOpacity
+            {/* Login Button */}
+            <TouchableOpacity
+              style={[
+                styles.loginButton,
+                (isLoginDisabled || isEmailLoading) && styles.loginButtonDisabled,
+              ]}
+              onPress={handleLogin}
+              disabled={isLoginDisabled || isEmailLoading}
+            >
+              {isEmailLoading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text
                   style={[
-                    styles.loginButton,
-                    (isLoginDisabled || isEmailLoading) && styles.loginButtonDisabled,
+                    styles.loginButtonText,
+                    isLoginDisabled && styles.loginButtonTextDisabled,
                   ]}
-                  onPress={handleLogin}
-                  disabled={isLoginDisabled || isEmailLoading}
                 >
-                  {isEmailLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" />
-                  ) : (
-                    <Text
-                      style={[
-                        styles.loginButtonText,
-                        isLoginDisabled && styles.loginButtonTextDisabled,
-                      ]}
-                    >
-                      Login
-                    </Text>
-                  )}
-                </TouchableOpacity>
+                  Login
+                </Text>
+              )}
+            </TouchableOpacity>
 
-                {/* Biometrics */}
-                {biometricsAvailable && (
-                  <TouchableOpacity
-                    style={styles.biometricsButton}
-                    onPress={handleBiometrics}
-                  >
-                    <Ionicons name="finger-print" size={26} color="#4A9DFF" />
-                    <Text style={styles.biometricsText}>Use biometrics</Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Sign Up Link */}
-                <View style={styles.signUpContainer}>
-                  <Text style={styles.signUpText}>Don't have an account? </Text>
-                  <TouchableOpacity onPress={handleSignUp}>
-                    <Text style={styles.signUpLink}>Sign Up</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            ) : (
-              <>
-                {/* PIN Mode */}
-                <View style={styles.pinSection}>
-                  <Text style={styles.pinAccountLabel}>Signing in as</Text>
-                  <Text style={styles.pinAccountEmail}>{storedEmail}</Text>
-
-                  <Text style={styles.pinHint}>Enter your 6-digit PIN</Text>
-
-                  <View style={styles.pinRow}>
-                    {pin.map((digit, i) => (
-                      <TextInput
-                        key={i}
-                        ref={(r) => { pinRefs.current[i] = r; }}
-                        style={styles.pinInput}
-                        keyboardType="number-pad"
-                        maxLength={1}
-                        value={digit}
-                        onChangeText={(t) => handlePinChange(t, i)}
-                        onKeyPress={(e) => handlePinBackspace(e, i)}
-                        secureTextEntry
-                      />
-                    ))}
-                  </View>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.loginButton,
-                      { alignSelf: "stretch" },
-                      (isPinDisabled || isPinLoading) && styles.loginButtonDisabled,
-                    ]}
-                    onPress={handlePinLogin}
-                    disabled={isPinDisabled || isPinLoading}
-                  >
-                    {isPinLoading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Text style={styles.loginButtonText}>Login</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
+            {/* Sign Up Link */}
+            <View style={styles.signUpContainer}>
+              <Text style={styles.signUpText}>Don't have an account? </Text>
+              <TouchableOpacity onPress={() => router.push("/sign-up")}>
+                <Text style={styles.signUpLink}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -512,43 +240,13 @@ const styles = StyleSheet.create({
   welcomeText: {
     color: "#E2E6F0",
     fontSize: 32,
-    fontWeight: 700,
+    fontWeight: "700",
     marginBottom: 8,
   },
   subtitle: {
     color: "#E2E6F0",
     fontSize: 16,
-    fontWeight: 500,
-  },
-  modeToggle: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#1C1C1C",
-    borderRadius: 8,
-    padding: 8,
-    gap: 12,
-    marginBottom: 28,
-  },
-  modeTab: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: 8,
-    borderRadius: 6,
-  },
-  modeTabActive: {
-    backgroundColor: "#2A2A2A",
-  },
-  modeTabText: {
-    color: "#757B85",
     fontWeight: "500",
-  },
-  modeTabTextActive: {
-    color: "#E2E6F0",
   },
   googleButton: {
     flexDirection: "row",
@@ -607,68 +305,7 @@ const styles = StyleSheet.create({
   loginButtonDisabled: { opacity: 0.6 },
   loginButtonText: { color: "#FFFFFF", fontSize: 16, fontWeight: "600" },
   loginButtonTextDisabled: { color: "#F2F4F8" },
-  biometricsButton: {
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 24,
-  },
-  biometricsText: {
-    color: "#4A9DFF",
-    fontSize: 14,
-    fontWeight: "500",
-  },
   signUpContainer: { flexDirection: "row", justifyContent: "center" },
   signUpText: { color: "#B0BACB", fontSize: 16 },
   signUpLink: { color: "#4A9DFF", fontSize: 14, fontWeight: "600" },
-  pinNotice: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#1C1405",
-    borderWidth: 1,
-    borderColor: "#78490A",
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 20,
-    gap: 12,
-  },
-  pinNoticeBody: { flex: 1 },
-  pinNoticeTitle: {
-    color: "#F59E0B",
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 2,
-  },
-  pinNoticeDesc: {
-    color: "#9AA6B6",
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  // PIN mode
-  pinSection: { alignItems: "center", paddingTop: 16 },
-  pinAccountLabel: { color: "#757B85", fontSize: 13, marginBottom: 4 },
-  pinAccountEmail: {
-    color: "#B0BACB",
-    fontSize: 15,
-    fontWeight: "600",
-    marginBottom: 32,
-  },
-  pinHint: { color: "#9AA6B6", fontSize: 14, marginBottom: 20 },
-  pinRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: 280,
-    marginBottom: 32,
-  },
-  pinInput: {
-    width: 44,
-    height: 56,
-    borderRadius: 10,
-    backgroundColor: "#1C1C1C",
-    borderWidth: 1,
-    borderColor: "#374151",
-    textAlign: "center",
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 18,
-  },
 });

@@ -360,7 +360,7 @@ const authSlice = createSlice({
       state.balances = [];
       state.transactions = [];
       // Clear AsyncStorage
-      AsyncStorage.multiRemove(["auth_token", "auth_user"]); // keep auth_email so PIN login still works after logout
+      AsyncStorage.multiRemove(["auth_token", "auth_user", "auth_email"]);
 
       // Note: Bank account state will be cleared by a separate dispatch
     },

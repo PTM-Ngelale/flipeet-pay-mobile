@@ -11,6 +11,13 @@ import Entypo from "@expo/vector-icons/Entypo";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
+import Animated, {
+  FadeInDown,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import {
   ActivityIndicator,
   Image,
@@ -81,6 +88,11 @@ export default function WalletHomeScreen() {
   const [isBalanceVisible, setIsBalanceVisible] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [avatarLoaded, setAvatarLoaded] = useState(false);
+
+  const balanceOpacity = useSharedValue(1);
+  const animatedBalanceStyle = useAnimatedStyle(() => ({
+    opacity: balanceOpacity.value,
+  }));
 
   useEffect(() => {
     setAvatarLoaded(false);
@@ -244,7 +256,14 @@ export default function WalletHomeScreen() {
 
   // Toggle balance visibility
   const toggleBalanceVisibility = () => {
-    setIsBalanceVisible(!isBalanceVisible);
+    const next = !isBalanceVisible;
+    balanceOpacity.value = withTiming(0, { duration: 100 }, (finished) => {
+      "worklet";
+      if (finished) {
+        runOnJS(setIsBalanceVisible)(next);
+        balanceOpacity.value = withTiming(1, { duration: 120 });
+      }
+    });
   };
 
   // Handle action button press
@@ -299,7 +318,7 @@ export default function WalletHomeScreen() {
   const renderBalanceSection = () => (
     <View style={styles.balanceSection}>
       <Text style={styles.totalBalance}>TOTAL BALANCE</Text>
-      <View style={styles.balanceRow}>
+      <Animated.View style={[styles.balanceRow, animatedBalanceStyle]}>
         <Text
           onPress={toggleBalanceVisibility}
           style={[
@@ -311,26 +330,13 @@ export default function WalletHomeScreen() {
           {isBalanceVisible ? `$${totalBalanceUSD.toFixed(3)}` : "******"}
         </Text>
         <TouchableOpacity onPress={toggleBalanceVisibility}>
-          {/* <Entypo
-            name={
-              isBalanceVisible ? (
-                "eye"
-
-              ) : (
-                "eye-with-line"
-              )
-            }
-            size={20}
-            color={COLORS.icon}
-          /> */}
-
           {isBalanceVisible ? (
             <EyeIcon />
           ) : (
             <Entypo name={"eye-with-line"} size={15} color="#B0BACB" />
           )}
         </TouchableOpacity>
-      </View>
+      </Animated.View>
 
       {/* <View style={styles.lossSection}>
         <Text
@@ -390,11 +396,11 @@ export default function WalletHomeScreen() {
     </View>
   );
 
-  const renderTokenItem = (asset: Asset) => {
+  const renderTokenItem = (asset: Asset, index: number) => {
     const IconComponent = iconComponents[asset.icon];
 
     return (
-      <View key={asset.id} style={[styles.tokenItem]}>
+      <Animated.View key={asset.id} entering={FadeInDown.delay(index * 80).duration(400)} style={[styles.tokenItem]}>
         <View style={styles.tokenLeft}>
           {IconComponent ? (
             <IconComponent size={40} />
@@ -457,7 +463,7 @@ export default function WalletHomeScreen() {
               : "******"}
           </Text>
         </View>
-      </View>
+      </Animated.View>
     );
   };
 
@@ -520,27 +526,26 @@ export default function WalletHomeScreen() {
           >
             <View></View>
             <View style={styles.content}>
-              {renderHeader()}
-              {renderBalanceSection()}
-              {renderActionButtons()}
+              <Animated.View entering={FadeInDown.delay(0).duration(500)}>
+                {renderHeader()}
+              </Animated.View>
+              <Animated.View entering={FadeInDown.delay(120).duration(500)}>
+                {renderBalanceSection()}
+              </Animated.View>
+              <Animated.View entering={FadeInDown.delay(240).duration(500)}>
+                {renderActionButtons()}
+              </Animated.View>
 
               {/* Tokens section header */}
-              <View style={styles.tokensHeader}>
+              <Animated.View entering={FadeInDown.delay(360).duration(500)} style={styles.tokensHeader}>
                 <View style={styles.tokensTitleRow}>
                   <Text
                     style={[styles.tokensTitle, { color: COLORS.textPrimary }]}
                   >
                     Tokens
                   </Text>
-                  {/* <TouchableOpacity>
-                    <Ionicons
-                      name="ellipsis-horizontal"
-                      size={24}
-                      color="#757B85"
-                    />
-                  </TouchableOpacity> */}
                 </View>
-              </View>
+              </Animated.View>
 
               <View style={styles.tokensContainer}>{renderTokensList()}</View>
             </View>
