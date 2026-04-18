@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -23,6 +23,7 @@ type Step = "request" | "verify";
 
 export default function SetupMobilePin() {
   const router = useRouter();
+  const { from } = useLocalSearchParams<{ from?: string }>();
   const email = useSelector((state: RootState) => state.auth.email) || "";
   const token = useSelector((state: RootState) => state.auth.token) || "";
 
@@ -78,7 +79,11 @@ export default function SetupMobilePin() {
       }
       await secure.setPinEnabled(true, email);
       Alert.alert("PIN Created", "You can now sign in using your PIN.", [
-        { text: "Done", onPress: () => router.back() },
+        {
+          text: "Done",
+          onPress: () =>
+            from === "login" ? router.replace("/home") : router.back(),
+        },
       ]);
     } catch (err: any) {
       Alert.alert("Error", err?.message || "Could not set PIN");

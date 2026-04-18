@@ -20,6 +20,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch } from "react-redux";
+import pinApi from "../services/pinApi";
 import {
   googleSignIn,
   setEmail as setAuthEmail,
@@ -84,6 +85,27 @@ export default function LoginScreen() {
     dispatch(setAuthEmail(email));
     try {
       await dispatch(signIn({ email, password })).unwrap();
+
+      try {
+        const res = await pinApi.isPinAvailable(email);
+        if (res.ok) {
+          const body = await res.json().catch(() => ({}));
+          const hasPinSet =
+            body?.data?.pinExists === true ||
+            body?.data?.available === true ||
+            body?.data?.isPinSet === true ||
+            body?.available === true;
+          if (!hasPinSet) {
+            router.replace(
+              "/(profile-and-settings)/setup-mobile-pin?from=login",
+            );
+            return;
+          }
+        }
+      } catch {
+        // Network error — skip PIN check, go home
+      }
+
       router.replace("/home");
     } catch (err: any) {
       console.error("Login failed:", err);
