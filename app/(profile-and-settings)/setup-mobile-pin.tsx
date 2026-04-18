@@ -6,6 +6,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -131,7 +132,12 @@ export default function SetupMobilePin() {
           <View style={{ width: 32 }} />
         </View>
 
-        <View style={styles.content}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           {step === "request" ? (
             <>
               <Text style={styles.title}>Secure your account</Text>
@@ -252,7 +258,7 @@ export default function SetupMobilePin() {
               </TouchableOpacity>
             </>
           )}
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -269,7 +275,8 @@ const styles = StyleSheet.create({
   },
   back: { padding: 4 },
   headerTitle: { color: "#757B85", fontSize: 18, fontWeight: "600" },
-  content: { flex: 1, padding: 24 },
+  scrollView: { flex: 1 },
+  content: { flexGrow: 1, padding: 24 },
   title: {
     color: "#E2E6F0",
     fontSize: 22,

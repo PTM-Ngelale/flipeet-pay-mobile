@@ -22,7 +22,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useDispatch } from "react-redux";
 import {
   googleSignIn,
-  requestOtp,
   setEmail as setAuthEmail,
   signIn,
 } from "../store/authSlice";
@@ -85,16 +84,7 @@ export default function LoginScreen() {
     dispatch(setAuthEmail(email));
     try {
       await dispatch(signIn({ email, password })).unwrap();
-
-      try {
-        await dispatch(requestOtp({ email, type: "login" })).unwrap();
-      } catch {
-        // OTP request failed — still proceed so user can retry on verify screen
-      }
-
-      router.push(
-        `/(auth)/verify-email?email=${encodeURIComponent(email)}&flow=login`,
-      );
+      router.replace("/home");
     } catch (err: any) {
       console.error("Login failed:", err);
     } finally {

@@ -203,7 +203,7 @@ export default function PinSignIn() {
       {/* Greeting */}
       <View style={styles.greetingWrap}>
         <Text style={styles.greeting}>
-          Hello{username ? `, ${capitalize(username)}` : ""}
+          Hello {username ? ` ${capitalize(username)}` : ""}
         </Text>
         <Text style={styles.subtitle}>Enter your Passcode to Unlock</Text>
       </View>
@@ -263,7 +263,11 @@ export default function PinSignIn() {
                     onPress={() => handleKeyPress("delete")}
                     disabled={loading}
                   >
-                    <Ionicons name="backspace-outline" size={26} color="#E2E6F0" />
+                    <Ionicons
+                      name="backspace-outline"
+                      size={26}
+                      color="#E2E6F0"
+                    />
                   </TouchableOpacity>
                 );
               }
@@ -307,7 +311,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   greeting: {
-    fontSize: 30,
+    fontSize: 24,
     fontWeight: "800",
     color: "#E2E6F0",
   },
